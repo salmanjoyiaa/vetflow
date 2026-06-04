@@ -10,7 +10,7 @@ const DEMO_ROLES: Record<string, { isSuperAdmin: boolean; hasOrg: boolean }> = {
   '77777777-7777-7777-7777-777777777777': { isSuperAdmin: true, hasOrg: false },
   'a9000000-0000-0000-0000-000000000000': { isSuperAdmin: false, hasOrg: true },
   'ad000000-0000-0000-0000-000000000000': { isSuperAdmin: false, hasOrg: true },
-  'ar000000-0000-0000-0000-000000000000': { isSuperAdmin: false, hasOrg: true },
+  'ae000000-0000-0000-0000-000000000000': { isSuperAdmin: false, hasOrg: true },
   'b9000000-0000-0000-0000-000000000000': { isSuperAdmin: false, hasOrg: true },
   'bd000000-0000-0000-0000-000000000000': { isSuperAdmin: false, hasOrg: true },
 };
@@ -81,7 +81,7 @@ async function resolvePostLoginPath(
   return '/dashboard';
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isAuthPage = path.startsWith('/login') || path.startsWith('/register');
   const isAccountSetupPage = path.startsWith('/account-setup');

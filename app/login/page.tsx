@@ -15,7 +15,7 @@ const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 const DEMO_CREDENTIALS = [
   {
     label: 'Super Admin',
-    email: 'superadmin@vetflow.com',
+    email: 'salmanjoyiaa@gmail.com',
     password: 'password123',
     icon: Shield,
     color: 'text-violet-400',
@@ -126,12 +126,12 @@ export default function LoginPage() {
       )}
 
       {/* DEMO CREDENTIALS PANEL */}
-      {isDemoMode && (
+      {true && (
         <div className="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-4">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
-              Demo Mode — Quick Login
+              {isDemoMode ? 'Demo Mode — Quick Login' : 'Showcase — Quick Login'}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2">

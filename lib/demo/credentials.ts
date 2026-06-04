@@ -21,7 +21,7 @@ export interface DemoUser {
 export const DEMO_USERS: DemoUser[] = [
   {
     id: '77777777-7777-7777-7777-777777777777',
-    email: 'superadmin@vetflow.com',
+    email: 'salmanjoyiaa@gmail.com',
     password: 'password123',
     firstName: 'Platform',
     lastName: 'Admin',
@@ -61,7 +61,7 @@ export const DEMO_USERS: DemoUser[] = [
     ],
   },
   {
-    id: 'ar000000-0000-0000-0000-000000000000',
+    id: 'ae000000-0000-0000-0000-000000000000',
     email: 'receptionist.a@vetcare.com',
     password: 'password123',
     firstName: 'Emily',

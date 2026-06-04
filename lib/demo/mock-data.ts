@@ -490,7 +490,7 @@ export const MOCK_STAFF = [
   },
   {
     id: 's3',
-    user_id: 'ar000000-0000-0000-0000-000000000000',
+    user_id: 'ae000000-0000-0000-0000-000000000000',
     role: 'receptionist',
     is_active: true,
     user_profiles: { first_name: 'Emily', last_name: 'Desk', phone: '555-0301' },
