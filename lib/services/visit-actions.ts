@@ -1,38 +1,37 @@
 'use server';
 
-import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { resolveServerSession } from '@/lib/services/auth';
+import {
+  assertBranchAccess,
+  assertCapability,
+  assertOrganization,
+  resolveServerAuthContext,
+} from '@/lib/auth/context';
 import { writeAuditLog } from '@/lib/services/audit';
-
-export const WalkInSchema = z.object({
-  petId: z.string().uuid({ message: 'Select a valid pet' }),
-  customerId: z.string().uuid({ message: 'Select a valid customer' }),
-  doctorId: z.string().uuid({ message: 'Select a valid doctor' }),
-  reason: z.string().min(1, { message: 'Reason for visit is required' }),
-  branchId: z.string().uuid({ message: 'Select a valid branch' }),
-});
-
-export type WalkInInput = z.infer<typeof WalkInSchema>;
+import { WalkInSchema } from '@/lib/validations/schemas';
 
 /**
  * Registers a new walk-in check-in and binds it to a doctor.
  */
 export async function createWalkInVisitAction(payload: unknown) {
   try {
-    const session = await resolveServerSession();
-    if (!session || !session.organizationId) {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
       throw new Error('Unauthorized: Session is invalid.');
     }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_walk_ins');
 
     const parsed = WalkInSchema.parse(payload);
+    assertBranchAccess(ctx, parsed.branchId);
+
     const supabase = await createClient();
 
     // 1. Create the Visit record
     const { data: visit, error: visitError } = await supabase
       .from('visits')
       .insert({
-        organization_id: session.organizationId,
+        organization_id: ctx.organizationId,
         branch_id: parsed.branchId,
         pet_id: parsed.petId,
         customer_id: parsed.customerId,
@@ -62,10 +61,10 @@ export async function createWalkInVisitAction(payload: unknown) {
 
     // 3. Write Audit Logs
     await writeAuditLog({
-      organizationId: session.organizationId,
+      organizationId: ctx.organizationId,
       branchId: parsed.branchId,
-      actorUserId: session.userId,
-      actorRole: session.role || 'receptionist',
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
       action: 'VISIT_CREATED',
       resourceType: 'VISIT',
       resourceId: visit.id,
@@ -73,10 +72,10 @@ export async function createWalkInVisitAction(payload: unknown) {
     });
 
     await writeAuditLog({
-      organizationId: session.organizationId,
+      organizationId: ctx.organizationId,
       branchId: parsed.branchId,
-      actorUserId: session.userId,
-      actorRole: session.role || 'receptionist',
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
       action: 'DOCTOR_ASSIGNED',
       resourceType: 'VISIT',
       resourceId: visit.id,
@@ -94,10 +93,11 @@ export async function createWalkInVisitAction(payload: unknown) {
  */
 export async function startConsultationAction(visitId: string) {
   try {
-    const session = await resolveServerSession();
-    if (!session || !['doctor', 'clinic_admin'].includes(session.role || '')) {
-      throw new Error('Unauthorized: Only doctors can start consultations.');
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
     }
+    assertCapability(ctx, 'clinical_queue');
 
     const supabase = await createClient();
 
@@ -105,7 +105,7 @@ export async function startConsultationAction(visitId: string) {
       .from('visits')
       .update({ status: 'consulting' })
       .eq('id', visitId)
-      .eq('organization_id', session.organizationId)
+      .eq('organization_id', ctx.organizationId!)
       .select()
       .single();
 

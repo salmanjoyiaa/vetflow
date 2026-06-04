@@ -1,33 +1,13 @@
 'use server';
 
-import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { resolveServerSession } from '@/lib/services/auth';
+import {
+  assertCapability,
+  assertOrganization,
+  resolveServerAuthContext,
+} from '@/lib/auth/context';
 import { writeAuditLog } from '@/lib/services/audit';
-
-export const PrescriptionItemSchema = z.object({
-  productId: z.string().uuid().nullable().optional(),
-  medicineName: z.string().min(1, { message: 'Medicine name is required' }),
-  dosage: z.string().min(1, { message: 'Dosage is required' }),
-  frequency: z.string().min(1, { message: 'Frequency is required' }),
-  duration: z.string().min(1, { message: 'Duration is required' }),
-  instructions: z.string().optional().or(z.literal('')),
-  quantityRequested: z.number().int().positive(),
-});
-
-export const CompleteConsultationSchema = z.object({
-  visitId: z.string().uuid(),
-  chiefComplaint: z.string().min(1, { message: 'Chief complaint is required' }),
-  history: z.string().optional().or(z.literal('')),
-  examinationFindings: z.string().optional().or(z.literal('')),
-  diagnosis: z.string().min(1, { message: 'Diagnosis is required' }),
-  treatmentPlan: z.string().optional().or(z.literal('')),
-  internalNotes: z.string().optional().or(z.literal('')),
-  followUpRecommendation: z.string().optional().or(z.literal('')),
-  prescriptionItems: z.array(PrescriptionItemSchema),
-});
-
-export type CompleteConsultationInput = z.infer<typeof CompleteConsultationSchema>;
+import { CompleteConsultationSchema } from '@/lib/validations/schemas';
 
 /**
  * Saves clinical notes, creates and finalizes the prescription, and sets the visit 
@@ -35,10 +15,12 @@ export type CompleteConsultationInput = z.infer<typeof CompleteConsultationSchem
  */
 export async function completeConsultationAction(payload: unknown) {
   try {
-    const session = await resolveServerSession();
-    if (!session || !['doctor', 'clinic_admin'].includes(session.role || '')) {
-      throw new Error('Unauthorized: Only doctors can complete consultations.');
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
     }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'clinical_queue');
 
     const parsed = CompleteConsultationSchema.parse(payload);
     const supabase = await createClient();
@@ -48,7 +30,7 @@ export async function completeConsultationAction(payload: unknown) {
       .from('visits')
       .select('*')
       .eq('id', parsed.visitId)
-      .eq('organization_id', session.organizationId)
+      .eq('organization_id', ctx.organizationId)
       .single();
 
     if (visitError || !visit) {
@@ -67,7 +49,7 @@ export async function completeConsultationAction(payload: unknown) {
         treatment_plan: parsed.treatmentPlan || null,
         internal_notes: parsed.internalNotes || null,
         follow_up_recommendation: parsed.followUpRecommendation || null,
-        created_by: session.userId,
+        created_by: ctx.userId,
       })
       .select()
       .single();
@@ -82,11 +64,11 @@ export async function completeConsultationAction(payload: unknown) {
       const { data: prescription, error: presError } = await supabase
         .from('prescriptions')
         .insert({
-          organization_id: session.organizationId,
+          organization_id: ctx.organizationId,
           branch_id: visit.branch_id,
           visit_id: visit.id,
           pet_id: visit.pet_id,
-          doctor_id: session.userId,
+          doctor_id: ctx.userId,
           is_finalized: true,
           revision_number: 1,
         })
@@ -123,10 +105,10 @@ export async function completeConsultationAction(payload: unknown) {
 
       // Record prescription creation in audit logs
       await writeAuditLog({
-        organizationId: session.organizationId,
+        organizationId: ctx.organizationId,
         branchId: visit.branch_id,
-        actorUserId: session.userId,
-        actorRole: session.role || 'doctor',
+        actorUserId: ctx.userId,
+        actorRole: ctx.role || 'doctor',
         action: 'PRESCRIPTION_CREATED',
         resourceType: 'PRESCRIPTION',
         resourceId: prescriptionId || undefined,
@@ -150,10 +132,10 @@ export async function completeConsultationAction(payload: unknown) {
 
     // Record audit trail
     await writeAuditLog({
-      organizationId: session.organizationId,
+      organizationId: ctx.organizationId,
       branchId: visit.branch_id,
-      actorUserId: session.userId,
-      actorRole: session.role || 'doctor',
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'doctor',
       action: 'VISIT_CREATED', // Marks the visit phase transition
       resourceType: 'VISIT',
       resourceId: visit.id,

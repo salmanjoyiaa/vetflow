@@ -124,23 +124,23 @@ export default function WalkInDashboardClient({
       <div className="md:col-span-4 space-y-6">
         
         {/* PATIENT INTAKE CARD */}
-        <div className="bg-white rounded-2xl border border-border/40 p-6 shadow-premium">
-          <span className="text-[10px] font-black text-primary-teal uppercase tracking-wider block mb-1">
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium">
+          <span className="text-[10px] font-black text-primary uppercase tracking-wider block mb-1">
             Intake Console
           </span>
-          <h3 className="text-base font-bold text-primary-navy mb-4">Patient Check-In</h3>
+          <h3 className="text-base font-bold text-on-surface mb-4">Patient Check-In</h3>
 
           {!selectedPet ? (
             <div className="space-y-4">
-              <label className="block text-xs font-semibold text-graphite/70">
+              <label className="block text-xs font-semibold text-on-surface-variant/70">
                 Search Customer (Name or Phone)
               </label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-graphite/40" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
                 <input
                   type="text"
                   placeholder="e.g. John Doe or 555-9090"
-                  className="w-full pl-9 pr-4 py-2 bg-primary-ivory/40 border border-border/70 rounded-xl text-xs text-primary-navy outline-none focus:border-primary-teal focus:ring-1 focus:ring-primary-teal"
+                  className="w-full pl-9 pr-4 py-2 bg-surface-container/40 border border-outline-variant/70 rounded-xl text-xs text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                 />
@@ -149,18 +149,18 @@ export default function WalkInDashboardClient({
               {/* SEARCH RESULTS DROPDOWN */}
               {isSearching && (
                 <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-5 h-5 text-primary-teal animate-spin" />
+                  <Loader2 className="w-5 h-5 text-primary animate-spin" />
                 </div>
               )}
 
               {searchResults.length > 0 && (
-                <div className="border border-border/50 rounded-xl divide-y divide-border/30 max-h-56 overflow-y-auto bg-primary-ivory/10">
+                <div className="border border-outline-variant/50 rounded-xl divide-y divide-border/30 max-h-56 overflow-y-auto bg-surface-container/10">
                   {searchResults.map((cust) => (
                     <div key={cust.id} className="p-3">
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-primary-navy">
-                        <User className="w-3.5 h-3.5 text-primary-teal/70" />
+                      <div className="flex items-center gap-1 text-[11px] font-bold text-on-surface">
+                        <User className="w-3.5 h-3.5 text-primary/70" />
                         <span>{cust.firstName} {cust.lastName}</span>
-                        <span className="text-graphite/40 font-normal">({cust.phone})</span>
+                        <span className="text-on-surface-variant/40 font-normal">({cust.phone})</span>
                       </div>
                       
                       {/* Pets list */}
@@ -169,14 +169,14 @@ export default function WalkInDashboardClient({
                           <button
                             key={pet.id}
                             onClick={() => handleSelectPet(cust, pet)}
-                            className="w-full text-left flex items-center justify-between text-[10px] font-semibold text-primary-teal hover:underline py-1"
+                            className="w-full text-left flex items-center justify-between text-[10px] font-semibold text-primary hover:underline py-1"
                           >
                             <span>{pet.name} ({pet.species} • {pet.breed || 'Unknown breed'})</span>
                             <ArrowRight className="w-3 h-3" />
                           </button>
                         ))}
                         {cust.pets.length === 0 && (
-                          <span className="text-[9px] text-graphite/40 italic block">No pets registered</span>
+                          <span className="text-[9px] text-on-surface-variant/40 italic block">No pets registered</span>
                         )}
                       </div>
                     </div>
@@ -189,11 +189,11 @@ export default function WalkInDashboardClient({
             <form onSubmit={handleCheckIn} className="space-y-4">
               
               {/* Patient brief info card */}
-              <div className="bg-primary-ivory/30 p-3 rounded-xl border border-border/35 flex items-center justify-between">
+              <div className="bg-surface-container/30 p-3 rounded-xl border border-outline-variant/35 flex items-center justify-between">
                 <div>
-                  <span className="text-[9px] font-bold text-graphite/40 uppercase block">Selected Patient</span>
-                  <span className="text-xs font-bold text-primary-navy">{selectedPet.name}</span>
-                  <span className="text-[10px] text-graphite/60 block">Owner: {selectedCustomer.firstName} {selectedCustomer.lastName}</span>
+                  <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase block">Selected Patient</span>
+                  <span className="text-xs font-bold text-on-surface">{selectedPet.name}</span>
+                  <span className="text-[10px] text-on-surface-variant/60 block">Owner: {selectedCustomer.firstName} {selectedCustomer.lastName}</span>
                 </div>
                 <button
                   type="button"
@@ -211,13 +211,13 @@ export default function WalkInDashboardClient({
               )}
 
               <div>
-                <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                   Reason for Visit
                 </label>
                 <input
                   type="text"
                   placeholder="e.g. Vaccination, skin rash, ear infection"
-                  className="w-full px-3 py-2 bg-primary-ivory/20 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+                  className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   required
@@ -225,11 +225,11 @@ export default function WalkInDashboardClient({
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                   Assign Attending Vet
                 </label>
                 <select
-                  className="w-full px-3 py-2 bg-primary-ivory/20 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy font-semibold outline-none"
+                  className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface font-semibold outline-none"
                   value={doctorId}
                   onChange={(e) => setDoctorId(e.target.value)}
                   required
@@ -245,7 +245,7 @@ export default function WalkInDashboardClient({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-primary-teal hover:bg-primary-teal/95 text-white py-2.5 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 disabled:opacity-75"
+                className="w-full bg-primary hover:bg-primary/95 text-white py-2.5 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 disabled:opacity-75"
               >
                 {isSubmitting ? (
                   <>
@@ -268,19 +268,19 @@ export default function WalkInDashboardClient({
       <div className="md:col-span-8 space-y-6">
         
         {/* WAITING QUEUE */}
-        <div className="bg-white rounded-2xl border border-border/40 overflow-hidden shadow-premium">
-          <div className="p-5 border-b border-border/30 bg-primary-ivory/20 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-primary-navy uppercase tracking-wider flex items-center gap-2">
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden shadow-premium">
+          <div className="p-5 border-b border-outline-variant/30 bg-surface-container/20 flex items-center justify-between">
+            <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-500" />
               Waiting Queue ({waitingVisits.length})
             </h3>
-            <span className="text-[10px] text-graphite/50 font-semibold">Sorted by arrival time</span>
+            <span className="text-[10px] text-on-surface-variant/50 font-semibold">Sorted by arrival time</span>
           </div>
 
           {waitingVisits.length > 0 ? (
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-primary-ivory/10 border-b border-border/40 text-[9px] font-bold text-primary-navy/80 uppercase tracking-wider">
+                <tr className="bg-surface-container/10 border-b border-outline-variant/40 text-[9px] font-bold text-on-surface/80 uppercase tracking-wider">
                   <th className="px-6 py-3">Patient / Owner</th>
                   <th className="px-6 py-3">Reason</th>
                   <th className="px-6 py-3">Assigned Vet</th>
@@ -289,20 +289,20 @@ export default function WalkInDashboardClient({
               </thead>
               <tbody className="divide-y divide-border/20 text-xs">
                 {waitingVisits.map((v) => (
-                  <tr key={v.id} className="hover:bg-primary-ivory/10">
+                  <tr key={v.id} className="hover:bg-surface-container/10">
                     <td className="px-6 py-4">
-                      <span className="font-bold text-primary-navy block">{v.pet.name}</span>
-                      <span className="text-[10px] text-graphite/60">{(v.pet.species)} • Owner: {v.customer.first_name} {v.customer.last_name}</span>
+                      <span className="font-bold text-on-surface block">{v.pet.name}</span>
+                      <span className="text-[10px] text-on-surface-variant/60">{(v.pet.species)} • Owner: {v.customer.first_name} {v.customer.last_name}</span>
                     </td>
-                    <td className="px-6 py-4 text-graphite/80 font-medium">
+                    <td className="px-6 py-4 text-on-surface-variant/80 font-medium">
                       {v.reason}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="font-semibold text-primary-navy">
+                      <span className="font-semibold text-on-surface">
                         {v.doctor ? `Dr. ${v.doctor.first_name} ${v.doctor.last_name}` : 'Unassigned'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-graphite/50 font-semibold">
+                    <td className="px-6 py-4 text-on-surface-variant/50 font-semibold">
                       {new Date(v.checkedInAt).toLocaleTimeString(undefined, {
                         hour: '2-digit',
                         minute: '2-digit',
@@ -313,17 +313,17 @@ export default function WalkInDashboardClient({
               </tbody>
             </table>
           ) : (
-            <div className="p-8 text-center text-xs text-graphite/50 italic">
+            <div className="p-8 text-center text-xs text-on-surface-variant/50 italic">
               No patients currently waiting.
             </div>
           )}
         </div>
 
         {/* CONSULTING BOARD */}
-        <div className="bg-white rounded-2xl border border-border/40 overflow-hidden shadow-premium">
-          <div className="p-5 border-b border-border/30 bg-primary-ivory/20">
-            <h3 className="text-sm font-bold text-primary-navy uppercase tracking-wider flex items-center gap-2">
-              <BriefcaseMedical className="w-4 h-4 text-primary-teal" />
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden shadow-premium">
+          <div className="p-5 border-b border-outline-variant/30 bg-surface-container/20">
+            <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
+              <BriefcaseMedical className="w-4 h-4 text-primary" />
               Attending consultations ({consultingVisits.length})
             </h3>
           </div>
@@ -331,7 +331,7 @@ export default function WalkInDashboardClient({
           {consultingVisits.length > 0 ? (
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-primary-ivory/10 border-b border-border/40 text-[9px] font-bold text-primary-navy/80 uppercase tracking-wider">
+                <tr className="bg-surface-container/10 border-b border-outline-variant/40 text-[9px] font-bold text-on-surface/80 uppercase tracking-wider">
                   <th className="px-6 py-3">Patient / Owner</th>
                   <th className="px-6 py-3">attending Vet</th>
                   <th className="px-6 py-3">reason</th>
@@ -340,21 +340,21 @@ export default function WalkInDashboardClient({
               </thead>
               <tbody className="divide-y divide-border/20 text-xs">
                 {consultingVisits.map((v) => (
-                  <tr key={v.id} className="hover:bg-primary-ivory/10">
+                  <tr key={v.id} className="hover:bg-surface-container/10">
                     <td className="px-6 py-4">
-                      <span className="font-bold text-primary-navy block">{v.pet.name}</span>
-                      <span className="text-[10px] text-graphite/60">Owner: {v.customer.first_name} {v.customer.last_name}</span>
+                      <span className="font-bold text-on-surface block">{v.pet.name}</span>
+                      <span className="text-[10px] text-on-surface-variant/60">Owner: {v.customer.first_name} {v.customer.last_name}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="font-bold text-primary-teal">
+                      <span className="font-bold text-primary">
                         Dr. {v.doctor?.first_name} {v.doctor?.last_name}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-graphite/80">
+                    <td className="px-6 py-4 text-on-surface-variant/80">
                       {v.reason}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-1 bg-primary-teal/10 text-primary-teal px-2 py-0.5 rounded-full text-[10px] font-bold">
+                      <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full text-[10px] font-bold">
                         <Play className="w-2.5 h-2.5 fill-current" />
                         In Consult
                       </span>
@@ -364,7 +364,7 @@ export default function WalkInDashboardClient({
               </tbody>
             </table>
           ) : (
-            <div className="p-8 text-center text-xs text-graphite/50 italic">
+            <div className="p-8 text-center text-xs text-on-surface-variant/50 italic">
               No consultations currently active in rooms.
             </div>
           )}
@@ -375,3 +375,4 @@ export default function WalkInDashboardClient({
     </div>
   );
 }
+

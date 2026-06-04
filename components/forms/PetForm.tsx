@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { PetSchema, type PetInput, createPetAction } from '@/lib/services/pet-actions';
+import { createPetAction } from '@/lib/services/pet-actions';
+import { PetSchema, type PetInput } from '@/lib/validations/schemas';
 import { Loader2, Plus, X } from 'lucide-react';
 
 interface PetFormProps {
@@ -55,24 +56,24 @@ export default function PetForm({ customerId, onSuccess }: PetFormProps) {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="bg-primary-teal hover:bg-primary-teal/95 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-2 transition-all"
+        className="bg-primary hover:bg-primary/95 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-2 transition-all"
       >
         <Plus className="w-4 h-4" />
         Register Pet
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-navy/40 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-premium border border-border/40 p-6 relative overflow-y-auto max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="glass-panel w-full max-w-md rounded-2xl shadow-premium border border-outline-variant/40 p-6 relative overflow-y-auto max-h-[90vh]">
             <button
               onClick={() => setIsOpen(false)}
-              className="absolute right-4 top-4 text-graphite/40 hover:text-graphite transition-colors"
+              className="absolute right-4 top-4 text-on-surface-variant/40 hover:text-on-surface-variant transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-base font-bold text-primary-navy mb-1">Register Pet Profile</h3>
-            <p className="text-xs text-graphite/60 mb-6">Create a biological profile for the patient.</p>
+            <h3 className="text-base font-bold text-on-surface mb-1">Register Pet Profile</h3>
+            <p className="text-xs text-on-surface-variant/60 mb-6">Create a biological profile for the patient.</p>
 
             {error && (
               <div className="mb-4 p-3 bg-destructive/5 border border-destructive/20 text-destructive text-xs rounded-xl">
@@ -83,28 +84,28 @@ export default function PetForm({ customerId, onSuccess }: PetFormProps) {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Pet Name
                   </label>
                   <input
                     type="text"
                     {...register('name')}
                     placeholder="e.g. Max"
-                    className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-xs text-primary-navy"
+                    className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl outline-none text-xs text-on-surface"
                   />
                   {errors.name && (
                     <span className="text-[10px] text-destructive mt-1 block">{errors.name.message}</span>
                   )}
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Species
                   </label>
                   <input
                     type="text"
                     {...register('species')}
                     placeholder="e.g. Dog, Cat, Bird"
-                    className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-xs text-primary-navy"
+                    className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl outline-none text-xs text-on-surface"
                   />
                   {errors.species && (
                     <span className="text-[10px] text-destructive mt-1 block">{errors.species.message}</span>
@@ -114,26 +115,26 @@ export default function PetForm({ customerId, onSuccess }: PetFormProps) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Breed
                   </label>
                   <input
                     type="text"
                     {...register('breed')}
                     placeholder="e.g. Golden Retriever"
-                    className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-xs text-primary-navy"
+                    className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl outline-none text-xs text-on-surface"
                   />
                   {errors.breed && (
                     <span className="text-[10px] text-destructive mt-1 block">{errors.breed.message}</span>
                   )}
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Gender
                   </label>
                   <select
                     {...register('gender')}
-                    className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-xs text-primary-navy font-semibold"
+                    className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl outline-none text-xs text-on-surface font-semibold"
                   >
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -148,20 +149,20 @@ export default function PetForm({ customerId, onSuccess }: PetFormProps) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Date of Birth
                   </label>
                   <input
                     type="date"
                     {...register('dateOfBirth')}
-                    className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-xs text-primary-navy"
+                    className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl outline-none text-xs text-on-surface"
                   />
                   {errors.dateOfBirth && (
                     <span className="text-[10px] text-destructive mt-1 block">{errors.dateOfBirth.message}</span>
                   )}
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Weight (kg)
                   </label>
                   <input
@@ -169,7 +170,7 @@ export default function PetForm({ customerId, onSuccess }: PetFormProps) {
                     step="0.01"
                     {...register('weightKg', { valueAsNumber: true })}
                     placeholder="e.g. 12.5"
-                    className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-xs text-primary-navy"
+                    className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl outline-none text-xs text-on-surface"
                   />
                   {errors.weightKg && (
                     <span className="text-[10px] text-destructive mt-1 block">{errors.weightKg.message}</span>
@@ -178,14 +179,14 @@ export default function PetForm({ customerId, onSuccess }: PetFormProps) {
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                   Allergies / Critical Warnings
                 </label>
                 <input
                   type="text"
                   {...register('allergies')}
                   placeholder="e.g. Penicillin, specific foods"
-                  className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-xs text-primary-navy"
+                  className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl outline-none text-xs text-on-surface"
                 />
                 {errors.allergies && (
                   <span className="text-[10px] text-destructive mt-1 block">{errors.allergies.message}</span>
@@ -193,14 +194,14 @@ export default function PetForm({ customerId, onSuccess }: PetFormProps) {
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                   General Medical Notes
                 </label>
                 <textarea
                   {...register('medicalNotes')}
                   placeholder="Enter any general notes about history or temperament..."
                   rows={3}
-                  className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-xs text-primary-navy"
+                  className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl outline-none text-xs text-on-surface"
                 />
                 {errors.medicalNotes && (
                   <span className="text-[10px] text-destructive mt-1 block">{errors.medicalNotes.message}</span>
@@ -211,14 +212,14 @@ export default function PetForm({ customerId, onSuccess }: PetFormProps) {
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="w-1/2 border border-border hover:bg-primary-ivory/50 py-2.5 rounded-xl text-xs font-semibold text-primary-navy transition-all"
+                  className="w-1/2 border border-outline-variant hover:bg-surface-container/50 py-2.5 rounded-xl text-xs font-semibold text-on-surface transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-1/2 bg-primary-navy hover:bg-primary-teal text-white py-2.5 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-1.5"
+                  className="w-1/2 bg-primary hover:opacity-90 text-white py-2.5 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-1.5"
                 >
                   {isLoading ? (
                     <>
@@ -237,3 +238,4 @@ export default function PetForm({ customerId, onSuccess }: PetFormProps) {
     </>
   );
 }
+

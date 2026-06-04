@@ -1,8 +1,12 @@
 import { redirect } from 'next/navigation';
-import { resolveServerSession } from '@/lib/services/auth';
+import {
+  assertCapability,
+  resolveServerAuthContext,
+} from '@/lib/auth/context';
+import DeniedState from '@/components/ui/premium/DeniedState';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
-import { BriefcaseMedical, Play, ClipboardList, CheckCircle, Heart, User } from 'lucide-react';
+import { BriefcaseMedical, Play, ClipboardList, User } from 'lucide-react';
 
 export const metadata = {
   title: 'VetFlow Doctor Dashboard',
@@ -10,18 +14,23 @@ export const metadata = {
 };
 
 export default async function DoctorDashboardPage() {
-  const session = await resolveServerSession();
-  if (!session) {
+  const ctx = await resolveServerAuthContext();
+  if (!ctx) {
     redirect('/login');
   }
 
-  if (!['doctor', 'clinic_admin'].includes(session.role || '')) {
+  try {
+    assertCapability(ctx, 'clinical_queue');
+  } catch {
     return (
-      <div className="bg-destructive/5 border border-destructive/20 text-destructive text-sm p-6 rounded-2xl">
-        Access Denied: Only attending veterinarians can access this dashboard.
-      </div>
+      <DeniedState
+        title="Clinical workspace restricted"
+        message="Only doctors and clinic administrators can access the clinical queue."
+      />
     );
   }
+
+  const session = ctx;
 
   const supabase = await createClient();
 
@@ -77,11 +86,11 @@ export default async function DoctorDashboardPage() {
       
       {/* HEADER */}
       <div>
-        <h2 className="text-xl font-black text-primary-navy tracking-tight flex items-center gap-2">
-          <BriefcaseMedical className="w-5 h-5 text-primary-teal" />
+        <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
+          <BriefcaseMedical className="w-5 h-5 text-primary" />
           Attending Doctor Workspace
         </h2>
-        <p className="text-xs text-graphite/70 mt-1">
+        <p className="text-xs text-on-surface-variant/70 mt-1">
           Review your active consultation room and queue assignments.
         </p>
       </div>
@@ -90,10 +99,10 @@ export default async function DoctorDashboardPage() {
         
         {/* ACTIVE / CONSULTING VISIT */}
         <div className="md:col-span-8 space-y-6">
-          <div className="bg-white rounded-2xl border border-border/40 overflow-hidden shadow-premium">
-            <div className="p-5 border-b border-border/30 bg-primary-ivory/20">
-              <h3 className="text-sm font-bold text-primary-navy uppercase tracking-wider flex items-center gap-2">
-                <Play className="w-4 h-4 text-primary-teal fill-current" />
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden shadow-premium">
+            <div className="p-5 border-b border-outline-variant/30 bg-surface-container/20">
+              <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
+                <Play className="w-4 h-4 text-primary fill-current" />
                 Active Consultations ({consultingVisits.length})
               </h3>
             </div>
@@ -104,18 +113,18 @@ export default async function DoctorDashboardPage() {
                   <div key={v.id} className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-base text-primary-navy">{v.pet.name}</span>
-                        <span className="bg-primary-teal/5 text-primary-teal text-[10px] font-bold px-2 py-0.5 rounded-full capitalize">
+                        <span className="font-bold text-base text-on-surface">{v.pet.name}</span>
+                        <span className="bg-primary/5 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full capitalize">
                           {v.pet.species} • {v.pet.gender}
                         </span>
                       </div>
-                      <div className="text-xs text-graphite/70 space-y-1">
+                      <div className="text-xs text-on-surface-variant/70 space-y-1">
                         <p className="flex items-center gap-1">
-                          <User className="w-3.5 h-3.5 text-primary-teal/60" />
+                          <User className="w-3.5 h-3.5 text-primary/60" />
                           <span>Owner: {v.customer.firstName} {v.customer.lastName}</span>
                         </p>
-                        <p className="font-semibold text-primary-navy">
-                          Reason: <span className="font-normal text-graphite/80">{v.reason}</span>
+                        <p className="font-semibold text-on-surface">
+                          Reason: <span className="font-normal text-on-surface-variant/80">{v.reason}</span>
                         </p>
                       </div>
                     </div>
@@ -123,7 +132,7 @@ export default async function DoctorDashboardPage() {
                     <div>
                       <Link
                         href={`/dashboard/doctors/${v.id}`}
-                        className="bg-primary-teal hover:bg-primary-teal/95 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm inline-flex items-center gap-1.5 transition-all"
+                        className="bg-primary hover:bg-primary/95 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm inline-flex items-center gap-1.5 transition-all"
                       >
                         Open Workspace
                         <ArrowRightIcon className="w-4 h-4" />
@@ -133,16 +142,16 @@ export default async function DoctorDashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="p-12 text-center text-xs text-graphite/50 italic">
+              <div className="p-12 text-center text-xs text-on-surface-variant/50 italic">
                 No consultations currently in progress. Open a patient from the queue below to start.
               </div>
             )}
           </div>
 
           {/* WAITING QUEUE BOARD */}
-          <div className="bg-white rounded-2xl border border-border/40 overflow-hidden shadow-premium">
-            <div className="p-5 border-b border-border/30 bg-primary-ivory/20">
-              <h3 className="text-sm font-bold text-primary-navy uppercase tracking-wider flex items-center gap-2">
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden shadow-premium">
+            <div className="p-5 border-b border-outline-variant/30 bg-surface-container/20">
+              <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
                 <ClipboardList className="w-4 h-4 text-amber-500" />
                 Waiting Queue ({waitingVisits.length})
               </h3>
@@ -153,19 +162,19 @@ export default async function DoctorDashboardPage() {
                 {waitingVisits.map((v) => (
                   <div key={v.id} className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="space-y-1.5">
-                      <span className="font-bold text-sm text-primary-navy block">{v.pet.name}</span>
-                      <p className="text-xs text-graphite/70">
+                      <span className="font-bold text-sm text-on-surface block">{v.pet.name}</span>
+                      <p className="text-xs text-on-surface-variant/70">
                         Owner: {v.customer.firstName} {v.customer.lastName} • Species: {v.pet.species}
                       </p>
-                      <p className="text-xs font-semibold text-primary-navy">
-                        Reason: <span className="font-normal text-graphite/80">{v.reason}</span>
+                      <p className="text-xs font-semibold text-on-surface">
+                        Reason: <span className="font-normal text-on-surface-variant/80">{v.reason}</span>
                       </p>
                     </div>
 
                     <div>
                       <Link
                         href={`/dashboard/doctors/${v.id}`}
-                        className="border border-primary-teal/30 hover:bg-primary-teal/5 text-primary-teal px-4 py-2 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-1.5"
+                        className="border border-primary-teal/30 hover:bg-primary/5 text-primary px-4 py-2 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-1.5"
                       >
                         Start Consult
                         <Play className="w-3.5 h-3.5 fill-current" />
@@ -175,7 +184,7 @@ export default async function DoctorDashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="p-12 text-center text-xs text-graphite/50 italic">
+              <div className="p-12 text-center text-xs text-on-surface-variant/50 italic">
                 Your assigned waiting queue is empty.
               </div>
             )}
@@ -183,24 +192,24 @@ export default async function DoctorDashboardPage() {
         </div>
 
         {/* STATS PANEL */}
-        <div className="md:col-span-4 bg-white rounded-2xl border border-border/40 p-6 shadow-premium space-y-6">
-          <h3 className="text-sm font-bold text-primary-navy uppercase tracking-wider">
+        <div className="md:col-span-4 glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-6">
+          <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">
             Workspace Summary
           </h3>
 
           <div className="space-y-4 text-xs">
-            <div className="flex items-center justify-between text-graphite/70 border-b border-border/30 pb-2">
-              <span className="font-semibold text-primary-navy">Attending Doctor</span>
-              <span className="font-bold text-primary-teal">
+            <div className="flex items-center justify-between text-on-surface-variant/70 border-b border-outline-variant/30 pb-2">
+              <span className="font-semibold text-on-surface">Attending Doctor</span>
+              <span className="font-bold text-primary">
                 Dr. {session.firstName} {session.lastName}
               </span>
             </div>
-            <div className="flex items-center justify-between text-graphite/70 border-b border-border/30 pb-2">
-              <span className="font-semibold text-primary-navy">Active Consults</span>
+            <div className="flex items-center justify-between text-on-surface-variant/70 border-b border-outline-variant/30 pb-2">
+              <span className="font-semibold text-on-surface">Active Consults</span>
               <span>{consultingVisits.length}</span>
             </div>
-            <div className="flex items-center justify-between text-graphite/70 border-b border-border/30 pb-2">
-              <span className="font-semibold text-primary-navy">Waiting in Queue</span>
+            <div className="flex items-center justify-between text-on-surface-variant/70 border-b border-outline-variant/30 pb-2">
+              <span className="font-semibold text-on-surface">Waiting in Queue</span>
               <span>{waitingVisits.length}</span>
             </div>
           </div>
@@ -219,3 +228,4 @@ function ArrowRightIcon(props: any) {
     </svg>
   );
 }
+

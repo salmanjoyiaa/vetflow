@@ -82,11 +82,11 @@ export default async function InventoryPage() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-primary-navy tracking-tight flex items-center gap-2">
-            <Layers className="w-5 h-5 text-primary-teal" />
+          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
+            <Layers className="w-5 h-5 text-primary" />
             Inventory & Catalog
           </h2>
-          <p className="text-xs text-graphite/70 mt-1">
+          <p className="text-xs text-on-surface-variant/70 mt-1">
             Configure medicines, foods, accessories, services, and check stock levels.
           </p>
         </div>
@@ -103,11 +103,11 @@ export default async function InventoryPage() {
 
       {/* STATS MATRIX */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl border border-border/40 p-4 shadow-premium">
-          <span className="text-[10px] font-bold text-graphite/40 uppercase block">Total Catalog Items</span>
-          <span className="text-lg font-black text-primary-navy mt-1 block">{totalItems}</span>
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 p-4 shadow-premium">
+          <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase block">Total Catalog Items</span>
+          <span className="text-lg font-black text-on-surface mt-1 block">{totalItems}</span>
         </div>
-        <div className="bg-white rounded-2xl border border-border/40 p-4 shadow-premium">
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 p-4 shadow-premium">
           <span className="text-[10px] font-bold text-destructive uppercase block flex items-center gap-1">
             <AlertCircle className="w-3.5 h-3.5" />
             Low Stock Alerts
@@ -120,10 +120,10 @@ export default async function InventoryPage() {
 
       {/* PRODUCT LIST TABLE */}
       {products && products.length > 0 ? (
-        <div className="bg-white rounded-2xl border border-border/40 overflow-hidden shadow-premium">
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden shadow-premium">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-primary-ivory/40 border-b border-border/40 text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider">
+              <tr className="bg-surface-container/40 border-b border-outline-variant/40 text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider">
                 <th className="px-6 py-4">Item Details</th>
                 <th className="px-6 py-4">Type & Category</th>
                 <th className="px-6 py-4">Pricing</th>
@@ -135,31 +135,31 @@ export default async function InventoryPage() {
               {products.map((prod) => {
                 const isLowStock = prod.type !== 'service' && prod.stock_quantity <= prod.reorder_level;
                 return (
-                  <tr key={prod.id} className="hover:bg-primary-ivory/10 transition-colors">
+                  <tr key={prod.id} className="hover:bg-surface-container/10 transition-colors">
                     <td className="px-6 py-4">
-                      <span className="font-bold text-primary-navy block">{prod.name}</span>
-                      <span className="text-[10px] text-graphite/50 block">
+                      <span className="font-bold text-on-surface block">{prod.name}</span>
+                      <span className="text-[10px] text-on-surface-variant/50 block">
                         {prod.brand && `Brand: ${prod.brand}`} {prod.sku && `• SKU: ${prod.sku}`}
                       </span>
                     </td>
-                    <td className="px-6 py-4 capitalize text-graphite/70">
-                      <span className="font-semibold text-primary-navy">{prod.type}</span>
+                    <td className="px-6 py-4 capitalize text-on-surface-variant/70">
+                      <span className="font-semibold text-on-surface">{prod.type}</span>
                       {prod.product_categories && (
-                        <span className="text-graphite/60 block text-[10px]">
+                        <span className="text-on-surface-variant/60 block text-[10px]">
                           Category: {(prod.product_categories as any).name}
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 space-y-0.5 text-graphite/80 font-medium">
+                    <td className="px-6 py-4 space-y-0.5 text-on-surface-variant/80 font-medium">
                       <div>Sell: ${Number(prod.selling_price).toFixed(2)}</div>
-                      <div className="text-[10px] text-graphite/50">Buy: ${Number(prod.purchase_price).toFixed(2)}</div>
+                      <div className="text-[10px] text-on-surface-variant/50">Buy: ${Number(prod.purchase_price).toFixed(2)}</div>
                     </td>
                     <td className="px-6 py-4">
                       {prod.type === 'service' ? (
-                        <span className="text-graphite/50 italic font-semibold">Virtual Service</span>
+                        <span className="text-on-surface-variant/50 italic font-semibold">Virtual Service</span>
                       ) : (
                         <div className="space-y-1">
-                          <span className={`font-bold ${isLowStock ? 'text-destructive' : 'text-primary-navy'}`}>
+                          <span className={`font-bold ${isLowStock ? 'text-destructive' : 'text-on-surface'}`}>
                             {prod.stock_quantity} {prod.unit || 'pcs'}
                           </span>
                           {isLowStock && (
@@ -180,7 +180,7 @@ export default async function InventoryPage() {
                           currentStock={prod.stock_quantity}
                         />
                       ) : (
-                        <span className="text-[10px] text-graphite/40 italic">Billed Service</span>
+                        <span className="text-[10px] text-on-surface-variant/40 italic">Billed Service</span>
                       )}
                     </td>
                   </tr>
@@ -190,10 +190,10 @@ export default async function InventoryPage() {
           </table>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-border/40 p-12 text-center">
-          <ShoppingBag className="w-12 h-12 text-graphite/30 mx-auto mb-4" />
-          <h4 className="text-sm font-bold text-primary-navy mb-1">Catalog is Empty</h4>
-          <p className="text-xs text-graphite/60">
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 p-12 text-center">
+          <ShoppingBag className="w-12 h-12 text-on-surface-variant/30 mx-auto mb-4" />
+          <h4 className="text-sm font-bold text-on-surface mb-1">Catalog is Empty</h4>
+          <p className="text-xs text-on-surface-variant/60">
             Create products, medicines, or services to begin prescription and invoicing checkout.
           </p>
         </div>
@@ -202,3 +202,4 @@ export default async function InventoryPage() {
     </div>
   );
 }
+

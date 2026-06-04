@@ -2,18 +2,14 @@
 
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/server';
-import { resolveServerSession } from '@/lib/services/auth';
+import {
+  assertBranchAccess,
+  assertCapability,
+  assertOrganization,
+  resolveServerAuthContext,
+} from '@/lib/auth/context';
 import { writeAuditLog } from '@/lib/services/audit';
-
-export const CheckoutSchema = z.object({
-  visitId: z.string().uuid(),
-  discount: z.number().nonnegative(),
-  paymentMethod: z.enum(['cash', 'card', 'bank_transfer']),
-  paymentReference: z.string().optional().or(z.literal('')),
-  notes: z.string().optional().or(z.literal('')),
-});
-
-export type CheckoutInput = z.infer<typeof CheckoutSchema>;
+import { CheckoutSchema, type CheckoutInput } from '@/lib/validations/schemas';
 
 /**
  * Executes checkout transaction on the server.
@@ -23,27 +19,29 @@ export type CheckoutInput = z.infer<typeof CheckoutSchema>;
  */
 export async function createInvoiceFromVisitAction(payload: unknown) {
   try {
-    const session = await resolveServerSession();
-    if (!session || !session.organizationId) {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
       throw new Error('Unauthorized: Session is invalid.');
     }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'billing_checkout');
 
     const parsed = CheckoutSchema.parse(payload);
-    
-    // We execute inside the elevated admin client to ensure database integrity and atomic transactions
+
     const adminClient = await createAdminClient();
 
-    // 1. Fetch Visit details
     const { data: visit, error: visitErr } = await adminClient
       .from('visits')
       .select('*, pets(*), customers(*)')
       .eq('id', parsed.visitId)
-      .eq('organization_id', session.organizationId)
+      .eq('organization_id', ctx.organizationId)
       .single();
 
     if (visitErr || !visit || visit.status !== 'ready_for_checkout') {
       throw new Error('Visit record is not ready for checkout or access denied.');
     }
+
+    assertBranchAccess(ctx, visit.branch_id);
 
     // 2. Load linked Prescription and items
     const { data: prescription } = await adminClient
@@ -60,7 +58,7 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
     const { data: consultProduct } = await adminClient
       .from('products')
       .select('id, name, selling_price, type')
-      .eq('organization_id', session.organizationId)
+      .eq('organization_id', ctx.organizationId)
       .eq('branch_id', visit.branch_id)
       .eq('sku', 'SVC-CONSULT')
       .maybeSingle();
@@ -115,7 +113,7 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
     const { data: taxSetting } = await adminClient
       .from('tax_settings')
       .select('is_enabled, tax_name, tax_percentage, applies_to_products, applies_to_services')
-      .eq('organization_id', session.organizationId)
+      .eq('organization_id', ctx.organizationId)
       .maybeSingle();
 
     const taxEnabled = taxSetting?.is_enabled || false;
@@ -159,7 +157,7 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
     const { data: invoice, error: invoiceErr } = await adminClient
       .from('invoices')
       .insert({
-        organization_id: session.organizationId,
+        organization_id: ctx.organizationId,
         branch_id: visit.branch_id,
         invoice_number: invoiceNumber,
         customer_id: visit.customer_id,
@@ -172,7 +170,7 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
         total,
         payment_status: 'paid', // V1 handles cash/card manual paid status immediately
         notes: parsed.notes || null,
-        created_by: session.userId,
+        created_by: ctx.userId,
         paid_at: new Date().toISOString(),
       })
       .select()
@@ -199,13 +197,13 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
     const { error: payErr } = await adminClient
       .from('payments')
       .insert({
-        organization_id: session.organizationId,
+        organization_id: ctx.organizationId,
         branch_id: visit.branch_id,
         invoice_id: invoice.id,
         amount: total,
         payment_method: parsed.paymentMethod,
         reference_number: parsed.paymentReference || null,
-        created_by: session.userId,
+        created_by: ctx.userId,
       });
 
     if (payErr) {
@@ -233,13 +231,13 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
 
           // Log stock movement
           await adminClient.from('stock_movements').insert({
-            organization_id: session.organizationId,
+            organization_id: ctx.organizationId,
             branch_id: visit.branch_id,
             product_id: item.productId,
             type: 'invoice_sale',
             quantity: -item.quantity, // Negative count represents stock reduction
             reason: `Invoice sale checkout ${invoiceNumber}`,
-            created_by: session.userId,
+            created_by: ctx.userId,
           });
         }
       }
@@ -260,10 +258,10 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
 
     // 11. Write Audit Log
     await writeAuditLog({
-      organizationId: session.organizationId,
+      organizationId: ctx.organizationId,
       branchId: visit.branch_id,
-      actorUserId: session.userId,
-      actorRole: session.role || 'receptionist',
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
       action: 'INVOICE_CREATED',
       resourceType: 'INVOICE',
       resourceId: invoice.id,
@@ -271,10 +269,10 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
     });
 
     await writeAuditLog({
-      organizationId: session.organizationId,
+      organizationId: ctx.organizationId,
       branchId: visit.branch_id,
-      actorUserId: session.userId,
-      actorRole: session.role || 'receptionist',
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
       action: 'PAYMENT_RECEIVED',
       resourceType: 'PAYMENT',
       resourceId: invoice.id,

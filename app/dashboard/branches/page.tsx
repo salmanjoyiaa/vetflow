@@ -1,5 +1,9 @@
 import { redirect } from 'next/navigation';
-import { resolveServerSession } from '@/lib/services/auth';
+import {
+  assertCapability,
+  resolveServerAuthContext,
+} from '@/lib/auth/context';
+import DeniedState from '@/components/ui/premium/DeniedState';
 import { createClient } from '@/lib/supabase/server';
 import BranchForm from '@/components/forms/BranchForm';
 import BranchListClient from '@/components/dashboard/BranchListClient';
@@ -12,19 +16,24 @@ export const metadata = {
 
 export default async function BranchesPage() {
   // 1. Authenticate user & check admin role
-  const session = await resolveServerSession();
+  const ctx = await resolveServerAuthContext();
 
-  if (!session) {
+  if (!ctx) {
     redirect('/login');
   }
 
-  if (!['clinic_admin', 'super_admin'].includes(session.role || '')) {
+  try {
+    assertCapability(ctx, 'manage_branches');
+  } catch {
     return (
-      <div className="bg-destructive/5 border border-destructive/20 text-destructive text-sm p-6 rounded-2xl">
-        Access Denied: Only clinic administrators can access branch configuration.
-      </div>
+      <DeniedState
+        title="Branch administration restricted"
+        message="Only clinic administrators can manage branches."
+      />
     );
   }
+
+  const session = ctx;
 
   // 2. Query branches
   const supabase = await createClient();
@@ -48,11 +57,11 @@ export default async function BranchesPage() {
       {/* PAGE HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-primary-navy tracking-tight flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-primary-teal" />
+          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-primary" />
             Branches
           </h2>
-          <p className="text-xs text-graphite/70 mt-1">
+          <p className="text-xs text-on-surface-variant/70 mt-1">
             Create, active/deactivate, and inspect local branch locations.
           </p>
         </div>
@@ -66,3 +75,4 @@ export default async function BranchesPage() {
     </div>
   );
 }
+

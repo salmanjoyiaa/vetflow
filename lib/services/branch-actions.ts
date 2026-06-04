@@ -2,27 +2,25 @@
 
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { resolveServerSession } from '@/lib/services/auth';
+import {
+  assertCapability,
+  assertOrganization,
+  resolveServerAuthContext,
+} from '@/lib/auth/context';
 import { writeAuditLog } from '@/lib/services/audit';
-
-export const BranchSchema = z.object({
-  name: z.string().min(1, { message: 'Branch name is required' }),
-  address: z.string().min(1, { message: 'Branch address is required' }),
-  phone: z.string().min(5, { message: 'Branch phone number is required' }),
-  email: z.string().email({ message: 'Invalid email address' }).optional().or(z.literal('')),
-});
-
-export type BranchInput = z.infer<typeof BranchSchema>;
+import { BranchSchema, type BranchInput } from '@/lib/validations/schemas';
 
 /**
  * Creates a new branch for the organization.
  */
 export async function createBranchAction(payload: unknown) {
   try {
-    const session = await resolveServerSession();
-    if (!session || session.role !== 'clinic_admin' || !session.organizationId) {
-      throw new Error('Unauthorized: Only clinic administrators can create branches.');
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
     }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_branches');
 
     const parsed = BranchSchema.parse(payload);
     const supabase = await createClient();
@@ -30,7 +28,7 @@ export async function createBranchAction(payload: unknown) {
     const { data: branch, error } = await supabase
       .from('branches')
       .insert({
-        organization_id: session.organizationId,
+        organization_id: ctx.organizationId,
         name: parsed.name,
         address: parsed.address,
         phone: parsed.phone,
@@ -46,10 +44,10 @@ export async function createBranchAction(payload: unknown) {
 
     // Record audit trail
     await writeAuditLog({
-      organizationId: session.organizationId,
+      organizationId: ctx.organizationId,
       branchId: branch.id,
-      actorUserId: session.userId,
-      actorRole: session.role || 'clinic_admin',
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'clinic_admin',
       action: 'BRANCH_CREATED',
       resourceType: 'BRANCH',
       resourceId: branch.id,
@@ -67,10 +65,12 @@ export async function createBranchAction(payload: unknown) {
  */
 export async function toggleBranchStatusAction(branchId: string, isActive: boolean) {
   try {
-    const session = await resolveServerSession();
-    if (!session || session.role !== 'clinic_admin' || !session.organizationId) {
-      throw new Error('Unauthorized: Only clinic administrators can toggle branch state.');
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
     }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_branches');
 
     const supabase = await createClient();
 
@@ -78,7 +78,7 @@ export async function toggleBranchStatusAction(branchId: string, isActive: boole
       .from('branches')
       .update({ is_active: isActive })
       .eq('id', branchId)
-      .eq('organization_id', session.organizationId)
+      .eq('organization_id', ctx.organizationId)
       .select()
       .single();
 
@@ -88,10 +88,10 @@ export async function toggleBranchStatusAction(branchId: string, isActive: boole
 
     // Record audit trail
     await writeAuditLog({
-      organizationId: session.organizationId,
+      organizationId: ctx.organizationId,
       branchId: branch.id,
-      actorUserId: session.userId,
-      actorRole: session.role || 'clinic_admin',
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'clinic_admin',
       action: 'BRANCH_UPDATED',
       resourceType: 'BRANCH',
       resourceId: branch.id,

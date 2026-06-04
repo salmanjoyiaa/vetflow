@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CompleteConsultationSchema, type CompleteConsultationInput, completeConsultationAction } from '@/lib/services/clinical-actions';
+import { CompleteConsultationSchema, type CompleteConsultationInput } from '@/lib/validations/schemas';
+import { completeConsultationAction } from '@/lib/services/clinical-actions';
 import { 
   Heart, 
   User, 
@@ -131,38 +132,38 @@ export default function ConsultationWorkspaceClient({
       <div className="md:col-span-4 space-y-6">
         
         {/* PATIENT PROFILE BRIEF */}
-        <div className="bg-white rounded-2xl border border-border/40 p-5 shadow-premium">
-          <div className="flex items-center justify-between border-b border-border/35 pb-4 mb-4">
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 p-5 shadow-premium">
+          <div className="flex items-center justify-between border-b border-outline-variant/35 pb-4 mb-4">
             <div>
-              <span className="text-[9px] font-black text-primary-teal uppercase tracking-wider block">Patient Brief</span>
-              <h3 className="text-base font-black text-primary-navy">{pet.name}</h3>
+              <span className="text-[9px] font-black text-primary uppercase tracking-wider block">Patient Brief</span>
+              <h3 className="text-base font-black text-on-surface">{pet.name}</h3>
             </div>
-            <span className="bg-primary-teal/5 text-primary-teal text-[10px] font-bold px-2 py-0.5 rounded-full capitalize">
+            <span className="bg-primary/5 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full capitalize">
               {pet.species}
             </span>
           </div>
 
           <div className="space-y-3.5 text-xs">
-            <div className="flex items-center justify-between text-graphite/70">
-              <span className="font-semibold text-primary-navy">Breed</span>
+            <div className="flex items-center justify-between text-on-surface-variant/70">
+              <span className="font-semibold text-on-surface">Breed</span>
               <span>{pet.breed || 'Unknown'}</span>
             </div>
-            <div className="flex items-center justify-between text-graphite/70">
-              <span className="font-semibold text-primary-navy">Gender</span>
+            <div className="flex items-center justify-between text-on-surface-variant/70">
+              <span className="font-semibold text-on-surface">Gender</span>
               <span>{pet.gender}</span>
             </div>
             {pet.weightKg && (
-              <div className="flex items-center justify-between text-graphite/70">
-                <span className="font-semibold text-primary-navy flex items-center gap-1">
-                  <Weight className="w-3.5 h-3.5 text-primary-teal/70" />
+              <div className="flex items-center justify-between text-on-surface-variant/70">
+                <span className="font-semibold text-on-surface flex items-center gap-1">
+                  <Weight className="w-3.5 h-3.5 text-primary/70" />
                   Weight
                 </span>
                 <span>{pet.weightKg} kg</span>
               </div>
             )}
-            <div className="flex items-center justify-between text-graphite/70">
-              <span className="font-semibold text-primary-navy flex items-center gap-1">
-                <User className="w-3.5 h-3.5 text-primary-teal/70" />
+            <div className="flex items-center justify-between text-on-surface-variant/70">
+              <span className="font-semibold text-on-surface flex items-center gap-1">
+                <User className="w-3.5 h-3.5 text-primary/70" />
                 Owner
               </span>
               <span>{customer.firstName} {customer.lastName}</span>
@@ -181,13 +182,13 @@ export default function ConsultationWorkspaceClient({
         </div>
 
         {/* NAVIGATION TABS */}
-        <div className="flex bg-white p-1 rounded-xl border border-border/40 shadow-sm">
+        <div className="flex glass-panel p-1 rounded-xl border border-outline-variant/40 shadow-sm">
           <button
             onClick={() => setActiveTab('consult')}
             className={`w-1/2 py-2.5 text-xs font-bold rounded-lg transition-all ${
               activeTab === 'consult' 
-                ? 'bg-primary-teal text-white shadow-sm' 
-                : 'text-graphite/60 hover:text-primary-navy'
+                ? 'bg-primary text-white shadow-sm' 
+                : 'text-on-surface-variant/60 hover:text-on-surface'
             }`}
           >
             Clinical Workspace
@@ -196,8 +197,8 @@ export default function ConsultationWorkspaceClient({
             onClick={() => setActiveTab('history')}
             className={`w-1/2 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'history' 
-                ? 'bg-primary-teal text-white shadow-sm' 
-                : 'text-graphite/60 hover:text-primary-navy'
+                ? 'bg-primary text-white shadow-sm' 
+                : 'text-on-surface-variant/60 hover:text-on-surface'
             }`}
           >
             <History className="w-4 h-4" />
@@ -210,27 +211,27 @@ export default function ConsultationWorkspaceClient({
           <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
             {history.length > 0 ? (
               history.map((h) => (
-                <div key={h.id} className="bg-white rounded-xl border border-border/40 p-4 shadow-sm space-y-2">
-                  <div className="flex justify-between items-center border-b border-border/30 pb-2">
-                    <span className="text-[10px] text-graphite/50 font-bold">
+                <div key={h.id} className="glass-panel rounded-xl border border-outline-variant/40 p-4 shadow-sm space-y-2">
+                  <div className="flex justify-between items-center border-b border-outline-variant/30 pb-2">
+                    <span className="text-[10px] text-on-surface-variant/50 font-bold">
                       {new Date(h.checkedInAt).toLocaleDateString()}
                     </span>
-                    <span className="bg-primary-teal/5 text-primary-teal text-[9px] font-bold px-1.5 py-0.5 rounded">
+                    <span className="bg-primary/5 text-primary text-[9px] font-bold px-1.5 py-0.5 rounded">
                       Consult Completed
                     </span>
                   </div>
                   <div className="text-xs space-y-1.5">
-                    <p className="font-semibold text-primary-navy">
-                      Reason: <span className="font-normal text-graphite/80">{h.reason}</span>
+                    <p className="font-semibold text-on-surface">
+                      Reason: <span className="font-normal text-on-surface-variant/80">{h.reason}</span>
                     </p>
                     {h.clinicalNotes && (
                       <>
-                        <p className="font-semibold text-primary-navy">
-                          Diagnosis: <span className="text-primary-teal">{h.clinicalNotes.diagnosis}</span>
+                        <p className="font-semibold text-on-surface">
+                          Diagnosis: <span className="text-primary">{h.clinicalNotes.diagnosis}</span>
                         </p>
                         {h.clinicalNotes.treatmentPlan && (
-                          <p className="font-semibold text-primary-navy">
-                            Plan: <span className="font-normal text-graphite/70">{h.clinicalNotes.treatmentPlan}</span>
+                          <p className="font-semibold text-on-surface">
+                            Plan: <span className="font-normal text-on-surface-variant/70">{h.clinicalNotes.treatmentPlan}</span>
                           </p>
                         )}
                       </>
@@ -239,7 +240,7 @@ export default function ConsultationWorkspaceClient({
                 </div>
               ))
             ) : (
-              <div className="bg-white rounded-xl border border-border/40 p-8 text-center text-xs text-graphite/50 italic">
+              <div className="glass-panel rounded-xl border border-outline-variant/40 p-8 text-center text-xs text-on-surface-variant/50 italic">
                 No past consultations logged.
               </div>
             )}
@@ -259,20 +260,20 @@ export default function ConsultationWorkspaceClient({
           )}
 
           {/* CLINICAL NOTE EDITING BOARD */}
-          <div className="bg-white rounded-2xl border border-border/40 p-6 shadow-premium space-y-5">
-            <h3 className="text-sm font-bold text-primary-navy uppercase tracking-wider flex items-center gap-1.5 border-b border-border/30 pb-4">
-              <Stethoscope className="w-4 h-4 text-primary-teal" />
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-5">
+            <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5 border-b border-outline-variant/30 pb-4">
+              <Stethoscope className="w-4 h-4 text-primary" />
               Clinical Consultation Notes
             </h3>
 
             <div>
-              <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+              <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                 Chief Complaint / Reason for Visit
               </label>
               <input
                 type="text"
                 {...register('chiefComplaint')}
-                className="w-full px-3 py-2 bg-primary-ivory/20 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+                className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
               />
               {errors.chiefComplaint && (
                 <span className="text-[10px] text-destructive mt-1 block">{errors.chiefComplaint.message}</span>
@@ -281,38 +282,38 @@ export default function ConsultationWorkspaceClient({
 
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                   Anamnesis / History
                 </label>
                 <textarea
                   {...register('history')}
                   placeholder="Record anamnesis details, signs onset, symptoms..."
                   rows={4}
-                  className="w-full px-3 py-2 bg-primary-ivory/20 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+                  className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                   Examination Findings
                 </label>
                 <textarea
                   {...register('examinationFindings')}
                   placeholder="Record clinical checks (temperature, cardiac, visual check)..."
                   rows={4}
-                  className="w-full px-3 py-2 bg-primary-ivory/20 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+                  className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+              <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                 Diagnosis / Assessment
               </label>
               <input
                 type="text"
                 {...register('diagnosis')}
                 placeholder="e.g. Feline Infectious Enteritis, Otitis Externa"
-                className="w-full px-3 py-2 bg-primary-ivory/20 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none font-bold"
+                className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none font-bold"
               />
               {errors.diagnosis && (
                 <span className="text-[10px] text-destructive mt-1 block">{errors.diagnosis.message}</span>
@@ -320,54 +321,54 @@ export default function ConsultationWorkspaceClient({
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+              <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                 Treatment Plan & Recommendations
               </label>
               <textarea
                 {...register('treatmentPlan')}
                 placeholder="Specify general directions, clinical advice, or home care details..."
                 rows={3}
-                className="w-full px-3 py-2 bg-primary-ivory/20 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+                className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
               />
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                   Internal Notes (Doctor Only)
                 </label>
                 <input
                   type="text"
                   {...register('internalNotes')}
                   placeholder="Private findings not visible on client receipts"
-                  className="w-full px-3 py-2 bg-primary-ivory/20 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+                  className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                   Follow-up Recommendation
                 </label>
                 <input
                   type="text"
                   {...register('followUpRecommendation')}
                   placeholder="e.g. Return in 7 days for ear recheck"
-                  className="w-full px-3 py-2 bg-primary-ivory/20 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+                  className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
                 />
               </div>
             </div>
           </div>
 
           {/* PRESCRIPTION BUILDER PANEL */}
-          <div className="bg-white rounded-2xl border border-border/40 p-6 shadow-premium space-y-5">
-            <div className="flex items-center justify-between border-b border-border/30 pb-4">
-              <h3 className="text-sm font-bold text-primary-navy uppercase tracking-wider flex items-center gap-1.5">
-                <FileCheck2 className="w-4 h-4 text-primary-teal" />
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-5">
+            <div className="flex items-center justify-between border-b border-outline-variant/30 pb-4">
+              <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5">
+                <FileCheck2 className="w-4 h-4 text-primary" />
                 Prescription Builder
               </h3>
               <button
                 type="button"
                 onClick={() => append({ medicineName: '', dosage: '', frequency: '', duration: '', instructions: '', quantityRequested: 1 })}
-                className="inline-flex items-center gap-1 text-[10px] font-bold text-primary-teal border border-primary-teal/20 px-2.5 py-1.5 rounded-lg hover:bg-primary-teal/5 transition-all"
+                className="inline-flex items-center gap-1 text-[10px] font-bold text-primary border border-primary/30 px-2.5 py-1.5 rounded-lg hover:bg-primary/10 transition-all"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Add Medicine
@@ -379,16 +380,16 @@ export default function ConsultationWorkspaceClient({
                 {fields.map((field, idx) => (
                   <div 
                     key={field.id} 
-                    className="p-4 bg-primary-ivory/20 border border-border/40 rounded-xl grid grid-cols-12 gap-3 items-end relative"
+                    className="p-4 bg-surface-container/20 border border-outline-variant/40 rounded-xl grid grid-cols-12 gap-3 items-end relative"
                   >
                     {/* Catalog linker selection */}
                     <div className="col-span-12 sm:col-span-4">
-                      <label className="block text-[9px] font-bold text-graphite/40 uppercase mb-1">
+                      <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
                         Link Inventory Product
                       </label>
                       <select
                         onChange={(e) => handleSelectProduct(idx, e.target.value)}
-                        className="w-full px-2 py-1.5 bg-white border border-border rounded-lg text-[10px] font-bold text-primary-navy outline-none"
+                        className="w-full px-2 py-1.5 glass-panel border border-outline-variant rounded-lg text-[10px] font-bold text-on-surface outline-none"
                       >
                         <option value="">-- Custom/Free-text --</option>
                         {products.map((p) => (
@@ -401,77 +402,77 @@ export default function ConsultationWorkspaceClient({
 
                     <div className="col-span-12 sm:col-span-8 grid grid-cols-4 gap-2">
                       <div className="col-span-2">
-                        <label className="block text-[9px] font-bold text-graphite/40 uppercase mb-1">
+                        <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
                           Medicine Name
                         </label>
                         <input
                           type="text"
                           {...register(`prescriptionItems.${idx}.medicineName`)}
                           placeholder="e.g. Amoxicillin"
-                          className="w-full px-2.5 py-1.5 bg-white border border-border rounded-lg text-[10px] text-primary-navy outline-none"
+                          className="w-full px-2.5 py-1.5 glass-panel border border-outline-variant rounded-lg text-[10px] text-on-surface outline-none"
                           required
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] font-bold text-graphite/40 uppercase mb-1">
+                        <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
                           Dosage
                         </label>
                         <input
                           type="text"
                           {...register(`prescriptionItems.${idx}.dosage`)}
                           placeholder="e.g. 5ml"
-                          className="w-full px-2.5 py-1.5 bg-white border border-border rounded-lg text-[10px] text-primary-navy outline-none"
+                          className="w-full px-2.5 py-1.5 glass-panel border border-outline-variant rounded-lg text-[10px] text-on-surface outline-none"
                           required
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] font-bold text-graphite/40 uppercase mb-1">
+                        <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
                           Qty
                         </label>
                         <input
                           type="number"
                           {...register(`prescriptionItems.${idx}.quantityRequested`, { valueAsNumber: true })}
-                          className="w-full px-2.5 py-1.5 bg-white border border-border rounded-lg text-[10px] text-primary-navy outline-none font-bold"
+                          className="w-full px-2.5 py-1.5 glass-panel border border-outline-variant rounded-lg text-[10px] text-on-surface outline-none font-bold"
                           min={1}
                           required
                         />
                       </div>
                     </div>
 
-                    <div className="col-span-12 grid grid-cols-12 gap-2 mt-2 pt-2 border-t border-border/25">
+                    <div className="col-span-12 grid grid-cols-12 gap-2 mt-2 pt-2 border-t border-outline-variant/25">
                       <div className="col-span-5">
-                        <label className="block text-[9px] font-bold text-graphite/40 uppercase mb-1">
+                        <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
                           Frequency
                         </label>
                         <input
                           type="text"
                           {...register(`prescriptionItems.${idx}.frequency`)}
                           placeholder="e.g. Twice daily"
-                          className="w-full px-2 py-1 bg-white border border-border rounded-lg text-[10px] text-primary-navy outline-none"
+                          className="w-full px-2 py-1 glass-panel border border-outline-variant rounded-lg text-[10px] text-on-surface outline-none"
                           required
                         />
                       </div>
                       <div className="col-span-4">
-                        <label className="block text-[9px] font-bold text-graphite/40 uppercase mb-1">
+                        <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
                           Duration
                         </label>
                         <input
                           type="text"
                           {...register(`prescriptionItems.${idx}.duration`)}
                           placeholder="e.g. 7 days"
-                          className="w-full px-2 py-1 bg-white border border-border rounded-lg text-[10px] text-primary-navy outline-none"
+                          className="w-full px-2 py-1 glass-panel border border-outline-variant rounded-lg text-[10px] text-on-surface outline-none"
                           required
                         />
                       </div>
                       <div className="col-span-2">
-                        <label className="block text-[9px] font-bold text-graphite/40 uppercase mb-1">
+                        <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
                           Instructions
                         </label>
                         <input
                           type="text"
                           {...register(`prescriptionItems.${idx}.instructions`)}
                           placeholder="With food"
-                          className="w-full px-2 py-1 bg-white border border-border rounded-lg text-[10px] text-primary-navy outline-none"
+                          className="w-full px-2 py-1 glass-panel border border-outline-variant rounded-lg text-[10px] text-on-surface outline-none"
                         />
                       </div>
                       <div className="col-span-1 flex items-center justify-center">
@@ -489,7 +490,7 @@ export default function ConsultationWorkspaceClient({
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-graphite/50 italic text-center py-4 bg-primary-ivory/10 rounded-xl border border-border/20">
+              <p className="text-xs text-on-surface-variant/50 italic text-center py-4 bg-surface-container/10 rounded-xl border border-outline-variant/20">
                 No items prescribed. Click "Add Medicine" to prescribe items.
               </p>
             )}
@@ -500,7 +501,7 @@ export default function ConsultationWorkspaceClient({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-primary-navy hover:bg-primary-teal text-white py-3 px-8 rounded-2xl font-bold text-sm shadow-premium flex items-center gap-2 transition-all disabled:opacity-75"
+              className="bg-primary hover:opacity-90 text-white py-3 px-8 rounded-2xl font-bold text-sm shadow-premium flex items-center gap-2 transition-all disabled:opacity-75"
             >
               {isSubmitting ? (
                 <>
@@ -522,3 +523,4 @@ export default function ConsultationWorkspaceClient({
     </div>
   );
 }
+

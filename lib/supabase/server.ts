@@ -1,8 +1,15 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { isDemoMode } from '@/lib/demo/credentials';
+import { mockSupabaseClient } from '@/lib/demo/mock-supabase';
 
 export async function createClient() {
+  if (isDemoMode()) {
+    return mockSupabaseClient as any;
+  }
+
   const cookieStore = await cookies();
+
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,6 +36,10 @@ export async function createClient() {
 // Server client utilizing the service-role key for privileged/admin actions bypass RLS.
 // This client MUST NEVER be imported by or exposed to client-side components.
 export async function createAdminClient() {
+  if (isDemoMode()) {
+    return mockSupabaseClient as any;
+  }
+
   const cookieStore = await cookies();
 
   return createServerClient(

@@ -1,4 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { isDemoMode } from '@/lib/demo/credentials';
+import { MOCK_SUPER_ADMIN_DATA } from '@/lib/demo/mock-data';
 import {
   LayoutDashboard,
   Building,
@@ -13,6 +15,8 @@ import {
   Activity,
 } from 'lucide-react';
 import Link from 'next/link';
+import KpiCard from '@/components/ui/premium/KpiCard';
+import GlassPanel from '@/components/ui/premium/GlassPanel';
 
 export const metadata = {
   title: 'VetFlow Platform Performance',
@@ -20,28 +24,63 @@ export const metadata = {
 };
 
 export default async function SuperAdminDashboard() {
-  const adminClient = await createAdminClient();
+  let subs: { status: string; plan_name: string | null }[] = [];
+  let totalUsers = 0;
+  let totalBranches = 0;
+  let recentOrgs: { id: string; name: string; slug: string; created_at: string }[] = [];
+  let loadError: string | null = null;
 
-  // Parallel fetches for richer telemetry
-  const [subsRes, profilesCountRes, branchesCountRes, recentOrgsRes] = await Promise.all([
-    adminClient.from('subscription_status').select('status, plan_name'),
-    adminClient.from('user_profiles').select('id', { count: 'exact', head: true }),
-    adminClient.from('branches').select('id', { count: 'exact', head: true }),
-    adminClient
-      .from('organizations')
-      .select('id, name, slug, created_at')
-      .order('created_at', { ascending: false })
-      .limit(5),
-  ]);
+  if (isDemoMode()) {
+    subs = MOCK_SUPER_ADMIN_DATA.subscriptions;
+    totalUsers = MOCK_SUPER_ADMIN_DATA.totalUsers;
+    totalBranches = MOCK_SUPER_ADMIN_DATA.totalBranches;
+    recentOrgs = MOCK_SUPER_ADMIN_DATA.recentOrgs;
+  } else {
+    try {
+      const adminClient = await createAdminClient();
 
-  const subs = subsRes.data || [];
+      const [subsRes, profilesCountRes, branchesCountRes, recentOrgsRes] = await Promise.all([
+        adminClient.from('subscription_status').select('status, plan_name'),
+        adminClient.from('user_profiles').select('id', { count: 'exact', head: true }),
+        adminClient.from('branches').select('id', { count: 'exact', head: true }),
+        adminClient
+          .from('organizations')
+          .select('id, name, slug, created_at')
+          .order('created_at', { ascending: false })
+          .limit(5),
+      ]);
+
+      if (subsRes.error) throw new Error(subsRes.error.message);
+      if (profilesCountRes.error) throw new Error(profilesCountRes.error.message);
+      if (branchesCountRes.error) throw new Error(branchesCountRes.error.message);
+      if (recentOrgsRes.error) throw new Error(recentOrgsRes.error.message);
+
+      subs = subsRes.data || [];
+      totalUsers = profilesCountRes.count || 0;
+      totalBranches = branchesCountRes.count || 0;
+      recentOrgs = recentOrgsRes.data || [];
+    } catch (err: any) {
+      loadError = err.message || 'Failed to load platform data';
+    }
+  }
+
+  if (loadError) {
+    return (
+      <div className="bg-destructive/5 border border-destructive/20 text-destructive text-sm p-6 rounded-2xl">
+        <p className="font-semibold mb-2">Platform dashboard could not load</p>
+        <p className="text-xs opacity-80">{loadError}</p>
+        <p className="text-xs mt-3 text-graphite/60">
+          Ensure <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> is configured in your
+          environment.
+        </p>
+      </div>
+    );
+  }
+
   const totalClinics = subs.length;
   const trialClinics = subs.filter((s) => s.status === 'trial').length;
   const activeClinics = subs.filter((s) => s.status === 'active').length;
   const suspendedClinics = subs.filter((s) => s.status === 'suspended').length;
-  const totalUsers = profilesCountRes.count || 0;
-  const totalBranches = branchesCountRes.count || 0;
-  const recentOrgs = recentOrgsRes.data || [];
 
   // Calculate estimated Monthly Recurring Revenue (MRR)
   let estimatedMRR = 0;
@@ -56,24 +95,24 @@ export default async function SuperAdminDashboard() {
   });
 
   return (
-    <div className="space-y-8 animate-fadeInUp">
+    <div className="space-y-8">
       {/* HEADER BANNER */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-navy via-[hsl(222,47%,16%)] to-primary-teal p-8 md:p-10 text-white shadow-premium">
+      <div className="relative overflow-hidden rounded-3xl glass-panel border-primary/20 p-8 md:p-10 mesh-gradient">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-4 right-8 w-32 h-32 rounded-full bg-primary-teal blur-3xl" />
           <div className="absolute bottom-0 left-12 w-48 h-48 rounded-full bg-gold blur-3xl" />
         </div>
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-2">
-            <Shield className="w-4 h-4 text-primary-teal-light" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-primary-teal-light">
+            <Shield className="w-4 h-4 text-primary" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
               Platform Master Console
             </span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-on-surface font-[family-name:var(--font-display)]">
             Platform performance
           </h1>
-          <p className="text-sm text-white/60 mt-2 max-w-lg">
+          <p className="text-sm text-on-surface-variant mt-2 max-w-lg">
             Unified telemetry covering tenant aggregates, active billing, system nodes, and user growth.
           </p>
         </div>
@@ -81,45 +120,10 @@ export default async function SuperAdminDashboard() {
 
       {/* CORE STATS GRID */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <div className="bg-white rounded-2xl border border-border/40 p-5 shadow-premium hover:shadow-premium-hover transition-all duration-200">
-          <span className="text-[10px] font-bold text-graphite/40 uppercase block">Registered Tenants</span>
-          <div className="flex items-center gap-2 mt-2">
-            <div className="w-8 h-8 rounded-lg bg-primary-teal/10 flex items-center justify-center text-primary-teal">
-              <Building className="w-4 h-4" />
-            </div>
-            <span className="text-2xl font-black text-primary-navy">{totalClinics}</span>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-border/40 p-5 shadow-premium hover:shadow-premium-hover transition-all duration-200">
-          <span className="text-[10px] font-bold text-graphite/40 uppercase block">Active Paid Tiers</span>
-          <div className="flex items-center gap-2 mt-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-            <span className="text-2xl font-black text-emerald-600">{activeClinics}</span>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-border/40 p-5 shadow-premium hover:shadow-premium-hover transition-all duration-200">
-          <span className="text-[10px] font-bold text-graphite/40 uppercase block">Sandbox Trials</span>
-          <div className="flex items-center gap-2 mt-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-600">
-              <PlusCircle className="w-4 h-4" />
-            </div>
-            <span className="text-2xl font-black text-primary-navy">{trialClinics}</span>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-border/40 p-5 shadow-premium hover:shadow-premium-hover transition-all duration-200">
-          <span className="text-[10px] font-bold text-graphite/40 uppercase block">Suspended / Locked</span>
-          <div className="flex items-center gap-2 mt-2">
-            <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive">
-              <BadgeAlert className="w-4 h-4" />
-            </div>
-            <span className="text-2xl font-black text-destructive">{suspendedClinics}</span>
-          </div>
-        </div>
+        <KpiCard label="Registered Tenants" value={totalClinics} icon={Building} />
+        <KpiCard label="Active Paid" value={activeClinics} icon={CheckCircle2} trend="Paid tiers" />
+        <KpiCard label="Trials" value={trialClinics} icon={PlusCircle} />
+        <KpiCard label="Suspended" value={suspendedClinics} icon={BadgeAlert} />
       </div>
 
       {/* ADDITIONAL PLATFORM METRICS */}

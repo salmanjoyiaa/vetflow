@@ -24,11 +24,11 @@ export default async function PublicBookingPage({
 
   if (error || !org) {
     return (
-      <main className="min-h-screen bg-primary-ivory flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl border border-border/40 p-8 text-center max-w-sm">
+      <main className="min-h-screen mesh-gradient flex items-center justify-center p-4">
+        <div className="glass-panel p-8 text-center max-w-sm">
           <Stethoscope className="w-10 h-10 text-destructive mx-auto mb-4" />
-          <h2 className="text-base font-bold text-primary-navy mb-1">Clinic Not Found</h2>
-          <p className="text-xs text-graphite/60">
+          <h2 className="text-base font-bold text-on-surface mb-1">Clinic Not Found</h2>
+          <p className="text-xs text-on-surface-variant">
             The requested veterinary clinic address is not registered on the VetFlow network.
           </p>
         </div>
@@ -44,17 +44,15 @@ export default async function PublicBookingPage({
     .eq('is_active', true);
 
   return (
-    <main className="min-h-screen bg-primary-ivory flex items-center justify-center p-4 md:py-16 selection:bg-primary-teal/20">
-      <div className="w-full max-w-xl bg-white rounded-3xl shadow-premium border border-border/40 p-8 md:p-10">
-        
-        {/* HEADER */}
+    <main className="min-h-screen mesh-gradient flex items-center justify-center p-4 md:py-16">
+      <div className="w-full max-w-xl glass-panel p-8 md:p-10">
         <div className="flex flex-col items-center mb-8 text-center">
-          <div className="w-12 h-12 bg-primary-teal/5 flex items-center justify-center rounded-2xl mb-3">
-            <Stethoscope className="w-6 h-6 text-primary-teal" />
+          <div className="w-12 h-12 bg-primary/15 flex items-center justify-center rounded-2xl mb-3">
+            <Stethoscope className="w-6 h-6 text-primary" />
           </div>
-          <span className="text-[10px] font-black text-primary-teal uppercase tracking-wider">Online Booking Request</span>
-          <h1 className="text-xl font-black text-primary-navy mt-1">{org.name}</h1>
-          <p className="text-xs text-graphite/60 mt-1 max-w-xs leading-relaxed">
+          <span className="text-[10px] font-black text-primary uppercase tracking-wider">Online Booking Request</span>
+          <h1 className="text-xl font-black text-on-surface mt-1">{org.name}</h1>
+          <p className="text-xs text-on-surface-variant mt-1 max-w-xs leading-relaxed">
             Fill in your contact and pet details below. Attending branch staff will confirm your slot via email shortly.
           </p>
         </div>

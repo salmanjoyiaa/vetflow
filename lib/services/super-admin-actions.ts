@@ -4,17 +4,7 @@ import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/server';
 import { resolveServerSession } from '@/lib/services/auth';
 import { writeAuditLog } from '@/lib/services/audit';
-
-export const SubscriptionSchema = z.object({
-  organizationId: z.string().uuid(),
-  planName: z.enum(['trial', 'growth', 'enterprise']),
-  status: z.enum(['active', 'trial', 'suspended', 'cancelled']),
-  trialEnd: z.string(),
-  renewalDate: z.string().optional().or(z.literal('')),
-  notes: z.string().optional().or(z.literal('')),
-});
-
-export type SubscriptionInput = z.infer<typeof SubscriptionSchema>;
+import { SubscriptionSchema, type SubscriptionInput } from '@/lib/validations/schemas';
 
 /**
  * Manually updates subscription parameters for a tenant clinic organization.

@@ -81,13 +81,13 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <main className="min-h-screen bg-primary-ivory flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-3xl shadow-premium border border-border/40 p-8 text-center">
+      <main className="min-h-screen bg-surface flex items-center justify-center p-4">
+        <div className="w-full max-w-md glass-panel shadow-premium border border-outline-variant/40 p-8 text-center">
           <div className="w-16 h-16 bg-emerald-500/10 flex items-center justify-center rounded-full mx-auto mb-6">
             <CheckCircle2 className="w-8 h-8 text-emerald-600" />
           </div>
-          <h2 className="text-2xl font-bold text-primary-navy mb-3">Registration Successful!</h2>
-          <p className="text-sm text-graphite/70 mb-6">
+          <h2 className="text-2xl font-bold text-on-surface mb-3">Registration Successful!</h2>
+          <p className="text-sm text-on-surface-variant/70 mb-6">
             Your VetFlow organization and initial branch are now fully initialized. Redirecting you to login...
           </p>
           <div className="w-8 h-8 border-2 border-primary-teal border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -97,25 +97,25 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="min-h-screen bg-primary-ivory flex items-center justify-center p-4 md:py-12">
-      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-premium border border-border/40 overflow-hidden flex flex-col md:flex-row">
+    <main className="min-h-screen bg-surface flex items-center justify-center p-4 md:py-12">
+      <div className="w-full max-w-2xl glass-panel shadow-premium border border-outline-variant/40 overflow-hidden flex flex-col md:flex-row">
         
         {/* SIDE BAR DESCRIPTIVE BLOCK */}
-        <div className="w-full md:w-5/12 bg-primary-navy text-white p-8 flex flex-col justify-between">
+        <div className="w-full md:w-5/12 bg-surface-container text-white p-8 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 mb-8">
               <div className="w-8 h-8 bg-white/10 flex items-center justify-center rounded-xl">
-                <Stethoscope className="w-4 h-4 text-primary-teal-light" />
+                <Stethoscope className="w-4 h-4 text-primary-light" />
               </div>
               <span className="font-bold tracking-tight">VetFlow</span>
             </div>
-            <h3 className="text-xl font-bold text-primary-ivory">Begin Your 30-Day Sandbox Trial</h3>
-            <p className="text-xs text-primary-ivory/60 mt-3 leading-relaxed">
+            <h3 className="text-xl font-bold text-on-surface">Begin Your 30-Day Sandbox Trial</h3>
+            <p className="text-xs text-on-surface/60 mt-3 leading-relaxed">
               Initialize a high-security, multi-tenant veterinary cloud built for medical efficiency. 
               No commitment or credit card needed for sandbox setup.
             </p>
           </div>
-          <div className="mt-8 md:mt-0 text-[10px] text-primary-ivory/40">
+          <div className="mt-8 md:mt-0 text-[10px] text-on-surface/40">
             © 2026 VetFlow Inc. All rights reserved.
           </div>
         </div>
@@ -124,12 +124,12 @@ export default function RegisterPage() {
         <div className="w-full md:w-7/12 p-8 md:p-10 flex flex-col justify-center">
           
           <div className="mb-6">
-            <div className="flex items-center gap-2 text-xs text-graphite/50 font-semibold mb-2">
+            <div className="flex items-center gap-2 text-xs text-on-surface-variant/50 font-semibold mb-2">
               <span>STEP {step} OF 2</span>
               <span className="text-border">•</span>
               <span>{step === 1 ? 'Administrator Settings' : 'Clinic Details'}</span>
             </div>
-            <h2 className="text-lg font-bold text-primary-navy">Register Clinic Account</h2>
+            <h2 className="text-lg font-bold text-on-surface">Register Clinic Account</h2>
           </div>
 
           {error && (
@@ -145,28 +145,28 @@ export default function RegisterPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                    <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                       First Name
                     </label>
                     <input
                       type="text"
                       {...register('firstName')}
                       placeholder="e.g. John"
-                      className="w-full px-3 py-2.5 bg-primary-ivory/30 border border-border/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-primary-navy"
+                      className="w-full px-3 py-2.5 bg-surface/30 border border-outline-variant/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-on-surface"
                     />
                     {errors.firstName && (
                       <span className="text-xs text-destructive mt-1 block">{errors.firstName.message}</span>
                     )}
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                    <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                       Last Name
                     </label>
                     <input
                       type="text"
                       {...register('lastName')}
                       placeholder="e.g. Doe"
-                      className="w-full px-3 py-2.5 bg-primary-ivory/30 border border-border/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-primary-navy"
+                      className="w-full px-3 py-2.5 bg-surface/30 border border-outline-variant/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-on-surface"
                     />
                     {errors.lastName && (
                       <span className="text-xs text-destructive mt-1 block">{errors.lastName.message}</span>
@@ -175,14 +175,14 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Contact Email Address
                   </label>
                   <input
                     type="email"
                     {...register('email')}
                     placeholder="e.g. info@vetcare.com"
-                    className="w-full px-3 py-2.5 bg-primary-ivory/30 border border-border/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-primary-navy"
+                    className="w-full px-3 py-2.5 bg-surface/30 border border-outline-variant/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-on-surface"
                   />
                   {errors.email && (
                     <span className="text-xs text-destructive mt-1 block">{errors.email.message}</span>
@@ -190,14 +190,14 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Contact Phone Number
                   </label>
                   <input
                     type="text"
                     {...register('phone')}
                     placeholder="e.g. +1 555 123 4567"
-                    className="w-full px-3 py-2.5 bg-primary-ivory/30 border border-border/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-primary-navy"
+                    className="w-full px-3 py-2.5 bg-surface/30 border border-outline-variant/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-on-surface"
                   />
                   {errors.phone && (
                     <span className="text-xs text-destructive mt-1 block">{errors.phone.message}</span>
@@ -205,14 +205,14 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Account Security Password
                   </label>
                   <input
                     type="password"
                     {...register('password')}
                     placeholder="Minimum 6 characters"
-                    className="w-full px-3 py-2.5 bg-primary-ivory/30 border border-border/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-primary-navy"
+                    className="w-full px-3 py-2.5 bg-surface/30 border border-outline-variant/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-on-surface"
                   />
                   {errors.password && (
                     <span className="text-xs text-destructive mt-1 block">{errors.password.message}</span>
@@ -222,7 +222,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="w-full mt-2 bg-primary-navy hover:bg-primary-teal text-white py-3 px-4 rounded-2xl font-semibold text-sm transition-all duration-200 shadow-sm flex items-center justify-center gap-2"
+                  className="w-full mt-2 bg-surface-container hover:bg-primary text-white py-3 px-4 rounded-2xl font-semibold text-sm transition-all duration-200 shadow-sm flex items-center justify-center gap-2"
                 >
                   Continue to Clinic Info
                   <ArrowRight className="w-4 h-4" />
@@ -235,14 +235,14 @@ export default function RegisterPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                    <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                       Clinic/Business Name
                     </label>
                     <input
                       type="text"
                       {...register('orgName')}
                       placeholder="e.g. VetCare Center"
-                      className="w-full px-3 py-2.5 bg-primary-ivory/30 border border-border/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-primary-navy"
+                      className="w-full px-3 py-2.5 bg-surface/30 border border-outline-variant/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-on-surface"
                     />
                     {errors.orgName && (
                       <span className="text-xs text-destructive mt-1 block">{errors.orgName.message}</span>
@@ -250,13 +250,13 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <div className="flex justify-between items-center mb-1.5">
-                      <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider">
+                      <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider">
                         Web Slug
                       </label>
                       <button
                         type="button"
                         onClick={handleGenerateSlug}
-                        className="text-[10px] text-primary-teal font-semibold hover:underline"
+                        className="text-[10px] text-primary font-semibold hover:underline"
                       >
                         Auto-fill
                       </button>
@@ -265,7 +265,7 @@ export default function RegisterPage() {
                       type="text"
                       {...register('orgSlug')}
                       placeholder="e.g. vetcare-center"
-                      className="w-full px-3 py-2.5 bg-primary-ivory/30 border border-border/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-primary-navy"
+                      className="w-full px-3 py-2.5 bg-surface/30 border border-outline-variant/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-on-surface"
                     />
                     {errors.orgSlug && (
                       <span className="text-xs text-destructive mt-1 block">{errors.orgSlug.message}</span>
@@ -274,14 +274,14 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Initial Branch Name
                   </label>
                   <input
                     type="text"
                     {...register('branchName')}
                     placeholder="e.g. Downtown Branch"
-                    className="w-full px-3 py-2.5 bg-primary-ivory/30 border border-border/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-primary-navy"
+                    className="w-full px-3 py-2.5 bg-surface/30 border border-outline-variant/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-on-surface"
                   />
                   {errors.branchName && (
                     <span className="text-xs text-destructive mt-1 block">{errors.branchName.message}</span>
@@ -289,14 +289,14 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Branch Address
                   </label>
                   <input
                     type="text"
                     {...register('branchAddress')}
                     placeholder="e.g. 123 Main St, Uptown"
-                    className="w-full px-3 py-2.5 bg-primary-ivory/30 border border-border/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-primary-navy"
+                    className="w-full px-3 py-2.5 bg-surface/30 border border-outline-variant/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-on-surface"
                   />
                   {errors.branchAddress && (
                     <span className="text-xs text-destructive mt-1 block">{errors.branchAddress.message}</span>
@@ -304,14 +304,14 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Branch Phone Number
                   </label>
                   <input
                     type="text"
                     {...register('branchPhone')}
                     placeholder="e.g. +1 555 987 6543"
-                    className="w-full px-3 py-2.5 bg-primary-ivory/30 border border-border/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-primary-navy"
+                    className="w-full px-3 py-2.5 bg-surface/30 border border-outline-variant/85 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl outline-none text-sm text-on-surface"
                   />
                   {errors.branchPhone && (
                     <span className="text-xs text-destructive mt-1 block">{errors.branchPhone.message}</span>
@@ -322,7 +322,7 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={prevStep}
-                    className="w-1/2 border border-border hover:bg-primary-ivory/40 text-primary-navy py-3 px-4 rounded-2xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2"
+                    className="w-1/2 border border-outline-variant hover:bg-surface/40 text-on-surface py-3 px-4 rounded-2xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     Back
@@ -331,7 +331,7 @@ export default function RegisterPage() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-1/2 bg-primary-navy hover:bg-primary-teal text-white py-3 px-4 rounded-2xl font-semibold text-sm transition-all duration-200 shadow-sm flex items-center justify-center gap-2 disabled:opacity-75"
+                    className="w-1/2 bg-surface-container hover:bg-primary text-white py-3 px-4 rounded-2xl font-semibold text-sm transition-all duration-200 shadow-sm flex items-center justify-center gap-2 disabled:opacity-75"
                   >
                     {isLoading ? (
                       <>
@@ -348,9 +348,9 @@ export default function RegisterPage() {
           </form>
 
           {/* FOOTER */}
-          <div className="mt-6 pt-6 border-t border-border/40 text-center text-xs text-graphite/60 font-sans">
+          <div className="mt-6 pt-6 border-t border-outline-variant/40 text-center text-xs text-on-surface-variant/60 font-sans">
             Already have an account?{' '}
-            <Link href="/login" className="text-primary-teal font-semibold hover:underline">
+            <Link href="/login" className="text-primary font-semibold hover:underline">
               Sign In
             </Link>
           </div>
@@ -361,3 +361,4 @@ export default function RegisterPage() {
     </main>
   );
 }
+

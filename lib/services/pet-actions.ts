@@ -2,32 +2,25 @@
 
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { resolveServerSession } from '@/lib/services/auth';
+import {
+  assertCapability,
+  assertOrganization,
+  resolveServerAuthContext,
+} from '@/lib/auth/context';
 import { writeAuditLog } from '@/lib/services/audit';
-
-export const PetSchema = z.object({
-  name: z.string().min(1, { message: 'Pet name is required' }),
-  species: z.string().min(1, { message: 'Species is required' }), // e.g. Dog, Cat, etc.
-  breed: z.string().optional().or(z.literal('')),
-  gender: z.string().min(1, { message: 'Gender is required' }), // Male, Female, Spayed, Neutered
-  dateOfBirth: z.string().optional().or(z.literal('')),
-  weightKg: z.number().nonnegative().optional().or(z.nan()),
-  allergies: z.string().optional().or(z.literal('')),
-  medicalNotes: z.string().optional().or(z.literal('')),
-  customerId: z.string().uuid({ message: 'Invalid customer selection' }),
-});
-
-export type PetInput = z.infer<typeof PetSchema>;
+import { PetSchema, type PetInput } from '@/lib/validations/schemas';
 
 /**
  * Creates a new pet profile associated with a customer.
  */
 export async function createPetAction(payload: unknown) {
   try {
-    const session = await resolveServerSession();
-    if (!session || !session.organizationId) {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
       throw new Error('Unauthorized: Session is invalid.');
     }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_pets');
 
     const parsed = PetSchema.parse(payload);
     const supabase = await createClient();
@@ -35,7 +28,7 @@ export async function createPetAction(payload: unknown) {
     const { data: pet, error } = await supabase
       .from('pets')
       .insert({
-        organization_id: session.organizationId,
+        organization_id: ctx.organizationId,
         customer_id: parsed.customerId,
         name: parsed.name,
         species: parsed.species,
@@ -56,10 +49,10 @@ export async function createPetAction(payload: unknown) {
 
     // Write audit log
     await writeAuditLog({
-      organizationId: session.organizationId,
+      organizationId: ctx.organizationId,
       branchId: null,
-      actorUserId: session.userId,
-      actorRole: session.role || 'receptionist',
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
       action: 'PET_CREATED',
       resourceType: 'PET',
       resourceId: pet.id,
@@ -77,10 +70,12 @@ export async function createPetAction(payload: unknown) {
  */
 export async function updatePetAction(petId: string, payload: unknown) {
   try {
-    const session = await resolveServerSession();
-    if (!session || !session.organizationId) {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
       throw new Error('Unauthorized: Session is invalid.');
     }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_pets');
 
     const parsed = PetSchema.parse(payload);
     const supabase = await createClient();
@@ -98,7 +93,7 @@ export async function updatePetAction(petId: string, payload: unknown) {
         medical_notes: parsed.medicalNotes || null,
       })
       .eq('id', petId)
-      .eq('organization_id', session.organizationId)
+      .eq('organization_id', ctx.organizationId)
       .select()
       .single();
 

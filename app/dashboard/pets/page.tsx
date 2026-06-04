@@ -49,21 +49,21 @@ export default async function PetsPage() {
       
       {/* HEADER */}
       <div>
-        <h2 className="text-xl font-black text-primary-navy tracking-tight flex items-center gap-2">
-          <Heart className="w-5 h-5 text-primary-teal" />
+        <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
+          <Heart className="w-5 h-5 text-primary" />
           Patient Registry
         </h2>
-        <p className="text-xs text-graphite/70 mt-1">
+        <p className="text-xs text-on-surface-variant/70 mt-1">
           Review and inspect registered animals across the organization.
         </p>
       </div>
 
       {/* PET TABLE */}
       {pets && pets.length > 0 ? (
-        <div className="bg-white rounded-2xl border border-border/40 overflow-hidden shadow-premium">
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden shadow-premium">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-primary-ivory/40 border-b border-border/40 text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider">
+              <tr className="bg-surface-container/40 border-b border-outline-variant/40 text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider">
                 <th className="px-6 py-4">Pet Name</th>
                 <th className="px-6 py-4">Owner Name</th>
                 <th className="px-6 py-4">Species & Breed</th>
@@ -74,31 +74,31 @@ export default async function PetsPage() {
             </thead>
             <tbody className="divide-y divide-border/30 text-xs">
               {pets.map((pet) => (
-                <tr key={pet.id} className="hover:bg-primary-ivory/10 transition-colors">
-                  <td className="px-6 py-4 font-bold text-primary-navy">
+                <tr key={pet.id} className="hover:bg-surface-container/10 transition-colors">
+                  <td className="px-6 py-4 font-bold text-on-surface">
                     {pet.name}
                   </td>
-                  <td className="px-6 py-4 text-graphite/80">
+                  <td className="px-6 py-4 text-on-surface-variant/80">
                     {pet.customers ? (
                       <Link 
                         href={`/dashboard/customers/${pet.customer_id}`}
-                        className="flex items-center gap-1 hover:text-primary-teal hover:underline"
+                        className="flex items-center gap-1 hover:text-primary hover:underline"
                       >
-                        <User className="w-3.5 h-3.5 text-primary-teal/65" />
+                        <User className="w-3.5 h-3.5 text-primary/65" />
                         <span>{(pet.customers as any).first_name} {(pet.customers as any).last_name}</span>
                       </Link>
                     ) : (
                       '—'
                     )}
                   </td>
-                  <td className="px-6 py-4 text-graphite/80 capitalize">
-                    <span className="font-bold text-primary-navy">{pet.species}</span>
-                    {pet.breed && <span className="text-graphite/60"> • {pet.breed}</span>}
+                  <td className="px-6 py-4 text-on-surface-variant/80 capitalize">
+                    <span className="font-bold text-on-surface">{pet.species}</span>
+                    {pet.breed && <span className="text-on-surface-variant/60"> • {pet.breed}</span>}
                   </td>
-                  <td className="px-6 py-4 text-graphite/70">
+                  <td className="px-6 py-4 text-on-surface-variant/70">
                     {pet.gender}
                   </td>
-                  <td className="px-6 py-4 space-y-1 text-[11px] text-graphite/65">
+                  <td className="px-6 py-4 space-y-1 text-[11px] text-on-surface-variant/65">
                     {pet.date_of_birth && (
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
@@ -115,7 +115,7 @@ export default async function PetsPage() {
                   <td className="px-6 py-4 text-right">
                     <Link
                       href={`/dashboard/pets/${pet.id}`}
-                      className="inline-flex items-center gap-1 text-[10px] font-bold text-primary-teal hover:underline"
+                      className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline"
                     >
                       Medical File
                       <ChevronRight className="w-3 h-3" />
@@ -127,10 +127,10 @@ export default async function PetsPage() {
           </table>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-border/40 p-12 text-center">
-          <Heart className="w-12 h-12 text-graphite/30 mx-auto mb-4" />
-          <h4 className="text-sm font-bold text-primary-navy mb-1">No Registered Patients</h4>
-          <p className="text-xs text-graphite/60">
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 p-12 text-center">
+          <Heart className="w-12 h-12 text-on-surface-variant/30 mx-auto mb-4" />
+          <h4 className="text-sm font-bold text-on-surface mb-1">No Registered Patients</h4>
+          <p className="text-xs text-on-surface-variant/60">
             To register a pet, open a customer profile and click the "Register Pet" button.
           </p>
         </div>
@@ -139,3 +139,4 @@ export default async function PetsPage() {
     </div>
   );
 }
+

@@ -34,8 +34,8 @@ export default function ReportsChartsClient({
     <div className="grid md:grid-cols-12 gap-8">
       
       {/* AREA CHART: MONTHLY SALES DEVELOPMENT */}
-      <div className="md:col-span-8 bg-white p-6 rounded-2xl border border-border/40 shadow-premium">
-        <h3 className="text-xs font-bold text-primary-navy uppercase tracking-wider mb-6">
+      <div className="md:col-span-8 glass-panel p-6 rounded-2xl border border-outline-variant/40 shadow-premium">
+        <h3 className="text-xs font-bold text-on-surface uppercase tracking-wider mb-6">
           Monthly Revenue Trend
         </h3>
 
@@ -82,8 +82,8 @@ export default function ReportsChartsClient({
       </div>
 
       {/* PIE CHART: PAYMENT METRIC SEGMENTS */}
-      <div className="md:col-span-4 bg-white p-6 rounded-2xl border border-border/40 shadow-premium flex flex-col">
-        <h3 className="text-xs font-bold text-primary-navy uppercase tracking-wider mb-6">
+      <div className="md:col-span-4 glass-panel p-6 rounded-2xl border border-outline-variant/40 shadow-premium flex flex-col">
+        <h3 className="text-xs font-bold text-on-surface uppercase tracking-wider mb-6">
           Revenue by Payment Channel
         </h3>
 
@@ -116,7 +116,7 @@ export default function ReportsChartsClient({
         </div>
 
         {/* Legend */}
-        <div className="mt-4 grid grid-cols-2 gap-2 text-[10px] text-graphite/60 font-semibold border-t border-border/45 pt-4">
+        <div className="mt-4 grid grid-cols-2 gap-2 text-[10px] text-on-surface-variant/60 font-semibold border-t border-outline-variant/45 pt-4">
           {paymentData.map((entry, index) => (
             <div key={entry.name} className="flex items-center gap-1.5">
               <span 
@@ -132,3 +132,4 @@ export default function ReportsChartsClient({
     </div>
   );
 }
+

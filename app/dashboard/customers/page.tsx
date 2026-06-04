@@ -66,11 +66,11 @@ export default async function CustomersPage() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-primary-navy tracking-tight flex items-center gap-2">
-            <Users className="w-5 h-5 text-primary-teal" />
+          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" />
             Customer Directory
           </h2>
-          <p className="text-xs text-graphite/70 mt-1">
+          <p className="text-xs text-on-surface-variant/70 mt-1">
             Review and create customer records for the active branch scope.
           </p>
         </div>
@@ -80,10 +80,10 @@ export default async function CustomersPage() {
 
       {/* CUSTOMER DIRECTORY LIST */}
       {customers && customers.length > 0 ? (
-        <div className="bg-white rounded-2xl border border-border/40 overflow-hidden shadow-premium">
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden shadow-premium">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-primary-ivory/40 border-b border-border/40 text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider">
+              <tr className="bg-surface-container/40 border-b border-outline-variant/40 text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider">
                 <th className="px-6 py-4">Customer Name</th>
                 <th className="px-6 py-4">Pets Registered</th>
                 <th className="px-6 py-4">Contact Info</th>
@@ -93,35 +93,35 @@ export default async function CustomersPage() {
             </thead>
             <tbody className="divide-y divide-border/30 text-xs">
               {customers.map((cust) => (
-                <tr key={cust.id} className="hover:bg-primary-ivory/10 transition-colors">
-                  <td className="px-6 py-4 font-bold text-primary-navy">
+                <tr key={cust.id} className="hover:bg-surface-container/10 transition-colors">
+                  <td className="px-6 py-4 font-bold text-on-surface">
                     {cust.first_name} {cust.last_name}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center gap-1 bg-primary-teal/5 text-primary-teal px-2 py-0.5 rounded-full text-[10px] font-bold">
-                      <Heart className="w-3 h-3 text-primary-teal" />
+                    <span className="inline-flex items-center gap-1 bg-primary/5 text-primary px-2 py-0.5 rounded-full text-[10px] font-bold">
+                      <Heart className="w-3 h-3 text-primary" />
                       {cust.pets?.length || 0} {cust.pets?.length === 1 ? 'Pet' : 'Pets'}
                     </span>
                   </td>
                   <td className="px-6 py-4 space-y-1">
-                    <div className="flex items-center gap-1.5 text-graphite/70">
-                      <Phone className="w-3.5 h-3.5 text-primary-teal/60" />
+                    <div className="flex items-center gap-1.5 text-on-surface-variant/70">
+                      <Phone className="w-3.5 h-3.5 text-primary/60" />
                       <span>{cust.phone}</span>
                     </div>
                     {cust.email && (
-                      <div className="flex items-center gap-1.5 text-graphite/70">
-                        <Mail className="w-3.5 h-3.5 text-primary-teal/60" />
+                      <div className="flex items-center gap-1.5 text-on-surface-variant/70">
+                        <Mail className="w-3.5 h-3.5 text-primary/60" />
                         <span>{cust.email}</span>
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-graphite/80">
+                  <td className="px-6 py-4 text-on-surface-variant/80">
                     {cust.address || '—'}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <Link
                       href={`/dashboard/customers/${cust.id}`}
-                      className="inline-flex items-center gap-1 text-[10px] font-bold text-primary-teal hover:underline"
+                      className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline"
                     >
                       View Profile
                       <ChevronRight className="w-3 h-3" />
@@ -133,13 +133,14 @@ export default async function CustomersPage() {
           </table>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-border/40 p-12 text-center">
-          <Users className="w-12 h-12 text-graphite/30 mx-auto mb-4" />
-          <h4 className="text-sm font-bold text-primary-navy mb-1">No Customers Found</h4>
-          <p className="text-xs text-graphite/60">Register your first clinic customer using the button above.</p>
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 p-12 text-center">
+          <Users className="w-12 h-12 text-on-surface-variant/30 mx-auto mb-4" />
+          <h4 className="text-sm font-bold text-on-surface mb-1">No Customers Found</h4>
+          <p className="text-xs text-on-surface-variant/60">Register your first clinic customer using the button above.</p>
         </div>
       )}
 
     </div>
   );
 }
+

@@ -1,29 +1,19 @@
 'use server';
 
-import { z } from 'zod';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { resolveServerSession } from '@/lib/services/auth';
+import {
+  assertBranchAccess,
+  assertCapability,
+  assertOrganization,
+  resolveServerAuthContext,
+} from '@/lib/auth/context';
 import { writeAuditLog } from '@/lib/services/audit';
 import { 
   sendEmail, 
   compileAppointmentRequestTemplate, 
   compileAppointmentConfirmedTemplate 
 } from '@/lib/email';
-
-export const AppointmentRequestSchema = z.object({
-  orgSlug: z.string().min(1),
-  branchId: z.string().uuid({ message: 'Select a valid branch' }),
-  customerName: z.string().min(1, { message: 'Name is required' }),
-  customerEmail: z.string().email({ message: 'Invalid email address' }),
-  customerPhone: z.string().min(5, { message: 'Phone number is required' }),
-  petName: z.string().min(1, { message: 'Pet name is required' }),
-  petSpecies: z.string().min(1, { message: 'Pet species is required' }),
-  preferredDate: z.string().min(1, { message: 'Select a preferred date' }),
-  preferredTime: z.string().min(1, { message: 'Select a preferred time' }),
-  reason: z.string().min(1, { message: 'Reason for visit is required' }),
-});
-
-export type AppointmentRequestInput = z.infer<typeof AppointmentRequestSchema>;
+import { AppointmentRequestSchema } from '@/lib/validations/schemas';
 
 /**
  * Creates a public appointment request (open access endpoint for booking widget).
@@ -96,18 +86,20 @@ export async function createAppointmentRequestAction(payload: unknown) {
  */
 export async function confirmAppointmentAction(appointmentId: string) {
   try {
-    const session = await resolveServerSession();
-    if (!session || !session.organizationId) {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
       throw new Error('Unauthorized: Session is invalid.');
     }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_appointments');
 
     const supabase = await createClient();
 
-    // Update appointment status
     const { data: appt, error } = await supabase
       .from('appointments')
       .update({ status: 'confirmed' })
       .eq('id', appointmentId)
+      .eq('organization_id', ctx.organizationId)
       .select('*, branches ( name, address )')
       .single();
 
@@ -115,10 +107,11 @@ export async function confirmAppointmentAction(appointmentId: string) {
       throw new Error(error?.message || 'Failed to confirm appointment.');
     }
 
-    // Dispatch Confirmation email
-    const branchObj = appt.branches as any;
+    assertBranchAccess(ctx, appt.branch_id);
+
+    const branchObj = appt.branches as { name?: string; address?: string } | null;
     const emailHtml = compileAppointmentConfirmedTemplate(
-      session.organizationName || 'VetFlow Center',
+      ctx.organizationName || 'VetFlow Center',
       appt.pet_name,
       appt.preferred_date,
       appt.preferred_time,
@@ -127,16 +120,15 @@ export async function confirmAppointmentAction(appointmentId: string) {
 
     await sendEmail({
       to: appt.customer_email,
-      subject: `Appointment Confirmed - ${session.organizationName}`,
+      subject: `Appointment Confirmed - ${ctx.organizationName}`,
       html: emailHtml,
     });
 
-    // Write audit log
     await writeAuditLog({
-      organizationId: session.organizationId,
+      organizationId: ctx.organizationId,
       branchId: appt.branch_id,
-      actorUserId: session.userId,
-      actorRole: session.role || 'receptionist',
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
       action: 'APPOINTMENT_APPROVED',
       resourceType: 'APPOINTMENT',
       resourceId: appt.id,
@@ -154,23 +146,27 @@ export async function confirmAppointmentAction(appointmentId: string) {
  */
 export async function checkInAppointmentAction(appointmentId: string, doctorId: string) {
   try {
-    const session = await resolveServerSession();
-    if (!session || !session.organizationId) {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
       throw new Error('Unauthorized: Session is invalid.');
     }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_appointments');
 
     const supabase = await createClient();
 
-    // 1. Fetch appointment details
     const { data: appt, error: apptErr } = await supabase
       .from('appointments')
       .select('*')
       .eq('id', appointmentId)
+      .eq('organization_id', ctx.organizationId)
       .single();
 
     if (apptErr || !appt || appt.status !== 'confirmed') {
       throw new Error('Appointment is not confirmed or not found.');
     }
+
+    assertBranchAccess(ctx, appt.branch_id);
 
     // 2. Find or create Customer in the branch scope
     let customerId = appt.pet_id; // Check if already bound
@@ -194,13 +190,13 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
         const { data: newCust } = await supabase
           .from('customers')
           .insert({
-            organization_id: session.organizationId,
+            organization_id: ctx.organizationId,
             branch_id: appt.branch_id,
             first_name: firstName,
             last_name: lastName,
             email: appt.customer_email,
             phone: appt.customer_phone,
-            created_by: session.userId,
+            created_by: ctx.userId,
           })
           .select()
           .single();
@@ -231,7 +227,7 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
       const { data: newPet } = await supabase
         .from('pets')
         .insert({
-          organization_id: session.organizationId,
+          organization_id: ctx.organizationId,
           customer_id: customerId,
           name: appt.pet_name,
           species: appt.pet_species || 'Dog',
@@ -254,7 +250,7 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
     const { data: visit, error: visitErr } = await supabase
       .from('visits')
       .insert({
-        organization_id: session.organizationId,
+        organization_id: ctx.organizationId,
         branch_id: appt.branch_id,
         pet_id: petId,
         customer_id: customerId,
@@ -283,10 +279,10 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
 
     // 7. Audit Log
     await writeAuditLog({
-      organizationId: session.organizationId,
+      organizationId: ctx.organizationId,
       branchId: appt.branch_id,
-      actorUserId: session.userId,
-      actorRole: session.role || 'receptionist',
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
       action: 'VISIT_CREATED',
       resourceType: 'VISIT',
       resourceId: visit.id,

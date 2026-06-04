@@ -86,26 +86,26 @@ export default async function AppointmentsPage() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-primary-navy tracking-tight flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-primary-teal" />
+          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-primary" />
             Appointments
           </h2>
-          <p className="text-xs text-graphite/70 mt-1">
+          <p className="text-xs text-on-surface-variant/70 mt-1">
             Review online request entries and manage clinic schedules.
           </p>
         </div>
 
         {/* Public Booking Link Badge */}
         {org && (
-          <div className="bg-white border border-border/40 p-3 rounded-2xl flex items-center gap-3 shadow-sm text-xs font-semibold text-primary-navy">
-            <LinkIcon className="w-4 h-4 text-primary-teal" />
+          <div className="glass-panel border border-outline-variant/40 p-3 rounded-2xl flex items-center gap-3 shadow-sm text-xs font-semibold text-on-surface">
+            <LinkIcon className="w-4 h-4 text-primary" />
             <div>
-              <span className="text-[9px] text-graphite/40 block uppercase">Client Booking Link</span>
+              <span className="text-[9px] text-on-surface-variant/40 block uppercase">Client Booking Link</span>
               <a 
                 href={publicBookingUrl} 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-primary-teal hover:underline inline-flex items-center gap-1 font-bold"
+                className="text-primary hover:underline inline-flex items-center gap-1 font-bold"
               >
                 /book/{org.slug}
                 <ExternalLink className="w-3 h-3" />
@@ -124,3 +124,4 @@ export default async function AppointmentsPage() {
     </div>
   );
 }
+

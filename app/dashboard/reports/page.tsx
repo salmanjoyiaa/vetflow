@@ -1,9 +1,12 @@
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
-import { resolveServerSession } from '@/lib/services/auth';
+import {
+  assertCapability,
+  resolveServerAuthContext,
+} from '@/lib/auth/context';
+import DeniedState from '@/components/ui/premium/DeniedState';
 import { createClient } from '@/lib/supabase/server';
-import ReportsChartsClient from '@/components/dashboard/ReportsChartsClient';
-import { TrendingUp, DollarSign, Activity, Calendar, ShieldAlert } from 'lucide-react';
+import ReportsChartsWrapper from '@/components/dashboard/ReportsChartsWrapper';
+import { TrendingUp, DollarSign, Activity, Calendar } from 'lucide-react';
 
 export const metadata = {
   title: 'VetFlow Reports & Analytics',
@@ -11,30 +14,24 @@ export const metadata = {
 };
 
 export default async function ReportsPage() {
-  const session = await resolveServerSession();
-  if (!session) {
+  const ctx = await resolveServerAuthContext();
+  if (!ctx) {
     redirect('/login');
   }
 
-  // Doctors and receptionists cannot access financial dashboards unless allowed
-  if (session.role !== 'clinic_admin' && session.role !== 'super_admin') {
+  try {
+    assertCapability(ctx, 'view_reports');
+  } catch {
     return (
-      <div className="bg-destructive/5 border border-destructive/20 text-destructive text-sm p-6 rounded-2xl">
-        Access Denied: You do not have permissions to view organization financial reports.
-      </div>
+      <DeniedState
+        title="Reports restricted"
+        message="You do not have permission to view financial reports."
+      />
     );
   }
 
-  // 1. Resolve branch context
-  const cookieStore = await cookies();
-  const activeBranchCookie = cookieStore.get('vetflow_branch_id')?.value;
-  let activeBranchId = activeBranchCookie;
-
-  if (!activeBranchId && session.branches.length > 0) {
-    activeBranchId = session.branches[0].id;
-  } else if (activeBranchId && !session.branches.some((b) => b.id === activeBranchId)) {
-    activeBranchId = session.branches[0]?.id;
-  }
+  const session = ctx;
+  const activeBranchId = ctx.activeBranchId ?? undefined;
 
   if (!activeBranchId) {
     return (
@@ -108,46 +105,46 @@ export default async function ReportsPage() {
       
       {/* HEADER */}
       <div>
-        <h2 className="text-xl font-black text-primary-navy tracking-tight flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-primary-teal" />
+        <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-primary" />
           Analytics & Insights
         </h2>
-        <p className="text-xs text-graphite/70 mt-1">
+        <p className="text-xs text-on-surface-variant/70 mt-1">
           Review business revenue charts, check-in rates, and operational KPIs.
         </p>
       </div>
 
       {/* STATS MATRIX */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-2xl border border-border/40 p-5 shadow-premium">
-          <span className="text-[10px] font-bold text-graphite/40 uppercase block">Attained Gross Sales</span>
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 p-5 shadow-premium">
+          <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase block">Attained Gross Sales</span>
           <div className="flex items-baseline gap-1 mt-1">
-            <DollarSign className="w-4 h-4 text-primary-teal" />
-            <span className="text-xl font-black text-primary-navy">${totalSales.toFixed(2)}</span>
+            <DollarSign className="w-4 h-4 text-primary" />
+            <span className="text-xl font-black text-on-surface">${totalSales.toFixed(2)}</span>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-border/40 p-5 shadow-premium">
-          <span className="text-[10px] font-bold text-graphite/40 uppercase block">Attending Consultations</span>
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 p-5 shadow-premium">
+          <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase block">Attending Consultations</span>
           <div className="flex items-baseline gap-1 mt-1">
-            <Activity className="w-4 h-4 text-primary-teal" />
-            <span className="text-xl font-black text-primary-navy">
-              {completedVisitsCount} <span className="text-xs text-graphite/50 font-semibold">/ {totalVisitsCount}</span>
+            <Activity className="w-4 h-4 text-primary" />
+            <span className="text-xl font-black text-on-surface">
+              {completedVisitsCount} <span className="text-xs text-on-surface-variant/50 font-semibold">/ {totalVisitsCount}</span>
             </span>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-border/40 p-5 shadow-premium">
-          <span className="text-[10px] font-bold text-graphite/40 uppercase block">Registered Bookings</span>
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 p-5 shadow-premium">
+          <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase block">Registered Bookings</span>
           <div className="flex items-baseline gap-1 mt-1">
-            <Calendar className="w-4 h-4 text-primary-teal" />
-            <span className="text-xl font-black text-primary-navy">{totalApptsCount}</span>
+            <Calendar className="w-4 h-4 text-primary" />
+            <span className="text-xl font-black text-on-surface">{totalApptsCount}</span>
           </div>
         </div>
       </div>
 
       {/* CHARTS CONTAINER */}
-      <ReportsChartsClient 
+      <ReportsChartsWrapper 
         salesData={defaultSalesData} 
         paymentData={defaultPaymentData} 
       />
@@ -155,3 +152,4 @@ export default async function ReportsPage() {
     </div>
   );
 }
+

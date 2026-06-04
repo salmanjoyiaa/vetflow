@@ -42,19 +42,19 @@ export default function StaffListClient({ initialStaff }: StaffListClientProps) 
 
   if (initialStaff.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-border/40 p-12 text-center">
-        <Users className="w-12 h-12 text-graphite/30 mx-auto mb-4" />
-        <h4 className="text-sm font-bold text-primary-navy mb-1">No Staff Members Found</h4>
-        <p className="text-xs text-graphite/60">Invite new team members using the button above.</p>
+      <div className="glass-panel rounded-2xl border border-outline-variant/40 p-12 text-center">
+        <Users className="w-12 h-12 text-on-surface-variant/30 mx-auto mb-4" />
+        <h4 className="text-sm font-bold text-on-surface mb-1">No Staff Members Found</h4>
+        <p className="text-xs text-on-surface-variant/60">Invite new team members using the button above.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-border/40 overflow-hidden shadow-premium">
+    <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden shadow-premium">
       <table className="w-full text-left border-collapse">
         <thead>
-          <tr className="bg-primary-ivory/40 border-b border-border/40 text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider">
+          <tr className="bg-surface-container/40 border-b border-outline-variant/40 text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider">
             <th className="px-6 py-4">Name</th>
             <th className="px-6 py-4">Role</th>
             <th className="px-6 py-4">Assigned Branches</th>
@@ -65,13 +65,13 @@ export default function StaffListClient({ initialStaff }: StaffListClientProps) 
         </thead>
         <tbody className="divide-y divide-border/30 text-xs">
           {initialStaff.map((staff) => (
-            <tr key={staff.id} className="hover:bg-primary-ivory/10 transition-colors">
-              <td className="px-6 py-4 font-bold text-primary-navy">
+            <tr key={staff.id} className="hover:bg-surface-container/10 transition-colors">
+              <td className="px-6 py-4 font-bold text-on-surface">
                 {staff.firstName} {staff.lastName}
               </td>
-              <td className="px-6 py-4 capitalize text-primary-navy font-semibold">
+              <td className="px-6 py-4 capitalize text-on-surface font-semibold">
                 <span className="inline-flex items-center gap-1">
-                  <Shield className="w-3.5 h-3.5 text-primary-teal/70" />
+                  <Shield className="w-3.5 h-3.5 text-primary/70" />
                   {staff.role?.replace('_', ' ')}
                 </span>
               </td>
@@ -80,24 +80,24 @@ export default function StaffListClient({ initialStaff }: StaffListClientProps) 
                   {staff.branches.map((b) => (
                     <span 
                       key={b.id} 
-                      className="bg-primary-ivory text-primary-navy border border-border/60 text-[9px] font-semibold px-2 py-0.5 rounded-md"
+                      className="bg-surface-container text-on-surface border border-outline-variant/60 text-[9px] font-semibold px-2 py-0.5 rounded-md"
                     >
                       {b.name}
                     </span>
                   ))}
-                  {staff.branches.length === 0 && <span className="text-graphite/40">—</span>}
+                  {staff.branches.length === 0 && <span className="text-on-surface-variant/40">—</span>}
                 </div>
               </td>
               <td className="px-6 py-4 space-y-1">
                 {staff.phone && (
-                  <div className="flex items-center gap-1.5 text-graphite/70">
-                    <Phone className="w-3.5 h-3.5 text-primary-teal/60" />
+                  <div className="flex items-center gap-1.5 text-on-surface-variant/70">
+                    <Phone className="w-3.5 h-3.5 text-primary/60" />
                     <span>{staff.phone}</span>
                   </div>
                 )}
                 {staff.email && (
-                  <div className="flex items-center gap-1.5 text-graphite/70">
-                    <Mail className="w-3.5 h-3.5 text-primary-teal/60" />
+                  <div className="flex items-center gap-1.5 text-on-surface-variant/70">
+                    <Mail className="w-3.5 h-3.5 text-primary/60" />
                     <span>{staff.email}</span>
                   </div>
                 )}
@@ -136,7 +136,7 @@ export default function StaffListClient({ initialStaff }: StaffListClientProps) 
                     )}
                   </button>
                 ) : (
-                  <span className="text-[10px] text-graphite/40 italic">System Owner</span>
+                  <span className="text-[10px] text-on-surface-variant/40 italic">System Owner</span>
                 )}
               </td>
             </tr>
@@ -146,3 +146,4 @@ export default function StaffListClient({ initialStaff }: StaffListClientProps) 
     </div>
   );
 }
+

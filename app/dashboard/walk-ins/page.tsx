@@ -73,40 +73,42 @@ export default async function WalkInsPage() {
     .in('status', ['waiting', 'consulting'])
     .order('checked_in_at', { ascending: true });
 
-  const visits = visitsData?.map((v) => ({
-    id: v.id,
-    reason: v.reason,
-    status: v.status,
-    checkedInAt: v.checked_in_at,
-    pet: {
-      id: (v.pets as any).id,
-      name: (v.pets as any).name,
-      species: (v.pets as any).species,
-      breed: (v.pets as any).breed,
-    },
-    customer: {
-      first_name: (v.customers as any).first_name,
-      last_name: (v.customers as any).last_name,
-      phone: (v.customers as any).phone,
-    },
-    doctor: v.visit_assignments?.[0]
-      ? {
-          first_name: (v.visit_assignments[0].user_profiles as any).first_name,
-          last_name: (v.visit_assignments[0].user_profiles as any).last_name,
-        }
-      : null,
-  })) || [];
+  const visits = visitsData
+    ?.filter((v) => v.pets && v.customers)
+    .map((v) => ({
+      id: v.id,
+      reason: v.reason,
+      status: v.status,
+      checkedInAt: v.checked_in_at,
+      pet: {
+        id: (v.pets as any).id,
+        name: (v.pets as any).name,
+        species: (v.pets as any).species,
+        breed: (v.pets as any).breed,
+      },
+      customer: {
+        first_name: (v.customers as any).first_name,
+        last_name: (v.customers as any).last_name,
+        phone: (v.customers as any).phone,
+      },
+      doctor: v.visit_assignments?.[0]
+        ? {
+            first_name: (v.visit_assignments[0].user_profiles as any)?.first_name,
+            last_name: (v.visit_assignments[0].user_profiles as any)?.last_name,
+          }
+        : null,
+    })) || [];
 
   return (
     <div className="space-y-8">
       
       {/* HEADER */}
       <div>
-        <h2 className="text-xl font-black text-primary-navy tracking-tight flex items-center gap-2">
-          <ClipboardList className="w-5 h-5 text-primary-teal" />
+        <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
+          <ClipboardList className="w-5 h-5 text-primary" />
           Walk-in Queue Board
         </h2>
-        <p className="text-xs text-graphite/70 mt-1">
+        <p className="text-xs text-on-surface-variant/70 mt-1">
           Check in walk-in clients and monitor room queue allocations.
         </p>
       </div>
@@ -121,3 +123,4 @@ export default async function WalkInsPage() {
     </div>
   );
 }
+

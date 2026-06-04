@@ -76,19 +76,19 @@ export default function AppointmentsListClient({
 
   if (initialAppointments.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-border/40 p-12 text-center shadow-premium">
-        <Calendar className="w-12 h-12 text-graphite/30 mx-auto mb-4" />
-        <h4 className="text-sm font-bold text-primary-navy mb-1">No Appointments Requested</h4>
-        <p className="text-xs text-graphite/60">Share your public booking link to receive requests.</p>
+      <div className="glass-panel rounded-2xl border border-outline-variant/40 p-12 text-center shadow-premium">
+        <Calendar className="w-12 h-12 text-on-surface-variant/30 mx-auto mb-4" />
+        <h4 className="text-sm font-bold text-on-surface mb-1">No Appointments Requested</h4>
+        <p className="text-xs text-on-surface-variant/60">Share your public booking link to receive requests.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-border/40 overflow-hidden shadow-premium">
+    <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden shadow-premium">
       <table className="w-full text-left border-collapse">
         <thead>
-          <tr className="bg-primary-ivory/40 border-b border-border/40 text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider">
+          <tr className="bg-surface-container/40 border-b border-outline-variant/40 text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider">
             <th className="px-6 py-4">Pet Details</th>
             <th className="px-6 py-4">Owner Contact</th>
             <th className="px-6 py-4">Preferred Slot</th>
@@ -99,23 +99,23 @@ export default function AppointmentsListClient({
         </thead>
         <tbody className="divide-y divide-border/30 text-xs">
           {initialAppointments.map((appt) => (
-            <tr key={appt.id} className="hover:bg-primary-ivory/10 transition-colors">
+            <tr key={appt.id} className="hover:bg-surface-container/10 transition-colors">
               <td className="px-6 py-4">
-                <span className="font-bold text-primary-navy block">{appt.pet_name}</span>
-                <span className="text-[10px] text-graphite/50 block capitalize">
+                <span className="font-bold text-on-surface block">{appt.pet_name}</span>
+                <span className="text-[10px] text-on-surface-variant/50 block capitalize">
                   Species: {appt.pet_species || 'Dog'}
                 </span>
               </td>
-              <td className="px-6 py-4 space-y-0.5 text-graphite/70">
-                <span className="font-semibold text-primary-navy block">{appt.customer_name}</span>
+              <td className="px-6 py-4 space-y-0.5 text-on-surface-variant/70">
+                <span className="font-semibold text-on-surface block">{appt.customer_name}</span>
                 <span>{appt.customer_phone}</span>
                 <span className="block text-[10px]">{appt.customer_email}</span>
               </td>
-              <td className="px-6 py-4 space-y-0.5 text-graphite/80 font-medium">
+              <td className="px-6 py-4 space-y-0.5 text-on-surface-variant/80 font-medium">
                 <div>Date: {appt.preferred_date}</div>
-                <div className="text-[10px] text-graphite/50">Time: {appt.preferred_time}</div>
+                <div className="text-[10px] text-on-surface-variant/50">Time: {appt.preferred_time}</div>
               </td>
-              <td className="px-6 py-4 text-graphite/80 max-w-xs truncate" title={appt.reason}>
+              <td className="px-6 py-4 text-on-surface-variant/80 max-w-xs truncate" title={appt.reason}>
                 {appt.reason}
               </td>
               <td className="px-6 py-4">
@@ -125,7 +125,7 @@ export default function AppointmentsListClient({
                   </span>
                 )}
                 {appt.status === 'confirmed' && (
-                  <span className="inline-flex items-center gap-1 bg-primary-teal/10 text-primary-teal px-2 py-0.5 rounded-full text-[10px] font-bold">
+                  <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full text-[10px] font-bold">
                     Confirmed
                   </span>
                 )}
@@ -149,7 +149,7 @@ export default function AppointmentsListClient({
                     <button
                       disabled={updatingId !== null}
                       onClick={() => handleConfirm(appt.id)}
-                      className="bg-primary-teal hover:bg-primary-teal/95 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow-sm transition-all flex items-center gap-1"
+                      className="bg-primary hover:bg-primary/95 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow-sm transition-all flex items-center gap-1"
                     >
                       {updatingId === appapptId(appt.id) ? (
                         <Loader2 className="w-3 h-3 animate-spin" />
@@ -162,7 +162,7 @@ export default function AppointmentsListClient({
                   {appt.status === 'confirmed' && (
                     <div className="flex items-center gap-2">
                       <select
-                        className="px-2 py-1 bg-primary-ivory border border-border rounded-lg text-[10px] font-semibold text-primary-navy outline-none"
+                        className="px-2 py-1 bg-surface-container border border-outline-variant rounded-lg text-[10px] font-semibold text-on-surface outline-none"
                         value={selectedDoctorMap[appt.id] || (doctors.length > 0 ? doctors[0].id : '')}
                         onChange={(e) => setSelectedDoctorMap({ ...selectedDoctorMap, [appt.id]: e.target.value })}
                       >
@@ -176,7 +176,7 @@ export default function AppointmentsListClient({
                       <button
                         disabled={updatingId !== null}
                         onClick={() => handleCheckIn(appt.id)}
-                        className="bg-primary-navy hover:bg-primary-teal text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow-sm transition-all"
+                        className="bg-primary hover:bg-primary text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow-sm transition-all"
                       >
                         {updatingId === appapptId(appt.id) ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -188,7 +188,7 @@ export default function AppointmentsListClient({
                   )}
 
                   {['checked_in', 'cancelled'].includes(appt.status) && (
-                    <span className="text-[10px] text-graphite/40 italic">No Actions</span>
+                    <span className="text-[10px] text-on-surface-variant/40 italic">No Actions</span>
                   )}
 
                 </div>
@@ -205,3 +205,4 @@ export default function AppointmentsListClient({
 function appapptId(id: string) {
   return id;
 }
+

@@ -1,9 +1,12 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { LoginSchema, RegisterSchema } from '@/lib/validations/auth';
 import { writeAuditLog } from '@/lib/services/audit';
+import { resolveServerSession, DEMO_USER_COOKIE } from '@/lib/services/auth';
+import { isDemoMode, findDemoUser } from '@/lib/demo/credentials';
 
 export interface ActionResponse {
   success: boolean;
@@ -17,6 +20,26 @@ export interface ActionResponse {
 export async function loginAction(payload: unknown): Promise<ActionResponse> {
   try {
     const parsed = LoginSchema.parse(payload);
+
+    // ── Demo mode: validate against hardcoded credentials ──
+    if (isDemoMode()) {
+      const demoUser = findDemoUser(parsed.email, parsed.password);
+      if (!demoUser) {
+        return { success: false, error: 'Invalid credentials. Check the demo credentials listed below.' };
+      }
+      const cookieStore = await cookies();
+      cookieStore.set(DEMO_USER_COOKIE, demoUser.id, {
+        httpOnly: true,
+        path: '/',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+      });
+      const redirectTo = demoUser.isSuperAdmin
+        ? '/super-admin/dashboard'
+        : '/dashboard';
+      return { success: true, redirectTo };
+    }
+
     const supabase = await createClient();
 
     const { error } = await supabase.auth.signInWithPassword({
@@ -28,7 +51,22 @@ export async function loginAction(payload: unknown): Promise<ActionResponse> {
       return { success: false, error: error.message };
     }
 
-    return { success: true, redirectTo: '/dashboard' };
+    const session = await resolveServerSession();
+    if (!session) {
+      return {
+        success: false,
+        error:
+          'Your account is missing a profile record. Please wait a moment and try again, or contact support.',
+      };
+    }
+
+    const redirectTo = session.isSuperAdmin
+      ? '/super-admin/dashboard'
+      : session.role
+        ? '/dashboard'
+        : '/account-setup';
+
+    return { success: true, redirectTo };
   } catch (err: any) {
     return { success: false, error: err.message || 'An unexpected error occurred' };
   }
@@ -204,6 +242,11 @@ export async function registerAction(payload: unknown): Promise<ActionResponse> 
  * Destroys user session and signs them out.
  */
 export async function logoutAction(): Promise<void> {
+  if (isDemoMode()) {
+    const cookieStore = await cookies();
+    cookieStore.delete(DEMO_USER_COOKIE);
+    redirect('/login');
+  }
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect('/login');

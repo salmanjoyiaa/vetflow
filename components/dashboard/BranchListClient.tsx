@@ -40,19 +40,19 @@ export default function BranchListClient({ initialBranches }: BranchListClientPr
 
   if (initialBranches.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-border/40 p-12 text-center">
-        <MapPin className="w-12 h-12 text-graphite/30 mx-auto mb-4" />
-        <h4 className="text-sm font-bold text-primary-navy mb-1">No Branches Found</h4>
-        <p className="text-xs text-graphite/60">Create your initial branch using the button above.</p>
+      <div className="glass-panel rounded-2xl border border-outline-variant/40 p-12 text-center">
+        <MapPin className="w-12 h-12 text-on-surface-variant/30 mx-auto mb-4" />
+        <h4 className="text-sm font-bold text-on-surface mb-1">No Branches Found</h4>
+        <p className="text-xs text-on-surface-variant/60">Create your initial branch using the button above.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-border/40 overflow-hidden shadow-premium">
+    <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden shadow-premium">
       <table className="w-full text-left border-collapse">
         <thead>
-          <tr className="bg-primary-ivory/40 border-b border-border/40 text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider">
+          <tr className="bg-surface-container/40 border-b border-outline-variant/40 text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider">
             <th className="px-6 py-4">Branch Name</th>
             <th className="px-6 py-4">Address</th>
             <th className="px-6 py-4">Contact Info</th>
@@ -62,23 +62,23 @@ export default function BranchListClient({ initialBranches }: BranchListClientPr
         </thead>
         <tbody className="divide-y divide-border/30 text-xs">
           {initialBranches.map((branch) => (
-            <tr key={branch.id} className="hover:bg-primary-ivory/10 transition-colors">
-              <td className="px-6 py-4 font-bold text-primary-navy">
+            <tr key={branch.id} className="hover:bg-surface-container/10 transition-colors">
+              <td className="px-6 py-4 font-bold text-on-surface">
                 {branch.name}
               </td>
-              <td className="px-6 py-4 text-graphite/80">
+              <td className="px-6 py-4 text-on-surface-variant/80">
                 {branch.address || '—'}
               </td>
               <td className="px-6 py-4 space-y-1">
                 {branch.phone && (
-                  <div className="flex items-center gap-1.5 text-graphite/70">
-                    <Phone className="w-3.5 h-3.5 text-primary-teal/60" />
+                  <div className="flex items-center gap-1.5 text-on-surface-variant/70">
+                    <Phone className="w-3.5 h-3.5 text-primary/60" />
                     <span>{branch.phone}</span>
                   </div>
                 )}
                 {branch.email && (
-                  <div className="flex items-center gap-1.5 text-graphite/70">
-                    <Mail className="w-3.5 h-3.5 text-primary-teal/60" />
+                  <div className="flex items-center gap-1.5 text-on-surface-variant/70">
+                    <Mail className="w-3.5 h-3.5 text-primary/60" />
                     <span>{branch.email}</span>
                   </div>
                 )}
@@ -122,3 +122,4 @@ export default function BranchListClient({ initialBranches }: BranchListClientPr
     </div>
   );
 }
+

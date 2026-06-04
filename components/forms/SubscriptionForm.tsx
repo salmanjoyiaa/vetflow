@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { SubscriptionSchema, type SubscriptionInput, updateSubscriptionAction } from '@/lib/services/super-admin-actions';
+import { updateSubscriptionAction } from '@/lib/services/super-admin-actions';
+import { SubscriptionSchema, type SubscriptionInput } from '@/lib/validations/schemas';
 import { Loader2, Settings, X } from 'lucide-react';
 
 interface SubscriptionFormProps {
@@ -69,7 +70,7 @@ export default function SubscriptionForm({
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center gap-1.5 text-[10px] font-bold text-primary-teal border border-primary-teal/20 px-2.5 py-1.5 rounded-lg hover:bg-primary-teal/5 transition-all"
+        className="inline-flex items-center gap-1.5 text-[10px] font-bold text-primary border border-primary/30 px-2.5 py-1.5 rounded-lg hover:bg-primary/10 transition-all"
         title="Manage Tenant Subscription"
       >
         <Settings className="w-3.5 h-3.5" />
@@ -77,17 +78,17 @@ export default function SubscriptionForm({
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-navy/40 backdrop-blur-xs text-left">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-premium border border-border/40 p-6 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm text-left">
+          <div className="glass-panel w-full max-w-md rounded-2xl shadow-premium border border-outline-variant/40 p-6 relative">
             <button
               onClick={() => setIsOpen(false)}
-              className="absolute right-4 top-4 text-graphite/40 hover:text-graphite transition-colors"
+              className="absolute right-4 top-4 text-on-surface-variant/40 hover:text-on-surface-variant transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-base font-bold text-primary-navy mb-1">Override Subscription Plan</h3>
-            <p className="text-xs text-graphite/60 mb-4 truncate">Clinic: {organizationName}</p>
+            <h3 className="text-base font-bold text-on-surface mb-1">Override Subscription Plan</h3>
+            <p className="text-xs text-on-surface-variant/60 mb-4 truncate">Clinic: {organizationName}</p>
 
             {error && (
               <div className="mb-4 p-3 bg-destructive/5 border border-destructive/20 text-destructive text-xs rounded-xl">
@@ -99,12 +100,12 @@ export default function SubscriptionForm({
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Plan Tier
                   </label>
                   <select
                     {...register('planName')}
-                    className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy font-bold outline-none"
+                    className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface font-bold outline-none"
                   >
                     <option value="trial">Sandbox Trial</option>
                     <option value="growth">Growth Plan</option>
@@ -112,12 +113,12 @@ export default function SubscriptionForm({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Account Status
                   </label>
                   <select
                     {...register('status')}
-                    className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy font-bold outline-none"
+                    className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface font-bold outline-none"
                   >
                     <option value="active">Active</option>
                     <option value="trial">Trialing</option>
@@ -129,13 +130,13 @@ export default function SubscriptionForm({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Trial End Date
                   </label>
                   <input
                     type="date"
                     {...register('trialEnd')}
-                    className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+                    className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
                     required
                   />
                   {errors.trialEnd && (
@@ -143,26 +144,26 @@ export default function SubscriptionForm({
                   )}
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Renewal / Paid End Date
                   </label>
                   <input
                     type="date"
                     {...register('renewalDate')}
-                    className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+                    className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                   Platform Notes
                 </label>
                 <textarea
                   {...register('notes')}
                   placeholder="Record payment details or special trial instructions..."
                   rows={3}
-                  className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+                  className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
                 />
               </div>
 
@@ -170,14 +171,14 @@ export default function SubscriptionForm({
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="w-1/2 border border-border hover:bg-primary-ivory/50 py-2.5 rounded-xl text-xs font-semibold text-primary-navy transition-all"
+                  className="w-1/2 border border-outline-variant hover:bg-surface-container/50 py-2.5 rounded-xl text-xs font-semibold text-on-surface transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-1/2 bg-primary-navy hover:bg-primary-teal text-white py-2.5 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-1.5"
+                  className="w-1/2 bg-primary hover:opacity-90 text-white py-2.5 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-1.5"
                 >
                   {isLoading ? (
                     <>
@@ -196,3 +197,4 @@ export default function SubscriptionForm({
     </>
   );
 }
+

@@ -7,17 +7,64 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LoginSchema, type LoginInput } from '@/lib/validations/auth';
 import { loginAction } from '@/lib/services/auth-actions';
-import { Eye, EyeOff, Stethoscope, Loader2 } from 'lucide-react';
+import AuthPageShell from '@/components/layout/AuthPageShell';
+import { Eye, EyeOff, Loader2, Shield, Stethoscope, ClipboardList, Building2 } from 'lucide-react';
+
+const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+
+const DEMO_CREDENTIALS = [
+  {
+    label: 'Super Admin',
+    email: 'superadmin@vetflow.com',
+    password: 'password123',
+    icon: Shield,
+    color: 'text-violet-400',
+    bg: 'bg-violet-500/10 border-violet-500/20',
+    desc: 'Platform-wide admin console',
+  },
+  {
+    label: 'Clinic Admin',
+    email: 'admin.a@vetcare.com',
+    password: 'password123',
+    icon: Building2,
+    color: 'text-primary',
+    bg: 'bg-primary/10 border-primary/20',
+    desc: 'Full clinic management access',
+  },
+  {
+    label: 'Doctor',
+    email: 'doctor.a@vetcare.com',
+    password: 'password123',
+    icon: Stethoscope,
+    color: 'text-emerald-400',
+    bg: 'bg-emerald-500/10 border-emerald-500/20',
+    desc: 'Clinical queue & prescriptions',
+  },
+  {
+    label: 'Receptionist',
+    email: 'receptionist.a@vetcare.com',
+    password: 'password123',
+    icon: ClipboardList,
+    color: 'text-amber-400',
+    bg: 'bg-amber-500/10 border-amber-500/20',
+    desc: 'Walk-ins, billing & intake',
+  },
+];
+
+const inputClass =
+  'w-full px-4 py-3 bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-2xl outline-none text-sm text-on-surface';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingDemo, setLoadingDemo] = useState<string | null>(null);
   const router = useRouter();
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(LoginSchema),
@@ -35,104 +82,138 @@ export default function LoginPage() {
         setError(res.error || 'Invalid credentials');
         setIsLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
       setIsLoading(false);
     }
   };
 
+  const handleDemoLogin = async (email: string, password: string) => {
+    setLoadingDemo(email);
+    setError(null);
+    try {
+      const res = await loginAction({ email, password });
+      if (res.success && res.redirectTo) {
+        router.push(res.redirectTo);
+        router.refresh();
+      } else {
+        setError(res.error || 'Demo login failed');
+        setLoadingDemo(null);
+      }
+    } catch {
+      setError('Demo login failed');
+      setLoadingDemo(null);
+    }
+  };
+
   return (
-    <main className="min-h-screen bg-primary-ivory flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-premium border border-border/40 p-8 md:p-10">
-        
-        {/* LOGO */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 bg-primary-teal/5 flex items-center justify-center rounded-2xl mb-3">
-            <Stethoscope className="w-6 h-6 text-primary-teal" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-primary-navy font-sans">VetFlow</h1>
-          <p className="text-xs text-graphite/60 mt-1">Trustworthy Veterinary Business Platform</p>
-        </div>
-
-        {/* HEADER */}
-        <div className="mb-6 text-center">
-          <h2 className="text-xl font-semibold text-primary-navy">Welcome Back</h2>
-          <p className="text-sm text-graphite/70 mt-1">Sign in to manage your clinic branch</p>
-        </div>
-
-        {/* ALERTS */}
-        {error && (
-          <div className="mb-6 p-4 bg-destructive/5 border border-destructive/20 text-destructive text-sm rounded-2xl">
-            {error}
-          </div>
-        )}
-
-        {/* FORM */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div>
-            <label className="block text-xs font-semibold text-primary-navy/80 uppercase tracking-wider mb-2">
-              Email Address
-            </label>
-            <input
-              type="email"
-              {...register('email')}
-              placeholder="e.g. receptionist@vetcare.com"
-              className="w-full px-4 py-3 bg-primary-ivory/30 border border-border/80 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-2xl outline-none transition-colors text-sm text-primary-navy"
-            />
-            {errors.email && (
-              <span className="text-xs text-destructive mt-1 block">{errors.email.message}</span>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-primary-navy/80 uppercase tracking-wider mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                {...register('password')}
-                placeholder="Enter password"
-                className="w-full pl-4 pr-12 py-3 bg-primary-ivory/30 border border-border/80 focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-2xl outline-none transition-colors text-sm text-primary-navy"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-graphite/40 hover:text-primary-teal transition-colors"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-            {errors.password && (
-              <span className="text-xs text-destructive mt-1 block">{errors.password.message}</span>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-primary-navy hover:bg-primary-teal text-white py-3.5 px-4 rounded-2xl font-semibold text-sm transition-all duration-200 shadow-sm flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              'Sign In'
-            )}
-          </button>
-        </form>
-
-        {/* FOOTER */}
-        <div className="mt-8 pt-6 border-t border-border/40 text-center text-xs text-graphite/60">
+    <AuthPageShell
+      title="Welcome back"
+      subtitle="Trustworthy veterinary business platform"
+      footer={
+        <>
           First time here?{' '}
-          <Link href="/register" className="text-primary-teal font-semibold hover:underline">
+          <Link href="/register" className="text-primary font-semibold hover:underline">
             Register your clinic
           </Link>
+        </>
+      }
+    >
+      {error && (
+        <div className="mb-6 p-4 border border-destructive/30 text-destructive text-sm rounded-2xl bg-destructive/10">
+          {error}
+        </div>
+      )}
+
+      {/* DEMO CREDENTIALS PANEL */}
+      {isDemoMode && (
+        <div className="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
+              Demo Mode — Quick Login
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {DEMO_CREDENTIALS.map((cred) => {
+              const Icon = cred.icon;
+              return (
+                <button
+                  key={cred.email}
+                  type="button"
+                  onClick={() => handleDemoLogin(cred.email, cred.password)}
+                  disabled={loadingDemo === cred.email}
+                  className={`${cred.bg} border rounded-xl p-3 text-left hover:scale-[1.02] transition-all group disabled:opacity-60`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    {loadingDemo === cred.email ? (
+                      <Loader2 className={`w-3.5 h-3.5 ${cred.color} animate-spin`} />
+                    ) : (
+                      <Icon className={`w-3.5 h-3.5 ${cred.color}`} />
+                    )}
+                    <span className="text-[11px] font-bold text-on-surface">{cred.label}</span>
+                  </div>
+                  <span className="text-[9px] text-on-surface-variant/60 block">{cred.desc}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[9px] text-on-surface-variant/40 mt-2 text-center">
+            All demo accounts use password: <code className="font-mono text-primary/80">password123</code>
+          </p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <div>
+          <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
+            Email
+          </label>
+          <input type="email" {...register('email')} placeholder="you@clinic.com" className={inputClass} />
+          {errors.email && (
+            <span className="text-xs text-destructive mt-1 block">{errors.email.message}</span>
+          )}
         </div>
 
-      </div>
-    </main>
+        <div>
+          <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
+            Password
+          </label>
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              {...register('password')}
+              placeholder="Enter password"
+              className={`${inputClass} pr-12`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary"
+            >
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
+          {errors.password && (
+            <span className="text-xs text-destructive mt-1 block">{errors.password.message}</span>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full bg-primary text-on-primary py-3.5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-75"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Signing in...
+            </>
+          ) : (
+            'Sign In'
+          )}
+        </button>
+      </form>
+    </AuthPageShell>
   );
 }

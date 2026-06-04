@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
-import { resolveServerSession } from '@/lib/services/auth';
+import { resolveServerAuthContext } from '@/lib/auth/context';
 import DashboardShellClient from '@/components/layout/DashboardShellClient';
 
 export default async function DashboardLayout({
@@ -8,31 +7,27 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // 1. Authenticate user & resolve organization context on the server
-  const session = await resolveServerSession();
+  const ctx = await resolveServerAuthContext();
 
-  if (!session) {
+  if (!ctx) {
     redirect('/login');
   }
 
-  // 2. Read active branch ID from cookies
-  const cookieStore = await cookies();
-  const activeBranchCookie = cookieStore.get('vetflow_branch_id')?.value;
+  if (ctx.isSuperAdmin && !ctx.isImpersonating) {
+    redirect('/super-admin/dashboard');
+  }
 
-  // Determine active branch (must belong to user's authorized branches list)
-  let activeBranchId = activeBranchCookie;
-  if (!activeBranchId && session.branches.length > 0) {
-    activeBranchId = session.branches[0].id;
-  } else if (activeBranchId && !session.branches.some((b) => b.id === activeBranchId)) {
-    activeBranchId = session.branches[0]?.id || undefined;
+  if (!ctx.role) {
+    redirect('/account-setup');
   }
 
   return (
-    <DashboardShellClient 
-      session={session} 
-      activeBranchId={activeBranchId}
+    <DashboardShellClient
+      session={ctx}
+      activeBranchId={ctx.activeBranchId ?? undefined}
     >
       {children}
     </DashboardShellClient>
   );
 }
+

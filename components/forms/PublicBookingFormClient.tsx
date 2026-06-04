@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AppointmentRequestSchema, type AppointmentRequestInput, createAppointmentRequestAction } from '@/lib/services/appointment-actions';
+import { AppointmentRequestSchema, type AppointmentRequestInput } from '@/lib/validations/schemas';
+import { createAppointmentRequestAction } from '@/lib/services/appointment-actions';
 import { Loader2, CheckCircle2, ArrowRight } from 'lucide-react';
 
 interface Branch {
@@ -62,8 +63,8 @@ export default function PublicBookingFormClient({
         <div className="w-12 h-12 bg-emerald-500/10 flex items-center justify-center rounded-full mx-auto">
           <CheckCircle2 className="w-6 h-6 text-emerald-600" />
         </div>
-        <h3 className="text-base font-bold text-primary-navy">Booking Request Submitted!</h3>
-        <p className="text-xs text-graphite/70 leading-relaxed max-w-sm mx-auto">
+        <h3 className="text-base font-bold text-on-surface">Booking Request Submitted!</h3>
+        <p className="text-xs text-on-surface-variant/70 leading-relaxed max-w-sm mx-auto">
           We have recorded your appointment preferences. Please check your email inbox shortly for confirmation updates.
         </p>
       </div>
@@ -80,12 +81,12 @@ export default function PublicBookingFormClient({
 
       {/* Target Branch selection */}
       <div>
-        <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+        <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
           Select Clinic Branch
         </label>
         <select
           {...register('branchId')}
-          className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy font-bold outline-none"
+          className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface font-bold outline-none"
         >
           {branches.map((b) => (
             <option key={b.id} value={b.id}>
@@ -100,28 +101,28 @@ export default function PublicBookingFormClient({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+          <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
             Pet Parent Name
           </label>
           <input
             type="text"
             {...register('customerName')}
             placeholder="e.g. John Doe"
-            className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+            className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
           />
           {errors.customerName && (
             <span className="text-[10px] text-destructive mt-1 block">{errors.customerName.message}</span>
           )}
         </div>
         <div>
-          <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+          <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
             Parent Contact Phone
           </label>
           <input
             type="text"
             {...register('customerPhone')}
             placeholder="e.g. +1 555-9090"
-            className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+            className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
           />
           {errors.customerPhone && (
             <span className="text-[10px] text-destructive mt-1 block">{errors.customerPhone.message}</span>
@@ -130,14 +131,14 @@ export default function PublicBookingFormClient({
       </div>
 
       <div>
-        <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+        <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
           Parent Email Address
         </label>
         <input
           type="email"
           {...register('customerEmail')}
           placeholder="e.g. parent@example.com"
-          className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+          className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
         />
         {errors.customerEmail && (
           <span className="text-[10px] text-destructive mt-1 block">{errors.customerEmail.message}</span>
@@ -146,26 +147,26 @@ export default function PublicBookingFormClient({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+          <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
             Pet Name
           </label>
           <input
             type="text"
             {...register('petName')}
             placeholder="e.g. Max"
-            className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+            className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
           />
           {errors.petName && (
             <span className="text-[10px] text-destructive mt-1 block">{errors.petName.message}</span>
           )}
         </div>
         <div>
-          <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+          <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
             Pet Species
           </label>
           <select
             {...register('petSpecies')}
-            className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy font-bold outline-none"
+            className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface font-bold outline-none"
           >
             <option value="Dog">Dog</option>
             <option value="Cat">Cat</option>
@@ -177,25 +178,25 @@ export default function PublicBookingFormClient({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+          <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
             Preferred Date
           </label>
           <input
             type="date"
             {...register('preferredDate')}
-            className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+            className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
           />
           {errors.preferredDate && (
             <span className="text-[10px] text-destructive mt-1 block">{errors.preferredDate.message}</span>
           )}
         </div>
         <div>
-          <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+          <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
             Preferred Time Slot
           </label>
           <select
             {...register('preferredTime')}
-            className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy font-bold outline-none"
+            className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface font-bold outline-none"
           >
             <option value="09:00">09:00 AM</option>
             <option value="10:00">10:00 AM</option>
@@ -209,14 +210,14 @@ export default function PublicBookingFormClient({
       </div>
 
       <div>
-        <label className="block text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider mb-1.5">
+        <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
           Reason for Appointment / Description
         </label>
         <textarea
           {...register('reason')}
           placeholder="Briefly describe what checkup or treatment is needed..."
           rows={3}
-          className="w-full px-3 py-2 bg-primary-ivory/30 border border-border focus:border-primary-teal focus:ring-1 focus:ring-primary-teal rounded-xl text-xs text-primary-navy outline-none"
+          className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
         />
         {errors.reason && (
           <span className="text-[10px] text-destructive mt-1 block">{errors.reason.message}</span>
@@ -226,7 +227,7 @@ export default function PublicBookingFormClient({
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full bg-primary-navy hover:bg-primary-teal text-white py-3.5 rounded-xl text-xs font-bold shadow-premium transition-all flex items-center justify-center gap-1.5 disabled:opacity-75"
+        className="w-full bg-primary hover:opacity-90 text-white py-3.5 rounded-xl text-xs font-bold shadow-premium transition-all flex items-center justify-center gap-1.5 disabled:opacity-75"
       >
         {isLoading ? (
           <>
@@ -243,3 +244,4 @@ export default function PublicBookingFormClient({
     </form>
   );
 }
+

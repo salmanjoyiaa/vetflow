@@ -2,32 +2,32 @@
 
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/server';
-import { resolveServerSession } from '@/lib/services/auth';
+import {
+  assertBranchAccess,
+  assertCapability,
+  assertOrganization,
+  resolveServerAuthContext,
+} from '@/lib/auth/context';
 import { writeAuditLog } from '@/lib/services/audit';
-
-export const StaffSchema = z.object({
-  firstName: z.string().min(1, { message: 'First name is required' }),
-  lastName: z.string().min(1, { message: 'Last name is required' }),
-  email: z.string().email({ message: 'Invalid email address' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
-  phone: z.string().min(5, { message: 'Phone number is required' }),
-  role: z.enum(['doctor', 'receptionist'], { message: 'Invalid role' }),
-  branchIds: z.array(z.string().uuid()).min(1, { message: 'Assign at least one branch' }),
-});
-
-export type StaffInput = z.infer<typeof StaffSchema>;
+import { StaffSchema, type StaffInput } from '@/lib/validations/schemas';
 
 /**
  * Creates a new staff member (doctor or receptionist) in the clinic organization.
  */
 export async function createStaffMemberAction(payload: unknown) {
   try {
-    const session = await resolveServerSession();
-    if (!session || session.role !== 'clinic_admin' || !session.organizationId) {
-      throw new Error('Unauthorized: Only clinic administrators can add staff members.');
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
     }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_staff');
 
     const parsed = StaffSchema.parse(payload);
+    for (const branchId of parsed.branchIds) {
+      assertBranchAccess(ctx, branchId);
+    }
+
     const adminClient = await createAdminClient();
 
     // 1. Create the Auth User
@@ -53,7 +53,7 @@ export async function createStaffMemberAction(payload: unknown) {
     const { error: memberError } = await adminClient
       .from('organization_members')
       .insert({
-        organization_id: session.organizationId,
+        organization_id: ctx.organizationId,
         user_id: newUserId,
         role: parsed.role,
         is_active: true,
@@ -84,10 +84,10 @@ export async function createStaffMemberAction(payload: unknown) {
 
     // 4. Audit Log
     await writeAuditLog({
-      organizationId: session.organizationId,
+      organizationId: ctx.organizationId,
       branchId: parsed.branchIds[0],
-      actorUserId: session.userId,
-      actorRole: session.role || 'clinic_admin',
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'clinic_admin',
       action: 'STAFF_CREATED',
       resourceType: 'USER_PROFILE',
       resourceId: newUserId,
@@ -105,10 +105,12 @@ export async function createStaffMemberAction(payload: unknown) {
  */
 export async function toggleStaffStatusAction(userId: string, isActive: boolean) {
   try {
-    const session = await resolveServerSession();
-    if (!session || session.role !== 'clinic_admin' || !session.organizationId) {
-      throw new Error('Unauthorized: Only clinic administrators can manage staff states.');
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
     }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_staff');
 
     const adminClient = await createAdminClient();
 
@@ -116,7 +118,7 @@ export async function toggleStaffStatusAction(userId: string, isActive: boolean)
       .from('organization_members')
       .update({ is_active: isActive })
       .eq('user_id', userId)
-      .eq('organization_id', session.organizationId);
+      .eq('organization_id', ctx.organizationId);
 
     if (error) {
       throw new Error(error.message || 'Failed to toggle staff active status.');
@@ -124,10 +126,10 @@ export async function toggleStaffStatusAction(userId: string, isActive: boolean)
 
     // Record audit trail
     await writeAuditLog({
-      organizationId: session.organizationId,
+      organizationId: ctx.organizationId,
       branchId: null,
-      actorUserId: session.userId,
-      actorRole: session.role || 'clinic_admin',
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'clinic_admin',
       action: isActive ? 'STAFF_ROLE_CHANGED' : 'STAFF_DISABLED',
       resourceType: 'USER_PROFILE',
       resourceId: userId,

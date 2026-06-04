@@ -68,21 +68,21 @@ export default async function InvoicesPage() {
       
       {/* HEADER */}
       <div>
-        <h2 className="text-xl font-black text-primary-navy tracking-tight flex items-center gap-2">
-          <Receipt className="w-5 h-5 text-primary-teal" />
+        <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
+          <Receipt className="w-5 h-5 text-primary" />
           Billing & Invoicing Ledger
         </h2>
-        <p className="text-xs text-graphite/70 mt-1">
+        <p className="text-xs text-on-surface-variant/70 mt-1">
           Review invoices, check payments, and inspect financial client accounts.
         </p>
       </div>
 
       {/* INVOICE TABLE */}
       {invoices && invoices.length > 0 ? (
-        <div className="bg-white rounded-2xl border border-border/40 overflow-hidden shadow-premium">
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden shadow-premium">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-primary-ivory/40 border-b border-border/40 text-[10px] font-semibold text-primary-navy/80 uppercase tracking-wider">
+              <tr className="bg-surface-container/40 border-b border-outline-variant/40 text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider">
                 <th className="px-6 py-4">Invoice ID</th>
                 <th className="px-6 py-4">Patient / Owner</th>
                 <th className="px-6 py-4">Calculated Total</th>
@@ -93,29 +93,29 @@ export default async function InvoicesPage() {
             </thead>
             <tbody className="divide-y divide-border/30 text-xs">
               {invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-primary-ivory/10 transition-colors">
-                  <td className="px-6 py-4 font-bold text-primary-navy">
+                <tr key={inv.id} className="hover:bg-surface-container/10 transition-colors">
+                  <td className="px-6 py-4 font-bold text-on-surface">
                     {inv.invoice_number}
                   </td>
                   <td className="px-6 py-4 space-y-1">
                     {inv.customers ? (
-                      <span className="flex items-center gap-1 text-primary-navy font-semibold">
-                        <User className="w-3.5 h-3.5 text-primary-teal/70" />
+                      <span className="flex items-center gap-1 text-on-surface font-semibold">
+                        <User className="w-3.5 h-3.5 text-primary/70" />
                         {(inv.customers as any).first_name} {(inv.customers as any).last_name}
                       </span>
                     ) : (
-                      <span className="text-graphite/40">—</span>
+                      <span className="text-on-surface-variant/40">—</span>
                     )}
                     {inv.pets && (
-                      <span className="flex items-center gap-1 text-[10px] text-graphite/50">
-                        <Heart className="w-3 h-3 text-primary-teal/55" />
+                      <span className="flex items-center gap-1 text-[10px] text-on-surface-variant/50">
+                        <Heart className="w-3 h-3 text-primary/55" />
                         Patient: {(inv.pets as any).name}
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 font-bold text-primary-navy">
+                  <td className="px-6 py-4 font-bold text-on-surface">
                     ${Number(inv.total).toFixed(2)}
-                    <span className="block text-[9px] font-normal text-graphite/50">
+                    <span className="block text-[9px] font-normal text-on-surface-variant/50">
                       Sub: ${Number(inv.subtotal).toFixed(2)} • Tax: ${Number(inv.tax_amount).toFixed(2)}
                     </span>
                   </td>
@@ -131,7 +131,7 @@ export default async function InvoicesPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-graphite/50 font-semibold">
+                  <td className="px-6 py-4 text-on-surface-variant/50 font-semibold">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5" />
                       {new Date(inv.created_at).toLocaleDateString()}
@@ -140,7 +140,7 @@ export default async function InvoicesPage() {
                   <td className="px-6 py-4 text-right">
                     <Link
                       href={`/dashboard/invoices/${inv.id}`}
-                      className="inline-flex items-center gap-1 text-[10px] font-bold text-primary-teal hover:underline border border-primary-teal/10 hover:bg-primary-teal/5 px-2.5 py-1.5 rounded-lg transition-all"
+                      className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline border border-primary-teal/10 hover:bg-primary/5 px-2.5 py-1.5 rounded-lg transition-all"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       View Details
@@ -152,10 +152,10 @@ export default async function InvoicesPage() {
           </table>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-border/40 p-12 text-center">
-          <Receipt className="w-12 h-12 text-graphite/30 mx-auto mb-4" />
-          <h4 className="text-sm font-bold text-primary-navy mb-1">No Invoices Found</h4>
-          <p className="text-xs text-graphite/60">
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 p-12 text-center">
+          <Receipt className="w-12 h-12 text-on-surface-variant/30 mx-auto mb-4" />
+          <h4 className="text-sm font-bold text-on-surface mb-1">No Invoices Found</h4>
+          <p className="text-xs text-on-surface-variant/60">
             Discharge completed patient cases in the walk-in queue to generate billing invoices.
           </p>
         </div>
@@ -164,3 +164,4 @@ export default async function InvoicesPage() {
     </div>
   );
 }
+
