@@ -202,6 +202,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-4">
             <Link 
               href="/login" 
+              prefetch
               className="hidden sm:block text-xs font-bold text-on-surface hover:text-primary transition-colors"
             >
               Sign In
@@ -251,7 +252,7 @@ export default function LandingPage() {
                 <a href="#security" onClick={() => setMobileMenuOpen(false)} className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors py-2 border-b border-outline-variant/20">Security</a>
               </nav>
               <div className="space-y-3 pt-2">
-                <Link href="/login" className="block text-center text-sm font-bold text-on-surface border border-outline-variant py-3 rounded-xl hover:bg-surface-container-high transition-colors">
+                <Link href="/login" prefetch className="block text-center text-sm font-bold text-on-surface border border-outline-variant py-3 rounded-xl hover:bg-surface-container-high transition-colors">
                   Sign In
                 </Link>
                 <Link href="/register" className="block text-center text-sm font-bold bg-primary text-on-primary py-3 rounded-xl hover:bg-primary/90 transition-colors">

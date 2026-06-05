@@ -5,7 +5,11 @@ import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { LoginSchema, RegisterSchema } from '@/lib/validations/auth';
 import { writeAuditLog } from '@/lib/services/audit';
-import { resolveServerSession, DEMO_USER_COOKIE } from '@/lib/services/auth';
+import {
+  resolveServerSession,
+  resolveAuthenticatedDestination,
+  DEMO_USER_COOKIE,
+} from '@/lib/services/auth';
 import { isDemoMode, findDemoUser } from '@/lib/demo/credentials';
 
 export interface ActionResponse {
@@ -34,11 +38,17 @@ export async function loginAction(payload: unknown): Promise<ActionResponse> {
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 7, // 7 days
       });
-      const redirectTo = demoUser.isSuperAdmin
-        ? '/super-admin/dashboard'
-        : demoUser.role
-          ? '/dashboard'
-          : '/account-setup';
+      const redirectTo = resolveAuthenticatedDestination({
+        userId: demoUser.id,
+        email: demoUser.email,
+        firstName: demoUser.firstName,
+        lastName: demoUser.lastName,
+        isSuperAdmin: demoUser.isSuperAdmin,
+        role: demoUser.role === 'super_admin' ? 'super_admin' : demoUser.role,
+        organizationId: demoUser.organizationId,
+        organizationName: demoUser.organizationName,
+        branches: demoUser.branches,
+      });
       return { success: true, redirectTo };
     }
 
@@ -54,19 +64,9 @@ export async function loginAction(payload: unknown): Promise<ActionResponse> {
     }
 
     const session = await resolveServerSession();
-    if (!session) {
-      return {
-        success: false,
-        error:
-          'Your account is missing a profile record. Please wait a moment and try again, or contact support.',
-      };
-    }
-
-    const redirectTo = session.isSuperAdmin
-      ? '/super-admin/dashboard'
-      : session.role
-        ? '/dashboard'
-        : '/account-setup';
+    const redirectTo = session
+      ? resolveAuthenticatedDestination(session)
+      : '/account-setup';
 
     return { success: true, redirectTo };
   } catch (err: any) {

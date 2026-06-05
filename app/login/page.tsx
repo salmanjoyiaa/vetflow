@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { LoginSchema, type LoginInput } from '@/lib/validations/auth';
 import { loginAction } from '@/lib/services/auth-actions';
 import AuthPageShell from '@/components/layout/AuthPageShell';
@@ -63,21 +63,40 @@ const DEMO_CREDENTIALS = [
 const inputClass =
   'w-full px-4 py-3 bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-2xl outline-none text-sm text-on-surface';
 
-export default function LoginPage() {
+function resolveRedirectTarget(redirectTo: string, nextParam: string | null): string {
+  if (nextParam && redirectTo === '/dashboard') {
+    const safe =
+      nextParam.startsWith('/') &&
+      !nextParam.startsWith('//') &&
+      !nextParam.startsWith('/login') &&
+      !nextParam.startsWith('/register');
+    if (safe) {
+      return nextParam;
+    }
+  }
+  return redirectTo;
+}
+
+function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingDemo, setLoadingDemo] = useState<string | null>(null);
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextParam = searchParams.get('next');
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(LoginSchema),
   });
+
+  const navigateAfterLogin = (redirectTo: string) => {
+    const target = resolveRedirectTarget(redirectTo, nextParam);
+    window.location.assign(target);
+  };
 
   const onSubmit = async (data: LoginInput) => {
     setIsLoading(true);
@@ -85,14 +104,13 @@ export default function LoginPage() {
     try {
       const res = await loginAction(data);
       if (res.success && res.redirectTo) {
-        router.push(res.redirectTo);
-        router.refresh();
+        navigateAfterLogin(res.redirectTo);
       } else {
         setError(res.error || 'Invalid credentials');
-        setIsLoading(false);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -103,14 +121,13 @@ export default function LoginPage() {
     try {
       const res = await loginAction({ email, password });
       if (res.success && res.redirectTo) {
-        router.push(res.redirectTo);
-        router.refresh();
+        navigateAfterLogin(res.redirectTo);
       } else {
         setError(res.error || 'Demo login failed');
-        setLoadingDemo(null);
       }
     } catch {
       setError('Demo login failed');
+    } finally {
       setLoadingDemo(null);
     }
   };
@@ -134,13 +151,12 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* DEMO CREDENTIALS PANEL */}
-      {true && (
+      {isDemoMode && (
         <div className="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-4">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
-              {isDemoMode ? 'Demo Mode — Quick Login' : 'Showcase — Quick Login'}
+              Demo Mode — Quick Login
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -224,5 +240,13 @@ export default function LoginPage() {
         </button>
       </form>
     </AuthPageShell>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -81,7 +81,7 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <main className="min-h-screen bg-surface flex items-center justify-center p-4">
+      <main className="min-h-screen mesh-gradient flex items-center justify-center p-4">
         <div className="w-full max-w-md glass-panel shadow-premium border border-outline-variant/40 p-8 text-center">
           <div className="w-16 h-16 bg-emerald-500/10 flex items-center justify-center rounded-full mx-auto mb-6">
             <CheckCircle2 className="w-8 h-8 text-emerald-600" />
@@ -97,7 +97,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="min-h-screen bg-surface flex items-center justify-center p-4 md:py-12">
+    <main className="min-h-screen mesh-gradient flex items-center justify-center p-4 md:py-12">
       <div className="w-full max-w-2xl glass-panel shadow-premium border border-outline-variant/40 overflow-hidden flex flex-col md:flex-row">
         
         {/* SIDE BAR DESCRIPTIVE BLOCK */}

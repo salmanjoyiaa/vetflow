@@ -19,6 +19,7 @@ const DEMO_ROLES: Record<string, { isSuperAdmin: boolean; hasOrg: boolean }> = {
 interface ProfileGate {
   is_super_admin: boolean;
   has_membership: boolean;
+  has_branches: boolean;
   subscription_status: string | null;
 }
 
@@ -50,12 +51,17 @@ async function resolveProfileGate(
   }
 
   if (profile.is_super_admin) {
-    return { is_super_admin: true, has_membership: false, subscription_status: null };
+    return {
+      is_super_admin: true,
+      has_membership: false,
+      has_branches: false,
+      subscription_status: null,
+    };
   }
 
   const { data: membership } = await supabase
     .from('organization_members')
-    .select('organization_id')
+    .select('organization_id, role')
     .eq('user_id', userId)
     .eq('is_active', true)
     .maybeSingle();
@@ -64,8 +70,25 @@ async function resolveProfileGate(
     return {
       is_super_admin: false,
       has_membership: false,
+      has_branches: false,
       subscription_status: null,
     };
+  }
+
+  let hasBranches = false;
+  if (membership.role === 'clinic_admin') {
+    const { count } = await supabase
+      .from('branches')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', membership.organization_id)
+      .eq('is_active', true);
+    hasBranches = (count ?? 0) > 0;
+  } else {
+    const { count } = await supabase
+      .from('branch_members')
+      .select('branch_id', { count: 'exact', head: true })
+      .eq('user_id', userId);
+    hasBranches = (count ?? 0) > 0;
   }
 
   const { data: subscription } = await supabase
@@ -77,6 +100,7 @@ async function resolveProfileGate(
   return {
     is_super_admin: false,
     has_membership: true,
+    has_branches: hasBranches,
     subscription_status: subscription?.status ?? null,
   };
 }
@@ -92,7 +116,7 @@ async function resolvePostLoginPath(
   if (gate.is_super_admin) {
     return '/super-admin/dashboard';
   }
-  if (!gate.has_membership) {
+  if (!gate.has_membership || !gate.has_branches) {
     return '/account-setup';
   }
   return '/dashboard';
@@ -119,7 +143,8 @@ export async function proxy(request: NextRequest) {
     if (demoUserId) {
       const demoRole = DEMO_ROLES[demoUserId];
       if (demoRole) {
-        if (isAuthPage) {
+        const allowReauth = request.nextUrl.searchParams.get('reauth') === '1';
+        if (isAuthPage && !allowReauth) {
           const dest = demoRole.isSuperAdmin 
             ? '/super-admin/dashboard' 
             : demoRole.hasOrg 
@@ -171,7 +196,8 @@ export async function proxy(request: NextRequest) {
       (gate.subscription_status === 'suspended' ||
         gate.subscription_status === 'cancelled');
 
-    if (isAuthPage) {
+    const allowReauth = request.nextUrl.searchParams.get('reauth') === '1';
+    if (isAuthPage && !allowReauth) {
       return NextResponse.redirect(new URL(destination, request.url));
     }
 
