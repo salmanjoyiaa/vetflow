@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { resolveServerSession } from '@/lib/services/auth';
+import { resolveServerAuthContext } from '@/lib/auth/context';
+import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { Receipt, Calendar, User, Heart, CheckCircle2, ChevronRight, Eye } from 'lucide-react';
@@ -11,10 +12,15 @@ export const metadata = {
 };
 
 export default async function InvoicesPage() {
-  const session = await resolveServerSession();
-  if (!session) {
+  const ctx = await resolveServerAuthContext();
+  if (!ctx) {
     redirect('/login');
   }
+
+  const denied = guardRoute(ctx, '/dashboard/invoices');
+  if (denied) return denied;
+
+  const session = ctx;
 
   // 1. Resolve branch context
   const cookieStore = await cookies();
@@ -29,7 +35,7 @@ export default async function InvoicesPage() {
 
   if (!activeBranchId) {
     return (
-      <div className="bg-amber-500/5 border border-amber-500/20 text-amber-700 text-xs p-6 rounded-2xl">
+      <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs p-6 rounded-2xl">
         You must be assigned to a clinic branch to open the billing dashboard.
       </div>
     );
@@ -121,12 +127,12 @@ export default async function InvoicesPage() {
                   </td>
                   <td className="px-6 py-4">
                     {inv.payment_status === 'paid' ? (
-                      <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                      <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">
                         <CheckCircle2 className="w-3 h-3" />
                         Paid
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                      <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">
                         Unpaid
                       </span>
                     )}

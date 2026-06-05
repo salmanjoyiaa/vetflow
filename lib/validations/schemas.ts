@@ -115,7 +115,39 @@ export const CompleteConsultationSchema = z.object({
   treatmentPlan: z.string().optional().or(z.literal('')),
   internalNotes: z.string().optional().or(z.literal('')),
   followUpRecommendation: z.string().optional().or(z.literal('')),
+  temperatureC: z.number().nonnegative().optional().or(z.nan()),
+  heartRateBpm: z.number().int().nonnegative().optional().or(z.nan()),
+  respiratoryRate: z.number().int().nonnegative().optional().or(z.nan()),
+  weightKg: z.number().nonnegative().optional().or(z.nan()),
   prescriptionItems: z.array(PrescriptionItemSchema),
+});
+
+export const RescheduleAppointmentSchema = z.object({
+  appointmentId: z.string().uuid(),
+  preferredDate: z.string().min(1, { message: 'Date is required' }),
+  preferredTime: z.string().min(1, { message: 'Time is required' }),
+});
+
+export const StaffAppointmentSchema = z.object({
+  customerId: z.string().uuid({ message: 'Select a valid customer' }),
+  petId: z.string().uuid({ message: 'Select a valid pet' }),
+  branchId: z.string().uuid({ message: 'Select a valid branch' }),
+  doctorId: z.string().uuid().optional().or(z.literal('')),
+  preferredDate: z.string().min(1, { message: 'Date is required' }),
+  preferredTime: z.string().min(1, { message: 'Time is required' }),
+  reason: z.string().min(1, { message: 'Reason for visit is required' }),
+  isEmergency: z.boolean().default(false),
+  intakeNotes: z.string().optional().or(z.literal('')),
+});
+
+export const MarkEmergencySchema = z.object({
+  appointmentId: z.string().uuid(),
+  isEmergency: z.boolean(),
+});
+
+export const OrganizationFeaturesSchema = z.object({
+  organizationId: z.string().uuid(),
+  features: z.record(z.string(), z.boolean()),
 });
 
 // --- PUBLIC BOOKINGS ---
@@ -139,6 +171,8 @@ export const WalkInSchema = z.object({
   doctorId: z.string().uuid({ message: 'Select a valid doctor' }),
   reason: z.string().min(1, { message: 'Reason for visit is required' }),
   branchId: z.string().uuid({ message: 'Select a valid branch' }),
+  isEmergency: z.boolean().default(false),
+  triageNotes: z.string().optional().or(z.literal('')),
 });
 
 // --- TYPE INFERENCES ---
@@ -154,4 +188,8 @@ export type CheckoutInput = z.infer<typeof CheckoutSchema>;
 export type CompleteConsultationInput = z.infer<typeof CompleteConsultationSchema>;
 export type AppointmentRequestInput = z.infer<typeof AppointmentRequestSchema>;
 export type WalkInInput = z.infer<typeof WalkInSchema>;
+export type StaffAppointmentInput = z.infer<typeof StaffAppointmentSchema>;
+export type MarkEmergencyInput = z.infer<typeof MarkEmergencySchema>;
+export type RescheduleAppointmentInput = z.infer<typeof RescheduleAppointmentSchema>;
+export type OrganizationFeaturesInput = z.infer<typeof OrganizationFeaturesSchema>;
 

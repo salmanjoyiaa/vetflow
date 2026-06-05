@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { resolveServerSession } from '@/lib/services/auth';
+import { resolveServerAuthContext } from '@/lib/auth/context';
+import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import WalkInDashboardClient from '@/components/dashboard/WalkInDashboardClient';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import { ClipboardList } from 'lucide-react';
 
 export const metadata = {
@@ -11,10 +13,15 @@ export const metadata = {
 };
 
 export default async function WalkInsPage() {
-  const session = await resolveServerSession();
-  if (!session) {
+  const ctx = await resolveServerAuthContext();
+  if (!ctx) {
     redirect('/login');
   }
+
+  const denied = guardRoute(ctx, '/dashboard/walk-ins');
+  if (denied) return denied;
+
+  const session = ctx;
 
   // 1. Resolve branch context
   const cookieStore = await cookies();
@@ -29,7 +36,7 @@ export default async function WalkInsPage() {
 
   if (!activeBranchId) {
     return (
-      <div className="bg-amber-500/5 border border-amber-500/20 text-amber-700 text-xs p-6 rounded-2xl">
+      <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs p-6 rounded-2xl">
         You must be assigned to a clinic branch to open the walk-in dashboard.
       </div>
     );
@@ -62,6 +69,8 @@ export default async function WalkInsPage() {
       reason,
       status,
       checked_in_at,
+      is_emergency,
+      triage_notes,
       pets ( id, name, species, breed ),
       customers ( first_name, last_name, phone ),
       visit_assignments (
@@ -73,6 +82,19 @@ export default async function WalkInsPage() {
     .in('status', ['waiting', 'consulting'])
     .order('checked_in_at', { ascending: true });
 
+  const { data: checkoutVisitsData } = await supabase
+    .from('visits')
+    .select(`
+      id,
+      reason,
+      checked_in_at,
+      pets ( name ),
+      customers ( first_name, last_name )
+    `)
+    .eq('branch_id', activeBranchId)
+    .eq('status', 'ready_for_checkout')
+    .order('checked_in_at', { ascending: true });
+
   const visits = visitsData
     ?.filter((v) => v.pets && v.customers)
     .map((v) => ({
@@ -80,6 +102,8 @@ export default async function WalkInsPage() {
       reason: v.reason,
       status: v.status,
       checkedInAt: v.checked_in_at,
+      isEmergency: v.is_emergency ?? false,
+      triageNotes: v.triage_notes,
       pet: {
         id: (v.pets as any).id,
         name: (v.pets as any).name,
@@ -99,25 +123,31 @@ export default async function WalkInsPage() {
         : null,
     })) || [];
 
+  const checkoutVisits =
+    checkoutVisitsData
+      ?.filter((v) => v.pets && v.customers)
+      .map((v) => ({
+        id: v.id,
+        reason: v.reason,
+        petName: (v.pets as { name: string }).name,
+        customerName: `${(v.customers as { first_name: string; last_name: string }).first_name} ${(v.customers as { first_name: string; last_name: string }).last_name}`,
+      })) || [];
+
   return (
     <div className="space-y-8">
       
-      {/* HEADER */}
-      <div>
-        <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-          <ClipboardList className="w-5 h-5 text-primary" />
-          Walk-in Queue Board
-        </h2>
-        <p className="text-xs text-on-surface-variant/70 mt-1">
-          Check in walk-in clients and monitor room queue allocations.
-        </p>
-      </div>
+      <PageHeader
+        title="Walk-in queue board"
+        description="Check in walk-in clients and monitor room queue allocations."
+        icon={ClipboardList}
+      />
 
       {/* DASHBOARD GRID CONTENT */}
-      <WalkInDashboardClient 
+      <WalkInDashboardClient
         doctors={doctors}
         activeBranchId={activeBranchId}
         initialVisits={visits}
+        checkoutVisits={checkoutVisits}
       />
 
     </div>

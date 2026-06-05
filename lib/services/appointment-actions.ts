@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import {
   assertBranchAccess,
   assertCapability,
+  assertFeature,
   assertOrganization,
   resolveServerAuthContext,
 } from '@/lib/auth/context';
@@ -13,7 +14,12 @@ import {
   compileAppointmentRequestTemplate, 
   compileAppointmentConfirmedTemplate 
 } from '@/lib/email';
-import { AppointmentRequestSchema } from '@/lib/validations/schemas';
+import {
+  AppointmentRequestSchema,
+  MarkEmergencySchema,
+  RescheduleAppointmentSchema,
+  StaffAppointmentSchema,
+} from '@/lib/validations/schemas';
 
 /**
  * Creates a public appointment request (open access endpoint for booking widget).
@@ -92,6 +98,7 @@ export async function confirmAppointmentAction(appointmentId: string) {
     }
     assertOrganization(ctx);
     assertCapability(ctx, 'manage_appointments');
+    assertFeature(ctx, 'appointments');
 
     const supabase = await createClient();
 
@@ -142,6 +149,141 @@ export async function confirmAppointmentAction(appointmentId: string) {
 }
 
 /**
+ * Creates a staff-side appointment linked to customer + pet (receptionist/admin).
+ */
+export async function createStaffAppointmentAction(payload: unknown) {
+  try {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
+    }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_appointments');
+    assertFeature(ctx, 'appointments');
+
+    const parsed = StaffAppointmentSchema.parse(payload);
+    assertBranchAccess(ctx, parsed.branchId);
+
+    const supabase = await createClient();
+
+    const { data: customer, error: custErr } = await supabase
+      .from('customers')
+      .select('id, first_name, last_name, email, phone, branch_id')
+      .eq('id', parsed.customerId)
+      .eq('organization_id', ctx.organizationId)
+      .single();
+
+    if (custErr || !customer) {
+      throw new Error('Customer not found or access denied.');
+    }
+
+    if (customer.branch_id !== parsed.branchId) {
+      throw new Error('Customer does not belong to the selected branch.');
+    }
+
+    const { data: pet, error: petErr } = await supabase
+      .from('pets')
+      .select('id, name, species, customer_id')
+      .eq('id', parsed.petId)
+      .eq('organization_id', ctx.organizationId)
+      .single();
+
+    if (petErr || !pet || pet.customer_id !== customer.id) {
+      throw new Error('Pet not found or does not belong to the selected customer.');
+    }
+
+    const doctorId =
+      parsed.doctorId && parsed.doctorId.length > 0 ? parsed.doctorId : null;
+
+    const { data: appt, error: apptErr } = await supabase
+      .from('appointments')
+      .insert({
+        organization_id: ctx.organizationId,
+        branch_id: parsed.branchId,
+        customer_id: customer.id,
+        pet_id: pet.id,
+        customer_name: `${customer.first_name} ${customer.last_name}`.trim(),
+        customer_email: customer.email || '',
+        customer_phone: customer.phone || '',
+        pet_name: pet.name,
+        pet_species: pet.species,
+        preferred_date: parsed.preferredDate,
+        preferred_time: parsed.preferredTime,
+        reason: parsed.reason,
+        doctor_id: doctorId,
+        is_emergency: parsed.isEmergency,
+        intake_notes: parsed.intakeNotes?.trim() || null,
+        status: 'confirmed',
+      })
+      .select()
+      .single();
+
+    if (apptErr || !appt) {
+      throw new Error(apptErr?.message || 'Failed to create appointment.');
+    }
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId,
+      branchId: parsed.branchId,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
+      action: 'APPOINTMENT_CREATED',
+      resourceType: 'APPOINTMENT',
+      resourceId: appt.id,
+      afterData: {
+        status: 'confirmed',
+        is_emergency: parsed.isEmergency,
+        doctor_id: doctorId,
+      },
+    });
+
+    return { success: true, appointmentId: appt.id };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Toggles emergency flag on an appointment.
+ */
+export async function markAppointmentEmergencyAction(payload: unknown) {
+  try {
+    const parsed = MarkEmergencySchema.parse(payload);
+    const { ctx, supabase, appt } = await loadAppointmentForAction(parsed.appointmentId);
+
+    if (['cancelled', 'completed', 'no_show', 'checked_in'].includes(appt.status)) {
+      throw new Error('Cannot change emergency status for a closed appointment.');
+    }
+
+    const { error } = await supabase
+      .from('appointments')
+      .update({ is_emergency: parsed.isEmergency })
+      .eq('id', parsed.appointmentId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId!,
+      branchId: appt.branch_id,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
+      action: 'APPOINTMENT_EMERGENCY_SET',
+      resourceType: 'APPOINTMENT',
+      resourceId: parsed.appointmentId,
+      afterData: { is_emergency: parsed.isEmergency },
+    });
+
+    return { success: true };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+    return { success: false, error: message };
+  }
+}
+
+/**
  * Checks in a confirmed appointment, converting it into a walk-in visit queue.
  */
 export async function checkInAppointmentAction(appointmentId: string, doctorId: string) {
@@ -152,6 +294,7 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
     }
     assertOrganization(ctx);
     assertCapability(ctx, 'manage_appointments');
+    assertFeature(ctx, 'appointments');
 
     const supabase = await createClient();
 
@@ -162,15 +305,20 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
       .eq('organization_id', ctx.organizationId)
       .single();
 
-    if (apptErr || !appt || appt.status !== 'confirmed') {
+    if (apptErr || !appt || !['confirmed', 'rescheduled'].includes(appt.status)) {
       throw new Error('Appointment is not confirmed or not found.');
     }
 
     assertBranchAccess(ctx, appt.branch_id);
 
+    const assignedDoctorId = doctorId || appt.doctor_id;
+    if (!assignedDoctorId) {
+      throw new Error('Select an attending veterinarian before check-in.');
+    }
+
     // 2. Find or create Customer in the branch scope
-    let customerId = appt.pet_id; // Check if already bound
-    
+    let customerId = appt.customer_id as string | null;
+
     if (!customerId) {
       // Find matching customer by phone
       const { data: existingCust } = await supabase
@@ -212,7 +360,9 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
     }
 
     // 3. Find or create Pet under customer
-    let petId = null;
+    let petId = appt.pet_id as string | null;
+
+    if (!petId) {
     const { data: existingPet } = await supabase
       .from('pets')
       .select('id')
@@ -241,6 +391,7 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
         petId = newPet.id;
       }
     }
+    }
 
     if (!petId) {
       throw new Error('Failed to resolve or register patient biology record.');
@@ -257,6 +408,8 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
         appointment_id: appt.id,
         reason: appt.reason,
         status: 'waiting',
+        is_emergency: appt.is_emergency ?? false,
+        triage_notes: appt.intake_notes || null,
       })
       .select()
       .single();
@@ -268,7 +421,7 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
     // 5. Create Vet Assignment
     await supabase.from('visit_assignments').insert({
       visit_id: visit.id,
-      doctor_id: doctorId,
+      doctor_id: assignedDoctorId,
     });
 
     // 6. Update appointment status to checked_in
@@ -292,5 +445,144 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message || 'An unexpected error occurred.' };
+  }
+}
+
+async function loadAppointmentForAction(appointmentId: string) {
+  const ctx = await resolveServerAuthContext();
+  if (!ctx) {
+    throw new Error('Unauthorized: Session is invalid.');
+  }
+  assertOrganization(ctx);
+  assertCapability(ctx, 'manage_appointments');
+  assertFeature(ctx, 'appointments');
+
+  const supabase = await createClient();
+  const { data: appt, error } = await supabase
+    .from('appointments')
+    .select('*')
+    .eq('id', appointmentId)
+    .eq('organization_id', ctx.organizationId)
+    .single();
+
+  if (error || !appt) {
+    throw new Error('Appointment not found or access denied.');
+  }
+
+  assertBranchAccess(ctx, appt.branch_id);
+  return { ctx, supabase, appt };
+}
+
+export async function cancelAppointmentAction(appointmentId: string) {
+  try {
+    const { ctx, supabase, appt } = await loadAppointmentForAction(appointmentId);
+
+    if (!['requested', 'confirmed', 'rescheduled'].includes(appt.status)) {
+      throw new Error('Only pending appointments can be cancelled.');
+    }
+
+    const { error } = await supabase
+      .from('appointments')
+      .update({ status: 'cancelled' })
+      .eq('id', appointmentId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId!,
+      branchId: appt.branch_id,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
+      action: 'APPOINTMENT_CANCELLED',
+      resourceType: 'APPOINTMENT',
+      resourceId: appointmentId,
+      afterData: { status: 'cancelled' },
+    });
+
+    return { success: true };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+    return { success: false, error: message };
+  }
+}
+
+export async function markNoShowAppointmentAction(appointmentId: string) {
+  try {
+    const { ctx, supabase, appt } = await loadAppointmentForAction(appointmentId);
+
+    if (!['confirmed', 'rescheduled', 'checked_in'].includes(appt.status)) {
+      throw new Error('This appointment cannot be marked as no-show.');
+    }
+
+    const { error } = await supabase
+      .from('appointments')
+      .update({ status: 'no_show' })
+      .eq('id', appointmentId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId!,
+      branchId: appt.branch_id,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
+      action: 'APPOINTMENT_NO_SHOW',
+      resourceType: 'APPOINTMENT',
+      resourceId: appointmentId,
+      afterData: { status: 'no_show' },
+    });
+
+    return { success: true };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+    return { success: false, error: message };
+  }
+}
+
+export async function rescheduleAppointmentAction(payload: unknown) {
+  try {
+    const parsed = RescheduleAppointmentSchema.parse(payload);
+    const { ctx, supabase, appt } = await loadAppointmentForAction(parsed.appointmentId);
+
+    if (!['requested', 'confirmed', 'rescheduled'].includes(appt.status)) {
+      throw new Error('This appointment cannot be rescheduled.');
+    }
+
+    const { error } = await supabase
+      .from('appointments')
+      .update({
+        preferred_date: parsed.preferredDate,
+        preferred_time: parsed.preferredTime,
+        status: 'rescheduled',
+      })
+      .eq('id', parsed.appointmentId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId!,
+      branchId: appt.branch_id,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
+      action: 'APPOINTMENT_RESCHEDULED',
+      resourceType: 'APPOINTMENT',
+      resourceId: parsed.appointmentId,
+      afterData: {
+        preferred_date: parsed.preferredDate,
+        preferred_time: parsed.preferredTime,
+        status: 'rescheduled',
+      },
+    });
+
+    return { success: true };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+    return { success: false, error: message };
   }
 }

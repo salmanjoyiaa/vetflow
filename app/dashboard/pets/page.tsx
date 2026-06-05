@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
-import { resolveServerSession } from '@/lib/services/auth';
+import { resolveServerAuthContext } from '@/lib/auth/context';
+import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { Heart, ChevronRight, User, Calendar, Weight } from 'lucide-react';
@@ -10,10 +11,13 @@ export const metadata = {
 };
 
 export default async function PetsPage() {
-  const session = await resolveServerSession();
-  if (!session) {
-    redirect('/login');
-  }
+  const ctx = await resolveServerAuthContext();
+  if (!ctx) redirect('/login');
+
+  const denied = guardRoute(ctx, '/dashboard/pets');
+  if (denied) return denied;
+
+  const session = ctx;
 
   // Fetch all pets registered in the organization
   const supabase = await createClient();

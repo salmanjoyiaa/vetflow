@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { LoginSchema, type LoginInput } from '@/lib/validations/auth';
 import { loginAction } from '@/lib/services/auth-actions';
 import AuthPageShell from '@/components/layout/AuthPageShell';
-import { Eye, EyeOff, Loader2, Shield, Stethoscope, ClipboardList, Building2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Shield, Stethoscope, ClipboardList, Building2, UserPlus } from 'lucide-react';
 
 const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
@@ -48,6 +48,15 @@ const DEMO_CREDENTIALS = [
     color: 'text-amber-400',
     bg: 'bg-amber-500/10 border-amber-500/20',
     desc: 'Walk-ins, billing & intake',
+  },
+  {
+    label: 'New User',
+    email: 'setup.demo@vetflow.com',
+    password: 'password123',
+    icon: UserPlus,
+    color: 'text-rose-400',
+    bg: 'bg-rose-500/10 border-rose-500/20',
+    desc: 'Unassigned role (setup)',
   },
 ];
 

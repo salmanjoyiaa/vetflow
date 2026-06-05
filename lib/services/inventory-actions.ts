@@ -5,6 +5,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import {
   assertBranchAccess,
   assertCapability,
+  assertFeature,
   assertOrganization,
   resolveServerAuthContext,
 } from '@/lib/auth/context';
@@ -19,6 +20,7 @@ export async function createProductAction(payload: unknown) {
     }
     assertOrganization(ctx);
     assertCapability(ctx, 'manage_inventory');
+    assertFeature(ctx, 'inventory');
 
     const parsed = ProductSchema.parse(payload);
     assertBranchAccess(ctx, parsed.branchId);
@@ -89,6 +91,7 @@ export async function adjustStockAction(payload: unknown) {
     }
     assertOrganization(ctx);
     assertCapability(ctx, 'manage_inventory');
+    assertFeature(ctx, 'inventory');
 
     const parsed = StockAdjustmentSchema.parse(payload);
     assertBranchAccess(ctx, parsed.branchId);
@@ -162,6 +165,7 @@ export async function toggleProductStatusAction(productId: string, isActive: boo
     }
     assertOrganization(ctx);
     assertCapability(ctx, 'manage_inventory');
+    assertFeature(ctx, 'inventory');
 
     const supabase = await createClient();
 

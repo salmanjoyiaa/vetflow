@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ServerAuthContext } from '@/lib/auth/context';
 import { canAccessRoute } from '@/lib/auth/capabilities';
+import { canAccessRouteByFeature } from '@/lib/auth/features';
 import { setActiveBranchAction } from '@/lib/services/branch-cookie-actions';
 import { globalClinicSearchAction } from '@/lib/services/search-actions';
 import { logoutAction } from '@/lib/services/auth-actions';
@@ -24,7 +25,6 @@ import {
   Settings,
   LogOut,
   Search,
-  Bell,
   Menu,
   X,
   ChevronDown,
@@ -56,8 +56,25 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { name: 'Upgrade', href: '/dashboard/upgrade', icon: Sparkles },
 ];
 
-function buildNavItems(role: ServerAuthContext['role']): NavItem[] {
-  return ALL_NAV_ITEMS.filter((item) => canAccessRoute(role, item.href));
+function buildNavItems(session: ServerAuthContext): NavItem[] {
+  return ALL_NAV_ITEMS.filter(
+    (item) =>
+      canAccessRoute(session.role, item.href) &&
+      canAccessRouteByFeature(session.features, item.href)
+  );
+}
+
+function formatRoleLabel(role: string | null | undefined): string {
+  switch (role) {
+    case 'clinic_admin':
+      return 'Clinic Admin';
+    case 'receptionist':
+      return 'Receptionist';
+    case 'doctor':
+      return 'Doctor';
+    default:
+      return role?.replace(/_/g, ' ') || 'Staff';
+  }
 }
 
 function isNavActive(pathname: string, href: string): boolean {
@@ -98,7 +115,7 @@ export default function DashboardShellClient({
     session.branches.find((b) => b.id === activeBranchId) || session.branches[0];
   const displayName = [session.firstName || 'User', session.lastName].filter(Boolean).join(' ');
   const avatarInitial = (session.firstName?.charAt(0) || session.email?.charAt(0) || 'U').toUpperCase();
-  const navItems = buildNavItems(session.role);
+  const navItems = buildNavItems(session);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -246,8 +263,8 @@ export default function DashboardShellClient({
                   <span className="text-[11px] font-bold text-on-surface block truncate">
                     {displayName}
                   </span>
-                  <span className="text-[9px] text-on-surface-variant capitalize block">
-                    {session.role?.replace('_', ' ')}
+                  <span className="text-[9px] text-on-surface-variant block">
+                    {formatRoleLabel(session.role)}
                   </span>
                 </div>
               </div>
@@ -269,7 +286,19 @@ export default function DashboardShellClient({
             <div className="fixed inset-0 bg-black/50" onClick={() => setIsMobileMenuOpen(false)} />
             <aside className="relative w-64 bg-surface-container h-full z-10 border-r border-outline-variant flex flex-col">
               <div className="h-16 flex items-center px-6 justify-between border-b border-outline-variant">
-                <span className="font-bold text-sm text-on-surface">VetFlow</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 bg-primary-container flex items-center justify-center rounded-xl shrink-0">
+                    <Stethoscope className="w-4 h-4 text-on-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-bold text-sm text-on-surface block truncate">
+                      VetFlow
+                    </span>
+                    <span className="text-[9px] text-on-surface-variant uppercase tracking-wider block truncate">
+                      {session.organizationName || 'Clinic'}
+                    </span>
+                  </div>
+                </div>
                 <button type="button" onClick={() => setIsMobileMenuOpen(false)}>
                   <X className="w-5 h-5 text-on-surface-variant" />
                 </button>
@@ -291,6 +320,34 @@ export default function DashboardShellClient({
                   );
                 })}
               </nav>
+
+              <div className="p-4 border-t border-outline-variant">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center font-bold text-xs">
+                      {avatarInitial}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[11px] font-bold text-on-surface block truncate">
+                        {displayName}
+                      </span>
+                      <span className="text-[9px] text-on-surface-variant block">
+                        {formatRoleLabel(session.role)}
+                      </span>
+                    </div>
+                  </div>
+                  <form action={logoutAction}>
+                    <button
+                      type="submit"
+                      className="text-on-surface-variant hover:text-destructive p-1.5 rounded-lg hover:bg-surface-container-high"
+                      title="Sign Out"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  </form>
+                </div>
+              </div>
             </aside>
           </div>
         )}
@@ -360,13 +417,6 @@ export default function DashboardShellClient({
               >
                 <Search className="w-3.5 h-3.5" />
                 <span>Search</span>
-              </button>
-              <button
-                type="button"
-                className="p-2 glass rounded-xl text-on-surface-variant relative"
-              >
-                <Bell className="w-4 h-4" />
-                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-tertiary rounded-full" />
               </button>
             </div>
           </header>

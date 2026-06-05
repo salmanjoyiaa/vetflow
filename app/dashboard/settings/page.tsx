@@ -32,7 +32,7 @@ export default async function SettingsPage() {
 
   if (!session.organizationId) {
     return (
-      <div className="bg-amber-500/5 border border-amber-500/20 text-amber-700 text-xs p-6 rounded-2xl">
+      <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs p-6 rounded-2xl">
         No organization is linked to your account. Contact your platform administrator.
       </div>
     );

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
-import { resolveServerSession } from '@/lib/services/auth';
+import { resolveServerAuthContext } from '@/lib/auth/context';
+import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import ConsultationWorkspaceClient from '@/components/forms/ConsultationWorkspaceClient';
 import Link from 'next/link';
@@ -16,18 +17,13 @@ export default async function ConsultationRoomPage({
   params: Promise<{ visitId: string }>;
 }) {
   const { visitId } = await params;
-  const session = await resolveServerSession();
-  if (!session) {
-    redirect('/login');
-  }
+  const ctx = await resolveServerAuthContext();
+  if (!ctx) redirect('/login');
 
-  if (!['doctor', 'clinic_admin'].includes(session.role || '')) {
-    return (
-      <div className="bg-destructive/5 border border-destructive/20 text-destructive text-sm p-6 rounded-2xl">
-        Access Denied: Only attending veterinarians can access the consultation workspace.
-      </div>
-    );
-  }
+  const denied = guardRoute(ctx, '/dashboard/doctors');
+  if (denied) return denied;
+
+  const session = ctx;
 
   const supabase = await createClient();
 
@@ -40,6 +36,8 @@ export default async function ConsultationRoomPage({
       status,
       branch_id,
       pet_id,
+      is_emergency,
+      triage_notes,
       pets (
         id,
         name,
@@ -127,17 +125,17 @@ export default async function ConsultationRoomPage({
       <div className="space-y-2">
         <Link 
           href="/dashboard/doctors" 
-          className="inline-flex items-center gap-1.5 text-xs text-graphite/60 hover:text-primary-teal font-semibold transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Attending Queue
         </Link>
         <div>
-          <h2 className="text-xl font-black text-primary-navy tracking-tight flex items-center gap-2">
-            <Stethoscope className="w-5 h-5 text-primary-teal" />
+          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
+            <Stethoscope className="w-5 h-5 text-primary" />
             Active Consultation Room
           </h2>
-          <p className="text-xs text-graphite/70 mt-1">
+          <p className="text-xs text-on-surface-variant/70 mt-1">
             Attending Vet workspace for patient diagnosis, notes, and prescriptions.
           </p>
         </div>
@@ -163,6 +161,8 @@ export default async function ConsultationRoomPage({
         history={history}
         products={products}
         visitReason={visit.reason}
+        isEmergency={visit.is_emergency ?? false}
+        triageNotes={visit.triage_notes as string | null}
       />
 
     </div>

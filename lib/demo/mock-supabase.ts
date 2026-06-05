@@ -1,5 +1,6 @@
 import { DEMO_USERS, findDemoUserById } from './credentials';
 import * as mockData from './mock-data';
+import { MOCK_INVOICE_ITEMS } from './mock-data';
 
 // Helper to resolve the correct mock data array based on table name
 function getMockDataForTable(table: string): any[] {
@@ -47,6 +48,8 @@ function getMockDataForTable(table: string): any[] {
       return mockData.MOCK_PRODUCTS;
     case 'invoices':
       return mockData.MOCK_INVOICES;
+    case 'invoice_items':
+      return MOCK_INVOICE_ITEMS;
     case 'prescriptions':
       return mockData.MOCK_PRESCRIPTIONS;
     case 'user_profiles':
@@ -114,8 +117,8 @@ class MockSupabaseQueryBuilder {
       if (this.table === 'user_profiles' && column === 'id') {
         return item.id === value;
       }
-      if (column === 'branch_id' && item.branch_id === undefined) {
-        return true; // Bypass filter if not present on mock
+      if (item[column] === undefined) {
+        return true; // Bypass filter if the column is not present on the mock object
       }
       return item[column] === value;
     });

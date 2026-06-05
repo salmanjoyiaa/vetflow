@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
-import { resolveServerSession } from '@/lib/services/auth';
+import { resolveServerAuthContext } from '@/lib/auth/context';
+import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
@@ -11,8 +12,13 @@ export const metadata = {
 };
 
 export default async function PrescriptionsPage() {
-  const session = await resolveServerSession();
-  if (!session) redirect('/login');
+  const ctx = await resolveServerAuthContext();
+  if (!ctx) redirect('/login');
+
+  const denied = guardRoute(ctx, '/dashboard/prescriptions');
+  if (denied) return denied;
+
+  const session = ctx;
 
   const cookieStore = await cookies();
   const activeBranchCookie = cookieStore.get('vetflow_branch_id')?.value;
@@ -26,7 +32,7 @@ export default async function PrescriptionsPage() {
 
   if (!activeBranchId) {
     return (
-      <div className="bg-amber-500/5 border border-amber-500/20 text-amber-700 text-xs p-6 rounded-2xl">
+      <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs p-6 rounded-2xl">
         You must be assigned to a clinic branch to view prescriptions.
       </div>
     );
@@ -100,8 +106,8 @@ export default async function PrescriptionsPage() {
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       rx.is_finalized
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-amber-100 text-amber-700'
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                     }`}
                   >
                     {rx.is_finalized ? 'Finalized' : 'Draft'}

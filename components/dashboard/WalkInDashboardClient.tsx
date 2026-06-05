@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { searchCustomersAction } from '@/lib/services/customer-actions';
 import { createWalkInVisitAction } from '@/lib/services/visit-actions';
@@ -15,7 +16,8 @@ import {
   BriefcaseMedical, 
   Play,
   ArrowRight,
-  ClipboardList
+  ClipboardList,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface Doctor {
@@ -29,21 +31,32 @@ interface Visit {
   reason: string;
   status: string;
   checkedInAt: string;
+  isEmergency?: boolean;
+  triageNotes?: string | null;
   pet: { id: string; name: string; species: string; breed: string | null };
   customer: { first_name: string; last_name: string; phone: string };
   doctor: { first_name: string; last_name: string } | null;
+}
+
+interface CheckoutVisit {
+  id: string;
+  reason: string;
+  petName: string;
+  customerName: string;
 }
 
 interface WalkInDashboardClientProps {
   doctors: Doctor[];
   activeBranchId: string;
   initialVisits: Visit[];
+  checkoutVisits: CheckoutVisit[];
 }
 
 export default function WalkInDashboardClient({
   doctors,
   activeBranchId,
   initialVisits,
+  checkoutVisits,
 }: WalkInDashboardClientProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,6 +67,8 @@ export default function WalkInDashboardClient({
 
   // Form states
   const [reason, setReason] = useState('');
+  const [isEmergency, setIsEmergency] = useState(false);
+  const [triageNotes, setTriageNotes] = useState('');
   const [doctorId, setDoctorId] = useState(doctors.length > 0 ? doctors[0].id : '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,12 +111,16 @@ export default function WalkInDashboardClient({
         doctorId,
         reason,
         branchId: activeBranchId,
+        isEmergency,
+        triageNotes: triageNotes.trim() || undefined,
       });
 
       if (res.success) {
         setSelectedPet(null);
         setSelectedCustomer(null);
         setReason('');
+        setIsEmergency(false);
+        setTriageNotes('');
         router.refresh();
       } else {
         setError(res.error || 'Failed to check-in patient');
@@ -226,6 +245,30 @@ export default function WalkInDashboardClient({
 
               <div>
                 <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+                  Initial history / triage (optional)
+                </label>
+                <textarea
+                  placeholder="Presenting complaint, symptoms, duration..."
+                  className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none resize-none"
+                  rows={3}
+                  value={triageNotes}
+                  onChange={(e) => setTriageNotes(e.target.value)}
+                />
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isEmergency}
+                  onChange={(e) => setIsEmergency(e.target.checked)}
+                  className="rounded border-outline-variant"
+                />
+                <AlertTriangle className="w-4 h-4 text-destructive" />
+                <span className="text-xs font-bold text-destructive">Mark as emergency</span>
+              </label>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                   Assign Attending Vet
                 </label>
                 <select
@@ -266,7 +309,36 @@ export default function WalkInDashboardClient({
 
       {/* RIGHT: QUEUE MONITOR (WAITING / CONSULTING) */}
       <div className="md:col-span-8 space-y-6">
-        
+
+        {checkoutVisits.length > 0 && (
+          <div className="glass-panel rounded-2xl border border-emerald-500/30 overflow-hidden shadow-premium">
+            <div className="p-5 border-b border-outline-variant/30 bg-emerald-500/5 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">
+                Ready for checkout ({checkoutVisits.length})
+              </h3>
+            </div>
+            <ul className="divide-y divide-border/20">
+              {checkoutVisits.map((v) => (
+                <li
+                  key={v.id}
+                  className="px-6 py-4 flex items-center justify-between gap-4 text-xs hover:bg-surface-container/10"
+                >
+                  <div>
+                    <span className="font-bold text-on-surface block">{v.petName}</span>
+                    <span className="text-on-surface-variant/60">{v.customerName} · {v.reason}</span>
+                  </div>
+                  <Link
+                    href={`/dashboard/invoices/create/${v.id}`}
+                    className="shrink-0 bg-primary text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-primary/95"
+                  >
+                    Create invoice
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* WAITING QUEUE */}
         <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden shadow-premium">
           <div className="p-5 border-b border-outline-variant/30 bg-surface-container/20 flex items-center justify-between">
@@ -291,8 +363,21 @@ export default function WalkInDashboardClient({
                 {waitingVisits.map((v) => (
                   <tr key={v.id} className="hover:bg-surface-container/10">
                     <td className="px-6 py-4">
-                      <span className="font-bold text-on-surface block">{v.pet.name}</span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-bold text-on-surface">{v.pet.name}</span>
+                        {v.isEmergency && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-destructive/15 text-destructive border border-destructive/30">
+                            <AlertTriangle className="w-2.5 h-2.5" />
+                            EMERGENCY
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[10px] text-on-surface-variant/60">{(v.pet.species)} • Owner: {v.customer.first_name} {v.customer.last_name}</span>
+                      {v.triageNotes && (
+                        <span className="text-[10px] text-on-surface-variant block mt-0.5 line-clamp-1" title={v.triageNotes}>
+                          Triage: {v.triageNotes}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-on-surface-variant/80 font-medium">
                       {v.reason}
@@ -342,7 +427,15 @@ export default function WalkInDashboardClient({
                 {consultingVisits.map((v) => (
                   <tr key={v.id} className="hover:bg-surface-container/10">
                     <td className="px-6 py-4">
-                      <span className="font-bold text-on-surface block">{v.pet.name}</span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-bold text-on-surface">{v.pet.name}</span>
+                        {v.isEmergency && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-destructive/15 text-destructive border border-destructive/30">
+                            <AlertTriangle className="w-2.5 h-2.5" />
+                            EMERGENCY
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[10px] text-on-surface-variant/60">Owner: {v.customer.first_name} {v.customer.last_name}</span>
                     </td>
                     <td className="px-6 py-4">

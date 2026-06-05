@@ -6,7 +6,8 @@ import {
 import DeniedState from '@/components/ui/premium/DeniedState';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
-import { BriefcaseMedical, Play, ClipboardList, User } from 'lucide-react';
+import PageHeader from '@/components/ui/premium/PageHeader';
+import { BriefcaseMedical, Play, ClipboardList, User, AlertTriangle } from 'lucide-react';
 
 export const metadata = {
   title: 'VetFlow Doctor Dashboard',
@@ -42,12 +43,15 @@ export default async function DoctorDashboardPage() {
       reason,
       status,
       checked_in_at,
+      is_emergency,
+      triage_notes,
       pets ( id, name, species, breed, gender ),
       customers ( first_name, last_name, phone ),
       visit_assignments!inner ( doctor_id )
     `)
     .eq('visit_assignments.doctor_id', session.userId)
     .in('status', ['waiting', 'consulting'])
+    .order('is_emergency', { ascending: false })
     .order('checked_in_at', { ascending: true });
 
   if (error) {
@@ -64,6 +68,8 @@ export default async function DoctorDashboardPage() {
     reason: v.reason,
     status: v.status,
     checkedInAt: v.checked_in_at,
+    isEmergency: v.is_emergency ?? false,
+    triageNotes: v.triage_notes as string | null,
     pet: {
       id: (v.pets as any).id,
       name: (v.pets as any).name,
@@ -84,16 +90,11 @@ export default async function DoctorDashboardPage() {
   return (
     <div className="space-y-8">
       
-      {/* HEADER */}
-      <div>
-        <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-          <BriefcaseMedical className="w-5 h-5 text-primary" />
-          Attending Doctor Workspace
-        </h2>
-        <p className="text-xs text-on-surface-variant/70 mt-1">
-          Review your active consultation room and queue assignments.
-        </p>
-      </div>
+      <PageHeader
+        title="Attending doctor workspace"
+        description="Review your active consultation room and queue assignments."
+        icon={BriefcaseMedical}
+      />
 
       <div className="grid md:grid-cols-12 gap-8 items-start">
         
@@ -112,12 +113,23 @@ export default async function DoctorDashboardPage() {
                 {consultingVisits.map((v) => (
                   <div key={v.id} className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-base text-on-surface">{v.pet.name}</span>
+                        {v.isEmergency && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-destructive/15 text-destructive border border-destructive/30">
+                            <AlertTriangle className="w-3 h-3" />
+                            EMERGENCY
+                          </span>
+                        )}
                         <span className="bg-primary/5 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full capitalize">
                           {v.pet.species} • {v.pet.gender}
                         </span>
                       </div>
+                      {v.triageNotes && (
+                        <p className="text-[11px] text-on-surface-variant/80 bg-surface-container/40 rounded-lg px-2 py-1.5 line-clamp-2">
+                          Intake: {v.triageNotes}
+                        </p>
+                      )}
                       <div className="text-xs text-on-surface-variant/70 space-y-1">
                         <p className="flex items-center gap-1">
                           <User className="w-3.5 h-3.5 text-primary/60" />
@@ -162,13 +174,26 @@ export default async function DoctorDashboardPage() {
                 {waitingVisits.map((v) => (
                   <div key={v.id} className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="space-y-1.5">
-                      <span className="font-bold text-sm text-on-surface block">{v.pet.name}</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-sm text-on-surface">{v.pet.name}</span>
+                        {v.isEmergency && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-destructive/15 text-destructive border border-destructive/30">
+                            <AlertTriangle className="w-3 h-3" />
+                            EMERGENCY
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-on-surface-variant/70">
                         Owner: {v.customer.firstName} {v.customer.lastName} • Species: {v.pet.species}
                       </p>
                       <p className="text-xs font-semibold text-on-surface">
                         Reason: <span className="font-normal text-on-surface-variant/80">{v.reason}</span>
                       </p>
+                      {v.triageNotes && (
+                        <p className="text-[11px] text-on-surface-variant/80 bg-surface-container/40 rounded-lg px-2 py-1.5 line-clamp-2">
+                          Intake: {v.triageNotes}
+                        </p>
+                      )}
                     </div>
 
                     <div>

@@ -1,9 +1,11 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { resolveServerSession } from '@/lib/services/auth';
+import { resolveServerAuthContext } from '@/lib/auth/context';
+import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import AppointmentsListClient from '@/components/dashboard/AppointmentsListClient';
-import { Calendar, Link as LinkIcon, ExternalLink } from 'lucide-react';
+import AppointmentsPageHeader from '@/components/dashboard/AppointmentsPageHeader';
+import { Suspense } from 'react';
 
 export const metadata = {
   title: 'VetFlow Appointments Scheduler',
@@ -11,10 +13,15 @@ export const metadata = {
 };
 
 export default async function AppointmentsPage() {
-  const session = await resolveServerSession();
-  if (!session) {
+  const ctx = await resolveServerAuthContext();
+  if (!ctx) {
     redirect('/login');
   }
+
+  const denied = guardRoute(ctx, '/dashboard/appointments');
+  if (denied) return denied;
+
+  const session = ctx;
 
   // 1. Resolve branch context
   const cookieStore = await cookies();
@@ -29,7 +36,7 @@ export default async function AppointmentsPage() {
 
   if (!activeBranchId) {
     return (
-      <div className="bg-amber-500/5 border border-amber-500/20 text-amber-700 text-xs p-6 rounded-2xl">
+      <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs p-6 rounded-2xl">
         You must be assigned to a clinic branch to open the appointments dashboard.
       </div>
     );
@@ -83,37 +90,14 @@ export default async function AppointmentsPage() {
   return (
     <div className="space-y-8">
       
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-primary" />
-            Appointments
-          </h2>
-          <p className="text-xs text-on-surface-variant/70 mt-1">
-            Review online request entries and manage clinic schedules.
-          </p>
-        </div>
-
-        {/* Public Booking Link Badge */}
-        {org && (
-          <div className="glass-panel border border-outline-variant/40 p-3 rounded-2xl flex items-center gap-3 shadow-sm text-xs font-semibold text-on-surface">
-            <LinkIcon className="w-4 h-4 text-primary" />
-            <div>
-              <span className="text-[9px] text-on-surface-variant/40 block uppercase">Client Booking Link</span>
-              <a 
-                href={publicBookingUrl} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-primary hover:underline inline-flex items-center gap-1 font-bold"
-              >
-                /book/{org.slug}
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-          </div>
-        )}
-      </div>
+      <Suspense fallback={null}>
+        <AppointmentsPageHeader
+          orgSlug={org?.slug}
+          publicBookingUrl={publicBookingUrl}
+          doctors={doctors}
+          activeBranchId={activeBranchId}
+        />
+      </Suspense>
 
       {/* APPOINTMENTS LIST */}
       <AppointmentsListClient 

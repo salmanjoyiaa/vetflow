@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
-import { resolveServerSession } from '@/lib/services/auth';
+import { resolveServerAuthContext } from '@/lib/auth/context';
+import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import InvoiceCheckoutClient from '@/components/forms/InvoiceCheckoutClient';
 import Link from 'next/link';
@@ -16,10 +17,13 @@ export default async function CreateInvoicePage({
   params: Promise<{ visitId: string }>;
 }) {
   const { visitId } = await params;
-  const session = await resolveServerSession();
-  if (!session) {
-    redirect('/login');
-  }
+  const ctx = await resolveServerAuthContext();
+  if (!ctx) redirect('/login');
+
+  const denied = guardRoute(ctx, '/dashboard/invoices');
+  if (denied) return denied;
+
+  const session = ctx;
 
   const supabase = await createClient();
 
@@ -49,7 +53,7 @@ export default async function CreateInvoicePage({
 
   if (visit.status !== 'ready_for_checkout') {
     return (
-      <div className="bg-amber-500/5 border border-amber-500/20 text-amber-700 text-xs p-6 rounded-2xl">
+      <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs p-6 rounded-2xl">
         Patient visit state is not ready for billing. Attend the consultation room first.
       </div>
     );
@@ -134,17 +138,17 @@ export default async function CreateInvoicePage({
       <div className="space-y-2">
         <Link 
           href="/dashboard/walk-ins" 
-          className="inline-flex items-center gap-1.5 text-xs text-graphite/60 hover:text-primary-teal font-semibold transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Walk-in Queue
         </Link>
         <div>
-          <h2 className="text-xl font-black text-primary-navy tracking-tight flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-primary-teal" />
+          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-primary" />
             Patient Checkout & Discharge
           </h2>
-          <p className="text-xs text-graphite/70 mt-1">
+          <p className="text-xs text-on-surface-variant/70 mt-1">
             Review billing ledger items and finalize transaction payments.
           </p>
         </div>

@@ -13,11 +13,13 @@ const DEMO_ROLES: Record<string, { isSuperAdmin: boolean; hasOrg: boolean }> = {
   'ae000000-0000-0000-0000-000000000000': { isSuperAdmin: false, hasOrg: true },
   'b9000000-0000-0000-0000-000000000000': { isSuperAdmin: false, hasOrg: true },
   'bd000000-0000-0000-0000-000000000000': { isSuperAdmin: false, hasOrg: true },
+  'c9000000-0000-0000-0000-000000000000': { isSuperAdmin: false, hasOrg: false },
 };
 
 interface ProfileGate {
   is_super_admin: boolean;
   has_membership: boolean;
+  subscription_status: string | null;
 }
 
 async function resolveProfileGate(
@@ -48,19 +50,34 @@ async function resolveProfileGate(
   }
 
   if (profile.is_super_admin) {
-    return { is_super_admin: true, has_membership: false };
+    return { is_super_admin: true, has_membership: false, subscription_status: null };
   }
 
   const { data: membership } = await supabase
     .from('organization_members')
-    .select('id')
+    .select('organization_id')
     .eq('user_id', userId)
     .eq('is_active', true)
     .maybeSingle();
 
+  if (!membership?.organization_id) {
+    return {
+      is_super_admin: false,
+      has_membership: false,
+      subscription_status: null,
+    };
+  }
+
+  const { data: subscription } = await supabase
+    .from('subscription_status')
+    .select('status')
+    .eq('organization_id', membership.organization_id)
+    .maybeSingle();
+
   return {
     is_super_admin: false,
-    has_membership: Boolean(membership),
+    has_membership: true,
+    subscription_status: subscription?.status ?? null,
   };
 }
 
@@ -85,6 +102,7 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isAuthPage = path.startsWith('/login') || path.startsWith('/register');
   const isAccountSetupPage = path.startsWith('/account-setup');
+  const isSuspendedPage = path.startsWith('/suspended');
   const isDashboardPage = path.startsWith('/dashboard');
   const isSuperAdminPage = path.startsWith('/super-admin');
 
@@ -102,14 +120,31 @@ export async function proxy(request: NextRequest) {
       const demoRole = DEMO_ROLES[demoUserId];
       if (demoRole) {
         if (isAuthPage) {
-          const dest = demoRole.isSuperAdmin ? '/super-admin/dashboard' : '/dashboard';
+          const dest = demoRole.isSuperAdmin 
+            ? '/super-admin/dashboard' 
+            : demoRole.hasOrg 
+              ? '/dashboard' 
+              : '/account-setup';
           return NextResponse.redirect(new URL(dest, request.url));
         }
         if (isSuperAdminPage && !demoRole.isSuperAdmin) {
-          return NextResponse.redirect(new URL('/dashboard', request.url));
+          return NextResponse.redirect(new URL(demoRole.hasOrg ? '/dashboard' : '/account-setup', request.url));
         }
-        if (isDashboardPage && demoRole.isSuperAdmin) {
-          return NextResponse.redirect(new URL('/super-admin/dashboard', request.url));
+        if (isDashboardPage) {
+          if (demoRole.isSuperAdmin) {
+            return NextResponse.redirect(new URL('/super-admin/dashboard', request.url));
+          }
+          if (!demoRole.hasOrg) {
+            return NextResponse.redirect(new URL('/account-setup', request.url));
+          }
+        }
+        if (isAccountSetupPage) {
+          if (demoRole.isSuperAdmin) {
+            return NextResponse.redirect(new URL('/super-admin/dashboard', request.url));
+          }
+          if (demoRole.hasOrg) {
+            return NextResponse.redirect(new URL('/dashboard', request.url));
+          }
         }
       }
     }
@@ -128,9 +163,28 @@ export async function proxy(request: NextRequest) {
 
   if (user) {
     const destination = await resolvePostLoginPath(request, user.id);
+    const gate = await resolveProfileGate(request, user.id);
+    const isLocked =
+      gate &&
+      !gate.is_super_admin &&
+      gate.has_membership &&
+      (gate.subscription_status === 'suspended' ||
+        gate.subscription_status === 'cancelled');
 
     if (isAuthPage) {
       return NextResponse.redirect(new URL(destination, request.url));
+    }
+
+    if (isLocked && isDashboardPage && !path.startsWith('/dashboard/upgrade')) {
+      return NextResponse.redirect(new URL('/suspended', request.url));
+    }
+
+    if (isLocked && isSuspendedPage) {
+      return supabaseResponse;
+    }
+
+    if (!isLocked && isSuspendedPage) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
     if (isSuperAdminPage && destination !== '/super-admin/dashboard') {

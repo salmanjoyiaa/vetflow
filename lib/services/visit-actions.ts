@@ -37,6 +37,8 @@ export async function createWalkInVisitAction(payload: unknown) {
         customer_id: parsed.customerId,
         reason: parsed.reason,
         status: 'waiting',
+        is_emergency: parsed.isEmergency ?? false,
+        triage_notes: parsed.triageNotes?.trim() || null,
       })
       .select()
       .single();

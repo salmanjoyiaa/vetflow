@@ -11,7 +11,7 @@ export interface DemoUser {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'super_admin' | 'clinic_admin' | 'doctor' | 'receptionist';
+  role: 'super_admin' | 'clinic_admin' | 'doctor' | 'receptionist' | null;
   isSuperAdmin: boolean;
   organizationId: string | null;
   organizationName: string | null;
@@ -101,6 +101,18 @@ export const DEMO_USERS: DemoUser[] = [
     branches: [
       { id: 'b1000000-0000-0000-0000-000000000000', name: 'East Wing Main' },
     ],
+  },
+  {
+    id: 'c9000000-0000-0000-0000-000000000000',
+    email: 'setup.demo@vetflow.com',
+    password: 'password123',
+    firstName: 'New',
+    lastName: 'User',
+    role: null,
+    isSuperAdmin: false,
+    organizationId: null,
+    organizationName: null,
+    branches: [],
   },
 ];
 

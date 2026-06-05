@@ -36,7 +36,9 @@ export async function loginAction(payload: unknown): Promise<ActionResponse> {
       });
       const redirectTo = demoUser.isSuperAdmin
         ? '/super-admin/dashboard'
-        : '/dashboard';
+        : demoUser.role
+          ? '/dashboard'
+          : '/account-setup';
       return { success: true, redirectTo };
     }
 

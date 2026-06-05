@@ -88,6 +88,11 @@ export default function ReportsChartsClient({
         </h3>
 
         <div className="h-44 flex-1 relative">
+          {paymentData.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-xs text-on-surface-variant/50 italic">
+              No payment records for this branch yet.
+            </div>
+          ) : (
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -113,9 +118,11 @@ export default function ReportsChartsClient({
               />
             </PieChart>
           </ResponsiveContainer>
+          )}
         </div>
 
         {/* Legend */}
+        {paymentData.length > 0 && (
         <div className="mt-4 grid grid-cols-2 gap-2 text-[10px] text-on-surface-variant/60 font-semibold border-t border-outline-variant/45 pt-4">
           {paymentData.map((entry, index) => (
             <div key={entry.name} className="flex items-center gap-1.5">
@@ -127,6 +134,7 @@ export default function ReportsChartsClient({
             </div>
           ))}
         </div>
+        )}
       </div>
 
     </div>

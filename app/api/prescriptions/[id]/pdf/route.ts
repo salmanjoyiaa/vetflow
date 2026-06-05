@@ -1,7 +1,10 @@
 import { renderToStream } from '@react-pdf/renderer';
 import PrescriptionPdfDocument from '@/components/pdf/PrescriptionPdfDocument';
 import { createClient } from '@/lib/supabase/server';
-import { resolveServerSession } from '@/lib/services/auth';
+import {
+  assertCapability,
+  resolveServerAuthContext,
+} from '@/lib/auth/context';
 import React from 'react';
 
 /**
@@ -14,11 +17,16 @@ export async function GET(
   try {
     const { id } = await params;
     
-    // 1. Authenticate user session
-    const session = await resolveServerSession();
-    if (!session) {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
       return new Response('Unauthorized: Session is invalid.', { status: 401 });
     }
+    try {
+      assertCapability(ctx, 'manage_prescriptions');
+    } catch {
+      return new Response('Forbidden: Insufficient permissions.', { status: 403 });
+    }
+    const session = ctx;
 
     const supabase = await createClient();
 

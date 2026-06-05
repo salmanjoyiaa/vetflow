@@ -99,3 +99,26 @@ export function canAccessRoute(
   if (!cap) return true;
   return hasCapability(role, cap);
 }
+
+export const DASHBOARD_WIDGETS = {
+  todayAppointments: 'manage_appointments',
+  waitingWalkIns: 'manage_walk_ins',
+  readyForCheckout: 'billing_checkout',
+  unpaidInvoices: 'billing_checkout',
+  lowStock: 'manage_inventory',
+  totalCustomers: 'manage_customers',
+  totalPets: 'manage_pets',
+  clinicalQueue: 'clinical_queue',
+  openPrescriptions: 'manage_prescriptions',
+  adminReports: 'view_reports',
+  adminStaff: 'manage_staff',
+} as const;
+
+export type DashboardWidgetKey = keyof typeof DASHBOARD_WIDGETS;
+
+export function canShowWidget(
+  role: UserSessionDetails['role'],
+  widgetKey: DashboardWidgetKey
+): boolean {
+  return hasCapability(role, DASHBOARD_WIDGETS[widgetKey]);
+}

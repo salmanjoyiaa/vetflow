@@ -11,6 +11,7 @@ export const MOCK_DASHBOARD_KPIS = {
   unpaidInvoices: 5,
   totalCustomers: 142,
   totalPets: 187,
+  emergencyCount: 1,
 };
 
 export const MOCK_LOW_STOCK_ITEMS = [
@@ -24,6 +25,8 @@ export const MOCK_RECENT_VISITS = [
     id: 'v1',
     reason: 'Severe ear irritation and scratching',
     status: 'waiting',
+    is_emergency: true,
+    triage_notes: 'Owner reports sudden collapse after chocolate ingestion ~30 min ago. Vomiting, restless.',
     checked_in_at: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
     pets: { name: 'Bella', species: 'Cat' },
     customers: { first_name: 'Jane', last_name: 'Smith' },
@@ -89,6 +92,8 @@ export const MOCK_APPOINTMENTS = [
     preferred_time: '14:30:00',
     reason: 'Ear scratching check',
     status: 'confirmed',
+    is_emergency: true,
+    intake_notes: 'Intense scratching both ears, shaking head. Started 2 days ago.',
     doctor: { id: 'ad1', user_profiles: { first_name: 'Alexander', last_name: 'Fleming' } },
   },
   {
@@ -124,8 +129,10 @@ export const MOCK_APPOINTMENTS = [
 export const MOCK_WALK_INS = [
   {
     id: 'w1',
-    reason: 'Severe ear irritation and scratching',
+    reason: 'Suspected chocolate toxicity',
     status: 'waiting',
+    is_emergency: true,
+    triage_notes: 'Sudden collapse after chocolate ingestion. Vomiting, restless.',
     checked_in_at: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
     pets: { name: 'Bella', species: 'Cat' },
     customers: { first_name: 'Jane', last_name: 'Smith' },
@@ -162,6 +169,8 @@ export const MOCK_CUSTOMERS = [
     phone: '555-9090',
     address: '101 Elm St, New York',
     created_at: '2026-01-15T10:00:00Z',
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
+    branch_id: 'a1000000-0000-0000-0000-000000000000',
     pets: [{ id: 'p1', name: 'Max' }],
   },
   {
@@ -172,6 +181,8 @@ export const MOCK_CUSTOMERS = [
     phone: '555-8080',
     address: '202 Oak St, New York',
     created_at: '2026-02-20T14:30:00Z',
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
+    branch_id: 'a1000000-0000-0000-0000-000000000000',
     pets: [{ id: 'p2', name: 'Bella' }],
   },
   {
@@ -182,6 +193,8 @@ export const MOCK_CUSTOMERS = [
     phone: '555-7070',
     address: '303 Maple St, Boston',
     created_at: '2026-03-10T09:15:00Z',
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
+    branch_id: 'a1000000-0000-0000-0000-000000000000',
     pets: [{ id: 'p3', name: 'Rocky' }],
   },
   {
@@ -192,6 +205,8 @@ export const MOCK_CUSTOMERS = [
     phone: '555-6060',
     address: '404 Pine St, New York',
     created_at: '2026-04-01T11:45:00Z',
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
+    branch_id: 'a1000000-0000-0000-0000-000000000000',
     pets: [{ id: 'p4', name: 'Luna' }],
   },
   {
@@ -202,6 +217,8 @@ export const MOCK_CUSTOMERS = [
     phone: '555-5050',
     address: '505 Cedar Ave, New York',
     created_at: '2026-05-15T16:00:00Z',
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
+    branch_id: 'a1000000-0000-0000-0000-000000000000',
     pets: [{ id: 'p5', name: 'Buddy' }],
   },
 ];
@@ -219,7 +236,9 @@ export const MOCK_PETS = [
     weight_kg: 32.5,
     allergies: 'None',
     medical_notes: 'Healthy active pet',
-    customers: { first_name: 'John', last_name: 'Doe' },
+    customer_id: 'c1',
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
+    customers: { id: 'c1', first_name: 'John', last_name: 'Doe', phone: '555-9090', email: 'john.doe@gmail.com' },
   },
   {
     id: 'p2',
@@ -231,7 +250,9 @@ export const MOCK_PETS = [
     weight_kg: 4.2,
     allergies: 'Penicillin',
     medical_notes: 'Allergic to specific antibiotics',
-    customers: { first_name: 'Jane', last_name: 'Smith' },
+    customer_id: 'c2',
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
+    customers: { id: 'c2', first_name: 'Jane', last_name: 'Smith', phone: '555-8080', email: 'jane.smith@gmail.com' },
   },
   {
     id: 'p3',
@@ -243,7 +264,9 @@ export const MOCK_PETS = [
     weight_kg: 38.0,
     allergies: 'None',
     medical_notes: 'Hip problems',
-    customers: { first_name: 'Bob', last_name: 'Johnson' },
+    customer_id: 'c3',
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
+    customers: { id: 'c3', first_name: 'Bob', last_name: 'Johnson', phone: '555-7070', email: 'bob.johnson@gmail.com' },
   },
   {
     id: 'p4',
@@ -255,7 +278,9 @@ export const MOCK_PETS = [
     weight_kg: 3.8,
     allergies: 'None',
     medical_notes: 'Indoor cat, regular dental checks needed',
-    customers: { first_name: 'Alice', last_name: 'Williams' },
+    customer_id: 'c4',
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
+    customers: { id: 'c4', first_name: 'Alice', last_name: 'Williams', phone: '555-6060', email: 'alice.w@gmail.com' },
   },
   {
     id: 'p5',
@@ -267,7 +292,9 @@ export const MOCK_PETS = [
     weight_kg: 28.3,
     allergies: 'Chicken protein',
     medical_notes: 'Seasonal skin allergies',
-    customers: { first_name: 'Charlie', last_name: 'Brown' },
+    customer_id: 'c5',
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
+    customers: { id: 'c5', first_name: 'Charlie', last_name: 'Brown', phone: '555-5050', email: 'charlie.b@gmail.com' },
   },
 ];
 
@@ -360,6 +387,19 @@ export const MOCK_PRODUCTS = [
   },
 ];
 
+// ─── Invoice Items ─────────────────────────────────────────────────────────────
+
+export const MOCK_INVOICE_ITEMS = [
+  { id: 'ii1', invoice_id: 'i1', name: 'General Consultation', quantity: 1, unit_price: 50.0, total: 57.5 },
+  { id: 'ii2', invoice_id: 'i1', name: 'Amoxicillin 250mg', quantity: 14, unit_price: 1.5, total: 24.15 },
+  { id: 'ii3', invoice_id: 'i2', name: 'General Consultation', quantity: 1, unit_price: 50.0, total: 57.5 },
+  { id: 'ii4', invoice_id: 'i2', name: 'Rabies Vaccine (Canine)', quantity: 1, unit_price: 25.0, total: 28.75 },
+  { id: 'ii5', invoice_id: 'i3', name: 'General Consultation', quantity: 1, unit_price: 50.0, total: 57.5 },
+  { id: 'ii6', invoice_id: 'i4', name: 'Hip Joint Evaluation', quantity: 1, unit_price: 75.0, total: 86.25 },
+  { id: 'ii7', invoice_id: 'i4', name: 'Meloxicam 1.5mg', quantity: 14, unit_price: 3.5, total: 56.35 },
+  { id: 'ii8', invoice_id: 'i5', name: 'Dental Cleaning', quantity: 1, unit_price: 40.0, total: 46.0 },
+];
+
 // ─── Invoices ──────────────────────────────────────────────────────────────────
 
 export const MOCK_INVOICES = [
@@ -372,9 +412,13 @@ export const MOCK_INVOICES = [
     tax_amount: 11.25,
     total: 86.25,
     payment_status: 'unpaid',
+    visit_id: null,
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
     created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    customers: { first_name: 'John', last_name: 'Doe' },
-    pets: { name: 'Max' },
+    customers: { id: 'c1', first_name: 'John', last_name: 'Doe', phone: '555-9090', email: 'john.doe@gmail.com' },
+    pets: { id: 'p1', name: 'Max', species: 'Dog' },
+    branches: { name: 'Downtown Clinic', address: '123 Main St', phone: '555-0101' },
+    invoice_items: MOCK_INVOICE_ITEMS.filter(i => i.invoice_id === 'i1'),
   },
   {
     id: 'i2',
@@ -385,9 +429,13 @@ export const MOCK_INVOICES = [
     tax_amount: 10.65,
     total: 81.65,
     payment_status: 'paid',
+    visit_id: null,
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
     created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    customers: { first_name: 'John', last_name: 'Doe' },
-    pets: { name: 'Max' },
+    customers: { id: 'c1', first_name: 'John', last_name: 'Doe', phone: '555-9090', email: 'john.doe@gmail.com' },
+    pets: { id: 'p1', name: 'Max', species: 'Dog' },
+    branches: { name: 'Downtown Clinic', address: '123 Main St', phone: '555-0101' },
+    invoice_items: MOCK_INVOICE_ITEMS.filter(i => i.invoice_id === 'i2'),
   },
   {
     id: 'i3',
@@ -398,9 +446,13 @@ export const MOCK_INVOICES = [
     tax_amount: 6.75,
     total: 51.75,
     payment_status: 'unpaid',
+    visit_id: null,
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
     created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-    customers: { first_name: 'Jane', last_name: 'Smith' },
-    pets: { name: 'Bella' },
+    customers: { id: 'c2', first_name: 'Jane', last_name: 'Smith', phone: '555-8080', email: 'jane.smith@gmail.com' },
+    pets: { id: 'p2', name: 'Bella', species: 'Cat' },
+    branches: { name: 'Downtown Clinic', address: '123 Main St', phone: '555-0101' },
+    invoice_items: MOCK_INVOICE_ITEMS.filter(i => i.invoice_id === 'i3'),
   },
   {
     id: 'i4',
@@ -411,9 +463,13 @@ export const MOCK_INVOICES = [
     tax_amount: 18.75,
     total: 143.75,
     payment_status: 'paid',
+    visit_id: null,
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
     created_at: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
-    customers: { first_name: 'Bob', last_name: 'Johnson' },
-    pets: { name: 'Rocky' },
+    customers: { id: 'c3', first_name: 'Bob', last_name: 'Johnson', phone: '555-7070', email: 'bob.johnson@gmail.com' },
+    pets: { id: 'p3', name: 'Rocky', species: 'Dog' },
+    branches: { name: 'Downtown Clinic', address: '123 Main St', phone: '555-0101' },
+    invoice_items: MOCK_INVOICE_ITEMS.filter(i => i.invoice_id === 'i4'),
   },
   {
     id: 'i5',
@@ -424,9 +480,13 @@ export const MOCK_INVOICES = [
     tax_amount: 6.0,
     total: 46.0,
     payment_status: 'unpaid',
+    visit_id: null,
+    organization_id: 'a0000000-0000-0000-0000-000000000000',
     created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    customers: { first_name: 'Alice', last_name: 'Williams' },
-    pets: { name: 'Luna' },
+    customers: { id: 'c4', first_name: 'Alice', last_name: 'Williams', phone: '555-6060', email: 'alice.w@gmail.com' },
+    pets: { id: 'p4', name: 'Luna', species: 'Cat' },
+    branches: { name: 'Downtown Clinic', address: '123 Main St', phone: '555-0101' },
+    invoice_items: MOCK_INVOICE_ITEMS.filter(i => i.invoice_id === 'i5'),
   },
 ];
 
@@ -502,8 +562,10 @@ export const MOCK_STAFF = [
 export const MOCK_DOCTOR_QUEUE = [
   {
     id: 'dq1',
-    reason: 'Severe ear irritation and scratching',
+    reason: 'Suspected chocolate toxicity',
     status: 'waiting',
+    is_emergency: true,
+    triage_notes: 'Sudden collapse after chocolate ingestion. Vomiting, restless.',
     checked_in_at: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
     pets: { name: 'Bella', species: 'Cat', breed: 'Siamese' },
     customers: { first_name: 'Jane', last_name: 'Smith' },

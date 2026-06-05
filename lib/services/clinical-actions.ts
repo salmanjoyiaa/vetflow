@@ -37,6 +37,9 @@ export async function completeConsultationAction(payload: unknown) {
       throw new Error('Visit record not found or access denied.');
     }
 
+    const numOrNull = (v: number | undefined) =>
+      v !== undefined && !Number.isNaN(v) ? v : null;
+
     // 2. Create Clinical Notes
     const { data: notes, error: notesError } = await supabase
       .from('clinical_notes')
@@ -49,6 +52,10 @@ export async function completeConsultationAction(payload: unknown) {
         treatment_plan: parsed.treatmentPlan || null,
         internal_notes: parsed.internalNotes || null,
         follow_up_recommendation: parsed.followUpRecommendation || null,
+        temperature_c: numOrNull(parsed.temperatureC),
+        heart_rate_bpm: numOrNull(parsed.heartRateBpm),
+        respiratory_rate: numOrNull(parsed.respiratoryRate),
+        weight_kg: numOrNull(parsed.weightKg),
         created_by: ctx.userId,
       })
       .select()

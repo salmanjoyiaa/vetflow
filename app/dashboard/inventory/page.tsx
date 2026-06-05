@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { resolveServerSession } from '@/lib/services/auth';
+import { resolveServerAuthContext } from '@/lib/auth/context';
+import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import ProductForm from '@/components/forms/ProductForm';
 import StockAdjustmentForm from '@/components/forms/StockAdjustmentForm';
@@ -12,10 +13,15 @@ export const metadata = {
 };
 
 export default async function InventoryPage() {
-  const session = await resolveServerSession();
-  if (!session) {
+  const ctx = await resolveServerAuthContext();
+  if (!ctx) {
     redirect('/login');
   }
+
+  const denied = guardRoute(ctx, '/dashboard/inventory');
+  if (denied) return denied;
+
+  const session = ctx;
 
   // 1. Resolve branch context
   const cookieStore = await cookies();
@@ -30,7 +36,7 @@ export default async function InventoryPage() {
 
   if (!activeBranchId) {
     return (
-      <div className="bg-amber-500/5 border border-amber-500/20 text-amber-700 text-xs p-6 rounded-2xl">
+      <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs p-6 rounded-2xl">
         You must be assigned to a clinic branch to open the inventory dashboard.
       </div>
     );

@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
-import { resolveServerSession } from '@/lib/services/auth';
+import { resolveServerAuthContext } from '@/lib/auth/context';
+import { guardRoute } from '@/lib/auth/page-guards';
+import { getActiveBranchId } from '@/lib/dashboard/resolve-active-branch';
 import { createClient } from '@/lib/supabase/server';
 import CustomerForm from '@/components/forms/CustomerForm';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import Link from 'next/link';
 import { Users, Phone, Mail, ChevronRight, Heart } from 'lucide-react';
 
@@ -12,25 +14,18 @@ export const metadata = {
 };
 
 export default async function CustomersPage() {
-  const session = await resolveServerSession();
-  if (!session) {
-    redirect('/login');
-  }
+  const ctx = await resolveServerAuthContext();
+  if (!ctx) redirect('/login');
 
-  // 1. Resolve branch context
-  const cookieStore = await cookies();
-  const activeBranchCookie = cookieStore.get('vetflow_branch_id')?.value;
-  let activeBranchId = activeBranchCookie;
+  const denied = guardRoute(ctx, '/dashboard/customers');
+  if (denied) return denied;
 
-  if (!activeBranchId && session.branches.length > 0) {
-    activeBranchId = session.branches[0].id;
-  } else if (activeBranchId && !session.branches.some((b) => b.id === activeBranchId)) {
-    activeBranchId = session.branches[0]?.id;
-  }
+  const session = ctx;
+  const activeBranchId = getActiveBranchId(ctx);
 
   if (!activeBranchId) {
     return (
-      <div className="bg-amber-500/5 border border-amber-500/20 text-amber-700 text-xs p-6 rounded-2xl">
+      <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs p-6 rounded-2xl">
         You must be assigned to a clinic branch to view the customer directory.
       </div>
     );
@@ -63,20 +58,14 @@ export default async function CustomersPage() {
   return (
     <div className="space-y-8">
       
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-            <Users className="w-5 h-5 text-primary" />
-            Customer Directory
-          </h2>
-          <p className="text-xs text-on-surface-variant/70 mt-1">
-            Review and create customer records for the active branch scope.
-          </p>
-        </div>
-
-        <CustomerForm branches={session.branches} activeBranchId={activeBranchId} />
-      </div>
+      <PageHeader
+        title="Customer directory"
+        description="Review and create customer records for the active branch scope."
+        icon={Users}
+        actions={
+          <CustomerForm branches={session.branches} activeBranchId={activeBranchId} />
+        }
+      />
 
       {/* CUSTOMER DIRECTORY LIST */}
       {customers && customers.length > 0 ? (

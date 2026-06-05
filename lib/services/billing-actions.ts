@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import {
   assertBranchAccess,
   assertCapability,
+  assertFeature,
   assertOrganization,
   resolveServerAuthContext,
 } from '@/lib/auth/context';
@@ -25,6 +26,7 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
     }
     assertOrganization(ctx);
     assertCapability(ctx, 'billing_checkout');
+    assertFeature(ctx, 'sales');
 
     const parsed = CheckoutSchema.parse(payload);
 
@@ -254,6 +256,14 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
 
     if (visitCloseErr) {
       console.error('Failed to close visit state:', visitCloseErr);
+    }
+
+    if (visit.appointment_id) {
+      await adminClient
+        .from('appointments')
+        .update({ status: 'completed' })
+        .eq('id', visit.appointment_id)
+        .eq('organization_id', ctx.organizationId);
     }
 
     // 11. Write Audit Log

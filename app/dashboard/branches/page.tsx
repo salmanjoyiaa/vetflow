@@ -4,6 +4,7 @@ import {
   resolveServerAuthContext,
 } from '@/lib/auth/context';
 import DeniedState from '@/components/ui/premium/DeniedState';
+import { guardFeature } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import BranchForm from '@/components/forms/BranchForm';
 import BranchListClient from '@/components/dashboard/BranchListClient';
@@ -21,6 +22,9 @@ export default async function BranchesPage() {
   if (!ctx) {
     redirect('/login');
   }
+
+  const featureDenied = guardFeature(ctx, 'multi_branch');
+  if (featureDenied) return featureDenied;
 
   try {
     assertCapability(ctx, 'manage_branches');

@@ -87,7 +87,7 @@ export default function TenantOrgActions({
         className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-60"
       >
         <Eye className="w-3.5 h-3.5" />
-        Impersonate
+        Enter clinic
       </button>
 
       {showImpersonate && (
@@ -109,7 +109,7 @@ export default function TenantOrgActions({
             className="w-full py-2 rounded-lg bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center gap-1 disabled:opacity-50"
           >
             {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-            Start impersonation
+            Enter clinic (audited)
           </button>
         </div>
       )}

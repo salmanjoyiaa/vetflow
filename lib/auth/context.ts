@@ -10,6 +10,12 @@ import {
   hasCapability,
   type Capability,
 } from '@/lib/auth/capabilities';
+import {
+  ALL_FEATURES,
+  resolveFeatures,
+  type Feature,
+} from '@/lib/auth/features';
+import { createClient } from '@/lib/supabase/server';
 
 export const BRANCH_COOKIE_NAME = 'vetflow_branch_id';
 
@@ -17,6 +23,8 @@ export interface ServerAuthContext extends UserSessionDetails {
   allowedBranchIds: string[];
   activeBranchId: string | null;
   capabilities: Capability[];
+  features: Feature[];
+  subscriptionStatus: string | null;
   isImpersonating: boolean;
 }
 
@@ -102,7 +110,27 @@ async function resolveImpersonatedClinicSession(
     allowedBranchIds,
     activeBranchId,
     capabilities: getCapabilitiesForRole(role),
+    features: [...ALL_FEATURES],
+    subscriptionStatus: 'active',
     isImpersonating: true,
+  };
+}
+
+async function loadOrganizationSubscription(
+  organizationId: string
+): Promise<{ features: Feature[]; status: string | null }> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('subscription_status')
+    .select('status, features')
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+
+  return {
+    features: resolveFeatures(
+      (data?.features as Record<string, unknown> | null) ?? null
+    ),
+    status: data?.status ?? null,
   };
 }
 
@@ -125,11 +153,22 @@ export async function resolveServerAuthContext(): Promise<ServerAuthContext | nu
     ? null
     : resolveActiveBranchId(session, branchCookie);
 
+  let features: Feature[] = [...ALL_FEATURES];
+  let subscriptionStatus: string | null = null;
+
+  if (session.organizationId) {
+    const sub = await loadOrganizationSubscription(session.organizationId);
+    features = sub.features;
+    subscriptionStatus = sub.status;
+  }
+
   return {
     ...session,
     allowedBranchIds,
     activeBranchId,
     capabilities: getCapabilitiesForRole(session.role),
+    features,
+    subscriptionStatus,
     isImpersonating: false,
   };
 }
@@ -158,6 +197,26 @@ export function assertCapability(
   if (!hasCapability(ctx.role, capability)) {
     throw new AuthError('Forbidden: Missing capability.', 'FORBIDDEN');
   }
+}
+
+export function assertFeature(
+  ctx: ServerAuthContext,
+  feature: Feature
+): void {
+  if (!ctx.features.includes(feature)) {
+    throw new AuthError(
+      'Forbidden: This feature is not enabled for your clinic.',
+      'FORBIDDEN'
+    );
+  }
+}
+
+export function isSubscriptionLocked(ctx: ServerAuthContext): boolean {
+  if (ctx.isSuperAdmin && !ctx.isImpersonating) {
+    return false;
+  }
+  const status = ctx.subscriptionStatus;
+  return status === 'suspended' || status === 'cancelled';
 }
 
 export function assertBranchAccess(

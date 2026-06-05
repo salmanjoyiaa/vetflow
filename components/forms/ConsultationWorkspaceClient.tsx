@@ -55,6 +55,8 @@ interface ConsultationWorkspaceClientProps {
   history: VisitHistory[];
   products: Product[];
   visitReason: string;
+  isEmergency?: boolean;
+  triageNotes?: string | null;
 }
 
 export default function ConsultationWorkspaceClient({
@@ -64,6 +66,8 @@ export default function ConsultationWorkspaceClient({
   history,
   products,
   visitReason,
+  isEmergency = false,
+  triageNotes,
 }: ConsultationWorkspaceClientProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'consult' | 'history'>('consult');
@@ -88,6 +92,10 @@ export default function ConsultationWorkspaceClient({
       treatmentPlan: '',
       internalNotes: '',
       followUpRecommendation: '',
+      temperatureC: undefined,
+      heartRateBpm: undefined,
+      respiratoryRate: undefined,
+      weightKg: pet.weightKg ?? undefined,
       prescriptionItems: [],
     },
   });
@@ -126,6 +134,27 @@ export default function ConsultationWorkspaceClient({
   };
 
   return (
+    <div className="space-y-6">
+      {isEmergency && (
+        <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-2xl flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0" />
+          <div>
+            <p className="text-sm font-black text-destructive uppercase tracking-wide">Emergency patient</p>
+            <p className="text-xs text-destructive/80">This visit was flagged as an emergency at intake.</p>
+          </div>
+        </div>
+      )}
+
+      {triageNotes && (
+        <div className="glass-panel rounded-2xl border border-outline-variant/40 p-5 shadow-premium">
+          <div className="flex items-center gap-2 mb-2">
+            <ClipboardList className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-bold text-on-surface">Intake / initial history</h3>
+          </div>
+          <p className="text-xs text-on-surface-variant/80 whitespace-pre-wrap">{triageNotes}</p>
+        </div>
+      )}
+
     <div className="grid md:grid-cols-12 gap-8 items-start">
       
       {/* LEFT: MEDICAL BRIEF / TABS */}
@@ -305,6 +334,54 @@ export default function ConsultationWorkspaceClient({
               </div>
             </div>
 
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-surface-container/20 border border-outline-variant/30">
+              <p className="col-span-full text-[10px] font-bold text-primary uppercase tracking-wider">
+                Vitals (structured)
+              </p>
+              <div>
+                <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">
+                  Temp (°C)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  {...register('temperatureC', { valueAsNumber: true })}
+                  className="w-full px-2 py-1.5 bg-surface border border-outline-variant rounded-lg text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">
+                  Heart rate
+                </label>
+                <input
+                  type="number"
+                  {...register('heartRateBpm', { valueAsNumber: true })}
+                  className="w-full px-2 py-1.5 bg-surface border border-outline-variant rounded-lg text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">
+                  Resp. rate
+                </label>
+                <input
+                  type="number"
+                  {...register('respiratoryRate', { valueAsNumber: true })}
+                  className="w-full px-2 py-1.5 bg-surface border border-outline-variant rounded-lg text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">
+                  Weight (kg)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  {...register('weightKg', { valueAsNumber: true })}
+                  className="w-full px-2 py-1.5 bg-surface border border-outline-variant rounded-lg text-xs"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                 Diagnosis / Assessment
@@ -363,7 +440,7 @@ export default function ConsultationWorkspaceClient({
             <div className="flex items-center justify-between border-b border-outline-variant/30 pb-4">
               <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5">
                 <FileCheck2 className="w-4 h-4 text-primary" />
-                Prescription Builder
+                Items dispensed / prescription
               </h3>
               <button
                 type="button"
@@ -520,6 +597,7 @@ export default function ConsultationWorkspaceClient({
         </form>
       )}
 
+    </div>
     </div>
   );
 }
