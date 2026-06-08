@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { normalizeOneToOne } from '@/lib/supabase/embed';
 import BillingTableClient, {
   type BillingRow,
 } from '@/components/super-admin/BillingTableClient';
@@ -69,7 +70,7 @@ export default async function SuperAdminBillingPage() {
   };
 
   const rows: BillingRow[] = orgList.map((org) => {
-    const sub = (org.subscription_status as SubRow[] | null)?.[0];
+    const sub = normalizeOneToOne(org.subscription_status as SubRow | SubRow[] | null);
     const paid = paidByOrg.get(org.id);
     return {
       organizationId: org.id,

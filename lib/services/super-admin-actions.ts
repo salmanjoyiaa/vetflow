@@ -103,8 +103,7 @@ export async function provisionClinicAction(payload: unknown) {
     trialEnd.setDate(trialEnd.getDate() + 30);
     const isTrial = parsed.planId === 'trial';
 
-    const { error: subError } = await adminClient.from('subscription_status').insert({
-      organization_id: orgId,
+    const subPayload = {
       plan_id: parsed.planId,
       plan_name: parsed.planId,
       status: isTrial ? 'trial' : 'active',
@@ -112,7 +111,23 @@ export async function provisionClinicAction(payload: unknown) {
       trial_end: trialEnd.toISOString(),
       features,
       notes: 'Provisioned by platform super admin',
-    });
+    };
+
+    const { data: existingSub } = await adminClient
+      .from('subscription_status')
+      .select('id')
+      .eq('organization_id', orgId)
+      .maybeSingle();
+
+    const { error: subError } = existingSub
+      ? await adminClient
+          .from('subscription_status')
+          .update(subPayload)
+          .eq('organization_id', orgId)
+      : await adminClient.from('subscription_status').insert({
+          organization_id: orgId,
+          ...subPayload,
+        });
     if (subError) {
       return { success: false, error: subError.message || 'Failed to initialize subscription.' };
     }

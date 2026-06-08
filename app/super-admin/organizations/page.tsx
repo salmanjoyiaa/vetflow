@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { normalizeOneToOne } from '@/lib/supabase/embed';
 import OrganizationRegistryClient, {
   type OrgRegistryRow,
 } from '@/components/super-admin/OrganizationRegistryClient';
@@ -52,7 +53,7 @@ export default async function SuperAdminOrganizations() {
   }
 
   const orgs: OrgRegistryRow[] = orgList.map((org) => {
-    const sub = (org.subscription_status as SubscriptionRow[] | null)?.[0];
+    const sub = normalizeOneToOne(org.subscription_status as SubscriptionRow | SubscriptionRow[] | null);
     return {
       id: org.id,
       name: org.name,

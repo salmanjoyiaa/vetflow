@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { normalizeOneToOne } from '@/lib/supabase/embed';
 import { isDemoMode } from '@/lib/demo/credentials';
 import { MOCK_SUPER_ADMIN_DATA } from '@/lib/demo/mock-data';
 import {
@@ -149,7 +150,9 @@ export default async function SuperAdminDashboard() {
       totalBranches = branchesCountRes.count || 0;
       recentOrgs = recentOrgsRes.data || [];
       allOrgs = (allOrgsRes.data || []).map((o) => {
-        const sub = (o.subscription_status as { trial_end: string | null }[] | null)?.[0];
+        const sub = normalizeOneToOne(
+          o.subscription_status as { trial_end: string | null } | { trial_end: string | null }[] | null
+        );
         return {
           id: o.id,
           created_at: o.created_at,

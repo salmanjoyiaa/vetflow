@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { normalizeOneToOne } from '@/lib/supabase/embed';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/premium/PageHeader';
@@ -71,18 +72,17 @@ export default async function OrganizationDetailPage({
   }
   if (!org) notFound();
 
-  const sub = (org.subscription_status as
-    | {
-        plan_name: string;
-        plan_id: string | null;
-        status: string;
-        trial_start: string | null;
-        trial_end: string | null;
-        renewal_date: string | null;
-        notes: string | null;
-        features: Record<string, boolean> | null;
-      }[]
-    | null)?.[0];
+  type SubRow = {
+    plan_name: string;
+    plan_id: string | null;
+    status: string;
+    trial_start: string | null;
+    trial_end: string | null;
+    renewal_date: string | null;
+    notes: string | null;
+    features: Record<string, boolean> | null;
+  };
+  const sub = normalizeOneToOne(org.subscription_status as SubRow | SubRow[] | null);
 
   const clinicTypeLabel =
     (org.clinic_types as { label?: string } | null)?.label || org.clinic_type_id;

@@ -477,7 +477,7 @@ export default function CinematicHome() {
       <StickyShowcase />
 
       {/* WORKFLOW STEPPER */}
-      <section id="workflow" className="relative py-24 px-5 md:px-8">
+      <section id="workflow" className="relative pt-12 lg:pt-16 pb-24 px-5 md:px-8">
         <div className="max-w-6xl mx-auto">
           <Reveal>
             <div className="text-center">

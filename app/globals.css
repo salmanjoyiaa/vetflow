@@ -581,3 +581,9 @@ body {
     var(--color-outline-variant) var(--progress, 0%)
   );
 }
+
+/* Collapse sticky showcase scroll track height during E2E screenshots to eliminate the visual layout gap */
+html.screenshotting .sticky-showcase-container {
+  height: auto !important;
+}
+

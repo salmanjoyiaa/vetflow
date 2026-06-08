@@ -40,7 +40,13 @@ const SHOWCASE_ITEMS: {
   },
 ];
 
-function ShowcaseCopy({ activeIndex }: { activeIndex: number }) {
+function ShowcaseCopy({
+  activeIndex,
+  onItemClick,
+}: {
+  activeIndex: number;
+  onItemClick?: (idx: number) => void;
+}) {
   return (
     <div className="space-y-5">
       <span className="label-mono text-primary/80">See it in action</span>
@@ -50,14 +56,16 @@ function ShowcaseCopy({ activeIndex }: { activeIndex: number }) {
       </h2>
       <div className="space-y-3">
         {SHOWCASE_ITEMS.map((item, i) => (
-          <motion.div
+          <motion.button
             key={item.variant}
+            onClick={() => onItemClick?.(i)}
+            type="button"
             animate={{
               opacity: activeIndex === i ? 1 : 0.55,
               x: activeIndex === i ? 0 : -6,
             }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className={`flex gap-3 p-3.5 rounded-2xl border transition-colors ${
+            className={`w-full text-left flex gap-3 p-3.5 rounded-2xl border transition-colors cursor-pointer hover:bg-primary/5 ${
               activeIndex === i
                 ? 'border-primary/30 bg-primary/5'
                 : 'border-transparent'
@@ -76,7 +84,7 @@ function ShowcaseCopy({ activeIndex }: { activeIndex: number }) {
               <p className="font-black text-sm">{item.title}</p>
               <p className="text-xs text-on-surface-variant/65 mt-0.5 leading-relaxed">{item.text}</p>
             </div>
-          </motion.div>
+          </motion.button>
         ))}
       </div>
     </div>
@@ -91,7 +99,7 @@ function CompactShowcase() {
     <section className="relative py-20 px-5 md:px-8 lg:hidden">
       <div className="absolute inset-0 grid-fade-bg pointer-events-none opacity-30" />
       <div className="relative max-w-6xl mx-auto space-y-10">
-        <ShowcaseCopy activeIndex={activeIndex} />
+        <ShowcaseCopy activeIndex={activeIndex} onItemClick={setActiveIndex} />
         <div className="flex flex-wrap gap-2">
           {SHOWCASE_ITEMS.map((item, i) => (
             <button
@@ -128,7 +136,7 @@ function CompactShowcase() {
 function StickyDesktopShowcase() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const stepVh = 40;
+  const stepVh = 32;
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -146,17 +154,29 @@ function StickyDesktopShowcase() {
     setActiveIndex(idx);
   });
 
+  const handleItemClick = (idx: number) => {
+    if (!containerRef.current) return;
+    const elementTop = containerRef.current.offsetTop;
+    const scrollRange = containerRef.current.offsetHeight - window.innerHeight;
+    const targetProgress = (idx + 0.5) / SHOWCASE_ITEMS.length;
+    const targetScrollY = elementTop + targetProgress * scrollRange;
+
+    window.scrollTo({
+      top: targetScrollY,
+      behavior: 'smooth',
+    });
+  };
+
   return (
     <section
       ref={containerRef}
-      data-lenis-prevent
-      className="relative hidden lg:block"
+      className="relative hidden lg:block sticky-showcase-container"
       style={{ height: `${SHOWCASE_ITEMS.length * stepVh}vh` }}
     >
-      <div className={`sticky top-0 h-screen flex items-start ${LANDING_NAV_OFFSET} pb-12 overflow-hidden`}>
+      <div className="sticky top-[var(--landing-nav-height)] h-[80vh] flex items-center overflow-hidden w-full">
         <div className="absolute inset-0 grid-fade-bg pointer-events-none opacity-40" />
-        <div className="relative max-w-6xl mx-auto px-5 md:px-8 w-full grid grid-cols-2 gap-12 xl:gap-16 items-start">
-          <ShowcaseCopy activeIndex={activeIndex} />
+        <div className="relative max-w-6xl mx-auto px-5 md:px-8 w-full grid grid-cols-2 gap-12 xl:gap-16 items-center">
+          <ShowcaseCopy activeIndex={activeIndex} onItemClick={handleItemClick} />
 
           <motion.div style={{ scale: mockupScale, opacity: mockupOpacity }} className="relative">
             <div className="absolute -inset-8 bg-primary/10 rounded-3xl blur-3xl pointer-events-none" />
