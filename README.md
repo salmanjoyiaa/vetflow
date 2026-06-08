@@ -140,20 +140,6 @@ Enable Demo Mode by ensuring `.env.local` contains:
 NEXT_PUBLIC_DEMO_MODE=true
 ```
 
-### Demo / Seeded Accounts
-
-All seeded accounts use password **`password123`**. For production deploy, run [`db/seed/02_seed.sql`](db/seed/02_seed.sql) against your Supabase project after migrations.
-
-| Role | Email | Password | Dashboard path |
-|------|-------|----------|----------------|
-| **Super Admin** | `salmanjoyiaa@gmail.com` | `password123` | `/super-admin/dashboard` |
-| **Clinic Admin (VetCare)** | `admin.a@vetcare.com` | `password123` | `/dashboard` — includes AI Assistant + Social Automation |
-| **Doctor (VetCare)** | `doctor.a@vetcare.com` | `password123` | `/dashboard/doctors` |
-| **Receptionist (VetCare)** | `receptionist.a@vetcare.com` | `password123` | `/dashboard` (front desk) |
-| **Clinic Admin (Animal Hospital)** | `admin.b@animalhospital.com` | `password123` | `/dashboard` |
-| **Doctor (Animal Hospital)** | `doctor.b@animalhospital.com` | `password123` | `/dashboard/doctors` |
-
-**Social automation testing:** log in as `admin.a@vetcare.com` / `password123`, then open `/dashboard/social`.
 
 ### Demo mode vs production
 
