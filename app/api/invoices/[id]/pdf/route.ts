@@ -2,6 +2,7 @@ import { renderToStream } from '@react-pdf/renderer';
 import InvoicePdfDocument from '@/components/pdf/InvoicePdfDocument';
 import { createClient } from '@/lib/supabase/server';
 import { resolveServerSession } from '@/lib/services/auth';
+import { getPdfBranding } from '@/lib/services/branding';
 import React from 'react';
 
 /**
@@ -47,15 +48,18 @@ export async function GET(
     const paymentsArr = invoice.payments as any[] || [];
     const paymentMethod = paymentsArr[0]?.payment_method || 'cash';
 
+    const clinicName = session.organizationName || 'ClinixDev Center';
+    const branding = await getPdfBranding(supabase, session.organizationId!, clinicName);
+
     // 3. Render React-pdf component directly to stream
     const stream = await renderToStream(
       React.createElement(InvoicePdfDocument, {
         invoiceNumber: invoice.invoice_number,
         date: new Date(invoice.created_at).toLocaleDateString(),
-        clinicName: session.organizationName || 'ClinixDev Center',
+        clinicName,
         branchName: branchObj?.name || 'Main Branch',
-        branchAddress: branchObj?.address || '',
-        branchPhone: branchObj?.phone || '',
+        branchAddress: branding.address || branchObj?.address || '',
+        branchPhone: branding.phone || branchObj?.phone || '',
         customerName: `${customerObj?.first_name || ''} ${customerObj?.last_name || ''}`,
         customerPhone: customerObj?.phone || '',
         petName: petObj?.name || 'Patient',
@@ -66,6 +70,9 @@ export async function GET(
         taxAmount: Number(invoice.tax_amount),
         total: Number(invoice.total),
         paymentMethod: paymentMethod,
+        brandName: branding.brandName,
+        accentColor: branding.accentColor,
+        footerText: branding.footerText || undefined,
       }) as any
     );
 

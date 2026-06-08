@@ -11,26 +11,48 @@ import { Loader2, Plus, X } from 'lucide-react';
 interface CustomerFormProps {
   branches: { id: string; name: string }[];
   activeBranchId?: string;
+  defaultPhone?: string;
   onSuccess?: () => void;
 }
 
-export default function CustomerForm({ branches, activeBranchId, onSuccess }: CustomerFormProps) {
+export default function CustomerForm({
+  branches,
+  activeBranchId,
+  defaultPhone,
+  onSuccess,
+}: CustomerFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [existingCustomerId, setExistingCustomerId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const resolvedBranchId = activeBranchId || (branches.length > 0 ? branches[0].id : '');
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<CustomerInput>({
     resolver: zodResolver(CustomerSchema),
     defaultValues: {
-      branchId: activeBranchId || (branches.length > 0 ? branches[0].id : ''),
+      branchId: resolvedBranchId,
+      phone: defaultPhone || '',
     },
   });
+
+  const openForm = () => {
+    setExistingCustomerId(null);
+    setError(null);
+    if (resolvedBranchId) {
+      setValue('branchId', resolvedBranchId);
+    }
+    if (defaultPhone) {
+      setValue('phone', defaultPhone);
+    }
+    setIsOpen(true);
+  };
 
   const onSubmit = async (data: CustomerInput) => {
     setIsLoading(true);
@@ -39,10 +61,17 @@ export default function CustomerForm({ branches, activeBranchId, onSuccess }: Cu
       const res = await createCustomerAction(data);
       if (res.success) {
         reset();
+        setExistingCustomerId(null);
         setIsOpen(false);
         router.refresh();
         if (onSuccess) onSuccess();
       } else {
+        const dupId = (res as { existingCustomerId?: string }).existingCustomerId;
+        if (dupId) {
+          setExistingCustomerId(dupId);
+        } else {
+          setExistingCustomerId(null);
+        }
         setError(res.error || 'Failed to create customer');
       }
     } catch (err: any) {
@@ -55,7 +84,7 @@ export default function CustomerForm({ branches, activeBranchId, onSuccess }: Cu
   return (
     <>
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={openForm}
         className="bg-primary hover:bg-primary/95 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-2 transition-all"
       >
         <Plus className="w-4 h-4" />
@@ -76,8 +105,16 @@ export default function CustomerForm({ branches, activeBranchId, onSuccess }: Cu
             <p className="text-xs text-on-surface-variant/60 mb-6">Register a new pet owner in the database.</p>
 
             {error && (
-              <div className="mb-4 p-3 bg-destructive/5 border border-destructive/20 text-destructive text-xs rounded-xl">
-                {error}
+              <div className="mb-4 p-3 bg-destructive/5 border border-destructive/20 text-destructive text-xs rounded-xl space-y-2">
+                <p>{error}</p>
+                {existingCustomerId && (
+                  <a
+                    href={`/dashboard/customers/${existingCustomerId}`}
+                    className="inline-block text-[10px] font-bold text-primary hover:underline"
+                  >
+                    Use existing customer profile →
+                  </a>
+                )}
               </div>
             )}
 
@@ -128,7 +165,11 @@ export default function CustomerForm({ branches, activeBranchId, onSuccess }: Cu
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {activeBranchId && (
+                <input type="hidden" {...register('branchId')} value={activeBranchId} />
+              )}
+
+              <div className={activeBranchId ? '' : 'grid grid-cols-2 gap-4'}>
                 <div>
                   <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                     Phone Number
@@ -143,24 +184,26 @@ export default function CustomerForm({ branches, activeBranchId, onSuccess }: Cu
                     <span className="text-[10px] text-destructive mt-1 block">{errors.phone.message}</span>
                   )}
                 </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                    Select Branch Scope
-                  </label>
-                  <select
-                    {...register('branchId')}
-                    className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl outline-none text-xs text-on-surface font-semibold"
-                  >
-                    {branches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.branchId && (
-                    <span className="text-[10px] text-destructive mt-1 block">{errors.branchId.message}</span>
-                  )}
-                </div>
+                {!activeBranchId && (
+                  <div>
+                    <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+                      Select Branch Scope
+                    </label>
+                    <select
+                      {...register('branchId')}
+                      className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl outline-none text-xs text-on-surface font-semibold"
+                    >
+                      {branches.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.branchId && (
+                      <span className="text-[10px] text-destructive mt-1 block">{errors.branchId.message}</span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>

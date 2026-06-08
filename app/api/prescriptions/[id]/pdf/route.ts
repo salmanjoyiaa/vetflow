@@ -5,6 +5,7 @@ import {
   assertCapability,
   resolveServerAuthContext,
 } from '@/lib/auth/context';
+import { getPdfBranding } from '@/lib/services/branding';
 import React from 'react';
 
 /**
@@ -66,14 +67,17 @@ export async function GET(
       .eq('id', visitObj?.customer_id || '')
       .maybeSingle();
 
+    const clinicName = session.organizationName || 'ClinixDev Center';
+    const branding = await getPdfBranding(supabase, session.organizationId!, clinicName);
+
     // 3. Render React-pdf component directly to stream
     const stream = await renderToStream(
       React.createElement(PrescriptionPdfDocument, {
         date: new Date(prescription.created_at).toLocaleDateString(),
-        clinicName: session.organizationName || 'ClinixDev Center',
+        clinicName,
         branchName: branchObj?.name || 'Main Branch',
-        branchAddress: branchObj?.address || '',
-        branchPhone: branchObj?.phone || '',
+        branchAddress: branding.address || branchObj?.address || '',
+        branchPhone: branding.phone || branchObj?.phone || '',
         doctorName: `${doctorObj?.first_name || 'Attending'} ${doctorObj?.last_name || 'Doctor'}`,
         customerName: customer ? `${customer.first_name} ${customer.last_name}` : 'Pet Parent',
         petName: petObj?.name || 'Patient',
@@ -83,6 +87,8 @@ export async function GET(
         treatmentPlan: noteObj?.treatment_plan || '',
         followUp: noteObj?.follow_up_recommendation || '',
         items: prescription.prescription_items || [],
+        brandName: branding.brandName,
+        accentColor: branding.accentColor,
       }) as any
     );
 

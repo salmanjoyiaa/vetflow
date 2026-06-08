@@ -9,7 +9,7 @@ import {
   SubscriptionSchema,
   type SubscriptionInput,
 } from '@/lib/validations/schemas';
-import { ALL_FEATURES, type Feature } from '@/lib/auth/features';
+import { ALL_FEATURES, OPT_IN_FEATURES, type Feature } from '@/lib/auth/features';
 
 /**
  * Manually updates subscription parameters for a tenant clinic organization.
@@ -118,6 +118,10 @@ export async function updateOrganizationFeaturesAction(payload: unknown) {
     for (const feature of ALL_FEATURES) {
       featuresJson[feature] = parsed.features[feature] !== false;
     }
+    // Opt-in (super-admin-gated) features default OFF unless explicitly enabled.
+    for (const feature of OPT_IN_FEATURES) {
+      featuresJson[feature] = parsed.features[feature] === true;
+    }
 
     const { data: sub, error } = await adminClient
       .from('subscription_status')
@@ -138,6 +142,8 @@ export async function updateOrganizationFeaturesAction(payload: unknown) {
       action: 'FEATURES_UPDATED',
       resourceType: 'SUBSCRIPTION',
       resourceId: sub.id,
+      category: 'security',
+      severity: 'warning',
       afterData: { features: featuresJson },
     });
 

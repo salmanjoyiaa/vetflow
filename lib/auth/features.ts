@@ -5,7 +5,8 @@ export type Feature =
   | 'reports'
   | 'multi_branch'
   | 'ai_assistant'
-  | 'social_automation';
+  | 'social_automation'
+  | 'branded_pdfs';
 
 export const ALL_FEATURES: Feature[] = [
   'appointments',
@@ -17,6 +18,19 @@ export const ALL_FEATURES: Feature[] = [
   'social_automation',
 ];
 
+/**
+ * Features that default to OFF and must be explicitly enabled by a super admin
+ * (opt-in). These are NOT route-gated and are excluded from the default-on
+ * resolution used by `resolveFeatures`.
+ */
+export const OPT_IN_FEATURES: Feature[] = ['branded_pdfs'];
+
+/** Full set a super admin can toggle per organization. */
+export const SUPERADMIN_TOGGLEABLE_FEATURES: Feature[] = [
+  ...ALL_FEATURES,
+  ...OPT_IN_FEATURES,
+];
+
 export const FEATURE_LABELS: Record<Feature, string> = {
   appointments: 'Appointments & walk-ins',
   inventory: 'Inventory management',
@@ -25,7 +39,18 @@ export const FEATURE_LABELS: Record<Feature, string> = {
   multi_branch: 'Multi-branch access',
   ai_assistant: 'AI assistant',
   social_automation: 'Social media automation',
+  branded_pdfs: 'Branded PDF documents',
 };
+
+/**
+ * Branded PDFs are an opt-in, super-admin-gated capability. Defaults to false
+ * unless the org's features JSONB explicitly sets `branded_pdfs: true`.
+ */
+export function isBrandedPdfsEnabled(
+  featuresJson: Record<string, unknown> | null | undefined
+): boolean {
+  return featuresJson?.branded_pdfs === true;
+}
 
 /** Nav route → required feature (undefined = no feature gate) */
 export const ROUTE_FEATURES: Record<string, Feature | undefined> = {

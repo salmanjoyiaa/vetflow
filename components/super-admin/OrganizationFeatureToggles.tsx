@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateOrganizationFeaturesAction } from '@/lib/services/super-admin-actions';
 import {
-  ALL_FEATURES,
+  SUPERADMIN_TOGGLEABLE_FEATURES,
+  OPT_IN_FEATURES,
   FEATURE_LABELS,
   type Feature,
 } from '@/lib/auth/features';
@@ -22,8 +23,11 @@ export default function OrganizationFeatureToggles({
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<Record<Feature, boolean>>(() => {
     const out = {} as Record<Feature, boolean>;
-    for (const f of ALL_FEATURES) {
-      out[f] = initialFeatures?.[f] !== false;
+    for (const f of SUPERADMIN_TOGGLEABLE_FEATURES) {
+      // Opt-in features default OFF; standard features default ON.
+      out[f] = OPT_IN_FEATURES.includes(f)
+        ? initialFeatures?.[f] === true
+        : initialFeatures?.[f] !== false;
     }
     return out;
   });
@@ -51,7 +55,7 @@ export default function OrganizationFeatureToggles({
         Feature access
       </p>
       <ul className="space-y-1.5">
-        {ALL_FEATURES.map((feature) => (
+        {SUPERADMIN_TOGGLEABLE_FEATURES.map((feature) => (
           <li key={feature} className="flex items-center justify-between gap-2">
             <span className="text-[10px] text-on-surface-variant">
               {FEATURE_LABELS[feature]}

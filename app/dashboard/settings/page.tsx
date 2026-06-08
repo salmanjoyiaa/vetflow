@@ -6,6 +6,7 @@ import {
 import DeniedState from '@/components/ui/premium/DeniedState';
 import { createClient } from '@/lib/supabase/server';
 import SettingsForm from '@/components/forms/SettingsForm';
+import { isBrandedPdfsEnabled } from '@/lib/auth/features';
 import { Settings } from 'lucide-react';
 
 export const metadata = {
@@ -40,10 +41,12 @@ export default async function SettingsPage() {
 
   const supabase = await createClient();
 
-  const [{ data: appSettings }, { data: taxSettings }] = await Promise.all([
+  const [{ data: appSettings }, { data: taxSettings }, { data: sub }] = await Promise.all([
     supabase
       .from('app_settings')
-      .select('timezone, currency')
+      .select(
+        'timezone, currency, clinic_logo_url, clinic_address, clinic_phone, clinic_email, pdf_branding_enabled, pdf_accent_color, pdf_footer_text'
+      )
       .eq('organization_id', session.organizationId)
       .maybeSingle(),
     supabase
@@ -51,7 +54,16 @@ export default async function SettingsPage() {
       .select('is_enabled, tax_name, tax_percentage, applies_to_products, applies_to_services')
       .eq('organization_id', session.organizationId)
       .maybeSingle(),
+    supabase
+      .from('subscription_status')
+      .select('features')
+      .eq('organization_id', session.organizationId)
+      .maybeSingle(),
   ]);
+
+  const brandedPdfsAllowed = isBrandedPdfsEnabled(
+    (sub?.features as Record<string, unknown>) || null
+  );
 
   const defaultValues = {
     timezone: appSettings?.timezone || 'UTC',
@@ -61,6 +73,13 @@ export default async function SettingsPage() {
     taxPercentage: Number(taxSettings?.tax_percentage ?? 15),
     appliesToProducts: taxSettings?.applies_to_products ?? true,
     appliesToServices: taxSettings?.applies_to_services ?? true,
+    clinicLogoUrl: appSettings?.clinic_logo_url || '',
+    clinicAddress: appSettings?.clinic_address || '',
+    clinicPhone: appSettings?.clinic_phone || '',
+    clinicEmail: appSettings?.clinic_email || '',
+    pdfBrandingEnabled: appSettings?.pdf_branding_enabled ?? false,
+    pdfAccentColor: appSettings?.pdf_accent_color || '#0b132b',
+    pdfFooterText: appSettings?.pdf_footer_text || '',
   };
 
   return (
@@ -75,7 +94,7 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <SettingsForm defaultValues={defaultValues} />
+      <SettingsForm defaultValues={defaultValues} brandedPdfsAllowed={brandedPdfsAllowed} />
     </div>
   );
 }

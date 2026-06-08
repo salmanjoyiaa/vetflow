@@ -199,6 +199,8 @@ interface PrescriptionPdfProps {
   treatmentPlan: string;
   followUp: string;
   items: PrescriptionItem[];
+  brandName?: string;
+  accentColor?: string;
 }
 
 export default function PrescriptionPdfDocument({
@@ -216,6 +218,8 @@ export default function PrescriptionPdfDocument({
   treatmentPlan,
   followUp,
   items,
+  brandName = 'ClinixDev',
+  accentColor = '#0F172A',
 }: PrescriptionPdfProps) {
   return (
     <Document>
@@ -224,8 +228,8 @@ export default function PrescriptionPdfDocument({
         {/* HEADER */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <View style={styles.logoPlaceholder} />
-            <Text style={styles.logoText}>ClinixDev Rx</Text>
+            <View style={[styles.logoPlaceholder, { backgroundColor: accentColor }]} />
+            <Text style={[styles.logoText, { color: accentColor }]}>{brandName} Rx</Text>
           </View>
           <View style={styles.clinicDetails}>
             <Text style={{ fontWeight: 'bold', color: '#0F172A' }}>{clinicName}</Text>

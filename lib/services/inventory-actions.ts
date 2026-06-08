@@ -10,7 +10,13 @@ import {
   resolveServerAuthContext,
 } from '@/lib/auth/context';
 import { writeAuditLog } from '@/lib/services/audit';
-import { ProductSchema, StockAdjustmentSchema, type ProductInput, type StockAdjustmentInput } from '@/lib/validations/schemas';
+import {
+  ProductSchema,
+  StockAdjustmentSchema,
+  ConfirmStockIntakeSchema,
+  type ProductInput,
+  type StockAdjustmentInput,
+} from '@/lib/validations/schemas';
 
 export async function createProductAction(payload: unknown) {
   try {
@@ -153,6 +159,113 @@ export async function adjustStockAction(payload: unknown) {
     return {
       success: false,
       error: err instanceof Error ? err.message : 'An unexpected error occurred.',
+    };
+  }
+}
+
+export async function confirmStockIntakeAction(payload: unknown) {
+  try {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
+    }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_inventory');
+    assertFeature(ctx, 'inventory');
+
+    const parsed = ConfirmStockIntakeSchema.parse(payload);
+    assertBranchAccess(ctx, parsed.branchId);
+
+    const adminClient = await createAdminClient();
+    const reasonBase = [
+      parsed.supplierName && `Supplier: ${parsed.supplierName}`,
+      parsed.invoiceNumber && `Invoice: ${parsed.invoiceNumber}`,
+      parsed.invoiceDate && `Date: ${parsed.invoiceDate}`,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+
+    for (const line of parsed.lines) {
+      if (line.productId) {
+        const { data: product } = await adminClient
+          .from('products')
+          .select('stock_quantity, type, name')
+          .eq('id', line.productId)
+          .eq('organization_id', ctx.organizationId)
+          .single();
+
+        if (!product || product.type === 'service') continue;
+
+        const newQty = product.stock_quantity + line.quantity;
+        await adminClient
+          .from('products')
+          .update({ stock_quantity: newQty })
+          .eq('id', line.productId);
+
+        await adminClient.from('stock_movements').insert({
+          organization_id: ctx.organizationId,
+          branch_id: parsed.branchId,
+          product_id: line.productId,
+          type: 'purchase_added',
+          quantity: line.quantity,
+          reason: reasonBase || `Stock invoice intake — ${line.name}`,
+          created_by: ctx.userId,
+        });
+      } else if (line.createNew) {
+        const { data: product, error } = await adminClient
+          .from('products')
+          .insert({
+            organization_id: ctx.organizationId,
+            branch_id: parsed.branchId,
+            name: line.name,
+            sku: line.sku || null,
+            unit: line.unit || 'pcs',
+            type: 'medicine',
+            purchase_price: line.unitPrice,
+            selling_price: line.unitPrice * 1.2,
+            stock_quantity: line.quantity,
+            reorder_level: 5,
+            is_active: true,
+          })
+          .select()
+          .single();
+
+        if (error || !product) {
+          throw new Error(error?.message || `Failed to create product: ${line.name}`);
+        }
+
+        await adminClient.from('stock_movements').insert({
+          organization_id: ctx.organizationId,
+          branch_id: parsed.branchId,
+          product_id: product.id,
+          type: 'purchase_added',
+          quantity: line.quantity,
+          reason: reasonBase || 'New product from invoice intake',
+          created_by: ctx.userId,
+        });
+      }
+    }
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId,
+      branchId: parsed.branchId,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
+      action: 'STOCK_INVOICE_INTAKE',
+      resourceType: 'INVENTORY',
+      resourceId: parsed.branchId,
+      afterData: {
+        supplierName: parsed.supplierName,
+        invoiceNumber: parsed.invoiceNumber,
+        lineCount: parsed.lines.length,
+      },
+    });
+
+    return { success: true };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to confirm stock intake.',
     };
   }
 }

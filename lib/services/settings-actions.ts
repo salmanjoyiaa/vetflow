@@ -30,6 +30,13 @@ export async function updateSettingsAction(payload: unknown) {
           organization_id: orgId,
           timezone: parsed.timezone,
           currency: parsed.currency,
+          clinic_logo_url: parsed.clinicLogoUrl || null,
+          clinic_address: parsed.clinicAddress || null,
+          clinic_phone: parsed.clinicPhone || null,
+          clinic_email: parsed.clinicEmail || null,
+          pdf_branding_enabled: parsed.pdfBrandingEnabled ?? false,
+          pdf_accent_color: parsed.pdfAccentColor || null,
+          pdf_footer_text: parsed.pdfFooterText || null,
         },
         { onConflict: 'organization_id' }
       );

@@ -26,6 +26,9 @@ export default function AppointmentsPageHeader({
 }: AppointmentsPageHeaderProps) {
   const searchParams = useSearchParams();
   const openNew = searchParams.get('new') === '1';
+  const initialPhone = searchParams.get('phone') || undefined;
+  const initialCustomerId = searchParams.get('customerId') || undefined;
+  const initialPetId = searchParams.get('petId') || undefined;
 
   return (
     <PageHeader
@@ -38,6 +41,9 @@ export default function AppointmentsPageHeader({
             doctors={doctors}
             activeBranchId={activeBranchId}
             defaultOpen={openNew}
+            initialPhone={initialPhone}
+            initialCustomerId={initialCustomerId}
+            initialPetId={initialPetId}
           />
           {orgSlug && (
             <div className="glass-panel p-3 rounded-2xl flex items-center gap-3 text-xs font-semibold text-on-surface">

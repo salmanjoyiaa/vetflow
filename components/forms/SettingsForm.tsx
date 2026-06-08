@@ -10,9 +10,10 @@ import { Loader2, Save } from 'lucide-react';
 
 interface SettingsFormProps {
   defaultValues: SettingsInput;
+  brandedPdfsAllowed?: boolean;
 }
 
-export default function SettingsForm({ defaultValues }: SettingsFormProps) {
+export default function SettingsForm({ defaultValues, brandedPdfsAllowed = false }: SettingsFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -127,6 +128,99 @@ export default function SettingsForm({ defaultValues }: SettingsFormProps) {
             Apply to services
           </label>
         </div>
+      </div>
+
+      <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold text-on-surface uppercase tracking-wider">Clinic Branding & PDF</h3>
+          {!brandedPdfsAllowed && (
+            <span className="text-[9px] font-bold text-amber-500 uppercase tracking-wider">
+              Branded PDFs not enabled by platform
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-on-surface-variant/70 leading-relaxed">
+          These details appear on invoice and prescription PDFs. Branded PDFs must be enabled for
+          your clinic by the ClinixDev platform team before custom branding renders on documents.
+        </p>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+              Clinic Logo URL
+            </label>
+            <input
+              {...register('clinicLogoUrl')}
+              placeholder="https://..."
+              className="w-full px-4 py-2.5 bg-surface-container/30 border border-outline-variant/80 rounded-xl text-sm text-on-surface outline-none focus:border-primary"
+            />
+            {errors.clinicLogoUrl && (
+              <span className="text-xs text-destructive mt-1 block">{errors.clinicLogoUrl.message}</span>
+            )}
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+              Clinic Phone
+            </label>
+            <input
+              {...register('clinicPhone')}
+              className="w-full px-4 py-2.5 bg-surface-container/30 border border-outline-variant/80 rounded-xl text-sm text-on-surface outline-none focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+              Clinic Email
+            </label>
+            <input
+              {...register('clinicEmail')}
+              className="w-full px-4 py-2.5 bg-surface-container/30 border border-outline-variant/80 rounded-xl text-sm text-on-surface outline-none focus:border-primary"
+            />
+            {errors.clinicEmail && (
+              <span className="text-xs text-destructive mt-1 block">{errors.clinicEmail.message}</span>
+            )}
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+              PDF Accent Color
+            </label>
+            <input
+              {...register('pdfAccentColor')}
+              placeholder="#0b132b"
+              className="w-full px-4 py-2.5 bg-surface-container/30 border border-outline-variant/80 rounded-xl text-sm text-on-surface outline-none focus:border-primary"
+            />
+            {errors.pdfAccentColor && (
+              <span className="text-xs text-destructive mt-1 block">{errors.pdfAccentColor.message}</span>
+            )}
+          </div>
+        </div>
+        <div>
+          <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+            Clinic Address
+          </label>
+          <input
+            {...register('clinicAddress')}
+            className="w-full px-4 py-2.5 bg-surface-container/30 border border-outline-variant/80 rounded-xl text-sm text-on-surface outline-none focus:border-primary"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+            PDF Footer Text
+          </label>
+          <input
+            {...register('pdfFooterText')}
+            placeholder="e.g. Thank you for trusting us with your pet's care."
+            className="w-full px-4 py-2.5 bg-surface-container/30 border border-outline-variant/80 rounded-xl text-sm text-on-surface outline-none focus:border-primary"
+          />
+        </div>
+        <label className="flex items-center gap-2 text-xs text-on-surface">
+          <input
+            type="checkbox"
+            {...register('pdfBrandingEnabled')}
+            disabled={!brandedPdfsAllowed}
+            className="rounded border-outline-variant/60 disabled:opacity-50"
+          />
+          Use clinic branding on PDF documents
+        </label>
       </div>
 
       <button

@@ -3,21 +3,19 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { searchCustomersAction } from '@/lib/services/customer-actions';
 import { createWalkInVisitAction } from '@/lib/services/visit-actions';
-import { 
-  Search, 
-  User, 
-  Heart, 
-  Loader2, 
-  MapPin, 
-  Clock, 
-  UserCheck, 
-  BriefcaseMedical, 
+import PatientLookupPanel, {
+  type SelectedPatient,
+} from '@/components/reception/PatientLookupPanel';
+import {
+  Loader2,
+  Clock,
+  UserCheck,
+  BriefcaseMedical,
   Play,
-  ArrowRight,
   ClipboardList,
   AlertTriangle,
+  Receipt,
 } from 'lucide-react';
 
 interface Doctor {
@@ -59,11 +57,7 @@ export default function WalkInDashboardClient({
   checkoutVisits,
 }: WalkInDashboardClientProps) {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [selectedPet, setSelectedPet] = useState<any | null>(null);
-  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<SelectedPatient | null>(null);
 
   // Form states
   const [reason, setReason] = useState('');
@@ -73,41 +67,15 @@ export default function WalkInDashboardClient({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSearch = async (val: string) => {
-    setSearchQuery(val);
-    if (val.trim().length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    setIsSearching(true);
-    try {
-      const res = await searchCustomersAction(val);
-      if (res.success && res.customers) {
-        setSearchResults(res.customers);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const handleSelectPet = (customer: any, pet: any) => {
-    setSelectedCustomer(customer);
-    setSelectedPet(pet);
-    setSearchResults([]);
-    setSearchQuery('');
-  };
-
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPet || !doctorId || !reason) return;
+    if (!selectedPatient || !doctorId || !reason) return;
     setIsSubmitting(true);
     setError(null);
     try {
       const res = await createWalkInVisitAction({
-        petId: selectedPet.id,
-        customerId: selectedCustomer.id,
+        petId: selectedPatient.pet.id,
+        customerId: selectedPatient.customer.id,
         doctorId,
         reason,
         branchId: activeBranchId,
@@ -116,8 +84,7 @@ export default function WalkInDashboardClient({
       });
 
       if (res.success) {
-        setSelectedPet(null);
-        setSelectedCustomer(null);
+        setSelectedPatient(null);
         setReason('');
         setIsEmergency(false);
         setTriageNotes('');
@@ -149,60 +116,13 @@ export default function WalkInDashboardClient({
           </span>
           <h3 className="text-base font-bold text-on-surface mb-4">Patient Check-In</h3>
 
-          {!selectedPet ? (
-            <div className="space-y-4">
-              <label className="block text-xs font-semibold text-on-surface-variant/70">
-                Search Customer (Name or Phone)
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
-                <input
-                  type="text"
-                  placeholder="e.g. John Doe or 555-9090"
-                  className="w-full pl-9 pr-4 py-2 bg-surface-container/40 border border-outline-variant/70 rounded-xl text-xs text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                  value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
-                />
-              </div>
-
-              {/* SEARCH RESULTS DROPDOWN */}
-              {isSearching && (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-5 h-5 text-primary animate-spin" />
-                </div>
-              )}
-
-              {searchResults.length > 0 && (
-                <div className="border border-outline-variant/50 rounded-xl divide-y divide-border/30 max-h-56 overflow-y-auto bg-surface-container/10">
-                  {searchResults.map((cust) => (
-                    <div key={cust.id} className="p-3">
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-on-surface">
-                        <User className="w-3.5 h-3.5 text-primary/70" />
-                        <span>{cust.firstName} {cust.lastName}</span>
-                        <span className="text-on-surface-variant/40 font-normal">({cust.phone})</span>
-                      </div>
-                      
-                      {/* Pets list */}
-                      <div className="mt-2 pl-4 space-y-1">
-                        {cust.pets.map((pet: any) => (
-                          <button
-                            key={pet.id}
-                            onClick={() => handleSelectPet(cust, pet)}
-                            className="w-full text-left flex items-center justify-between text-[10px] font-semibold text-primary hover:underline py-1"
-                          >
-                            <span>{pet.name} ({pet.species} • {pet.breed || 'Unknown breed'})</span>
-                            <ArrowRight className="w-3 h-3" />
-                          </button>
-                        ))}
-                        {cust.pets.length === 0 && (
-                          <span className="text-[9px] text-on-surface-variant/40 italic block">No pets registered</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          {!selectedPatient ? (
+            <PatientLookupPanel
+              activeBranchId={activeBranchId}
+              selected={selectedPatient}
+              onSelect={setSelectedPatient}
+              onClear={() => setSelectedPatient(null)}
+            />
           ) : (
             /* INTAKE FORM (When pet is selected) */
             <form onSubmit={handleCheckIn} className="space-y-4">
@@ -211,12 +131,14 @@ export default function WalkInDashboardClient({
               <div className="bg-surface-container/30 p-3 rounded-xl border border-outline-variant/35 flex items-center justify-between">
                 <div>
                   <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase block">Selected Patient</span>
-                  <span className="text-xs font-bold text-on-surface">{selectedPet.name}</span>
-                  <span className="text-[10px] text-on-surface-variant/60 block">Owner: {selectedCustomer.firstName} {selectedCustomer.lastName}</span>
+                  <span className="text-xs font-bold text-on-surface">{selectedPatient.pet.name}</span>
+                  <span className="text-[10px] text-on-surface-variant/60 block">
+                    Owner: {selectedPatient.customer.firstName} {selectedPatient.customer.lastName}
+                  </span>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSelectedPet(null)}
+                  onClick={() => setSelectedPatient(null)}
                   className="text-[10px] text-destructive font-bold hover:underline"
                 >
                   Cancel
@@ -329,9 +251,10 @@ export default function WalkInDashboardClient({
                   </div>
                   <Link
                     href={`/dashboard/invoices/create/${v.id}`}
-                    className="shrink-0 bg-primary text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-primary/95"
+                    className="shrink-0 inline-flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-primary/95"
                   >
-                    Create invoice
+                    <Receipt className="w-3 h-3" />
+                    Open checkout hub
                   </Link>
                 </li>
               ))}

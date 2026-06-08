@@ -69,6 +69,18 @@ export const SettingsSchema = z.object({
   taxPercentage: z.number().min(0).max(100),
   appliesToProducts: z.boolean(),
   appliesToServices: z.boolean(),
+  // Branding / PDF
+  clinicLogoUrl: z.string().url().optional().or(z.literal('')),
+  clinicAddress: z.string().optional().or(z.literal('')),
+  clinicPhone: z.string().optional().or(z.literal('')),
+  clinicEmail: z.string().email({ message: 'Invalid email address' }).optional().or(z.literal('')),
+  pdfBrandingEnabled: z.boolean(),
+  pdfAccentColor: z
+    .string()
+    .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, { message: 'Use a hex color like #0b132b' })
+    .optional()
+    .or(z.literal('')),
+  pdfFooterText: z.string().max(300).optional().or(z.literal('')),
 });
 
 // --- BRANCHES ---
