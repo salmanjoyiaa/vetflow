@@ -36,8 +36,8 @@ export default function RequestAccessPage() {
       } else {
         setError(res.error || 'Failed to submit your request.');
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +77,7 @@ export default function RequestAccessPage() {
             <h3 className="text-xl font-bold">Request access</h3>
             <p className="text-xs text-white/60 mt-3 leading-relaxed">
               ClinixDev clinics are provisioned by our team to guarantee secure, compliant,
-              multi-tenant isolation. Tell us about your clinic and we'll get you set up.
+              multi-tenant isolation. Tell us about your clinic and we&apos;ll get you set up.
             </p>
             <div className="mt-6 flex items-center gap-2 text-[11px] text-white/70">
               <ShieldCheck className="w-4 h-4 text-primary-light" />

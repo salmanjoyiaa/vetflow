@@ -1,14 +1,22 @@
-# 🏥 VetFlow — Enterprise Veterinary Practice Management Platform
+# 🏥 ClinixDev — The Cinematic Clinic Operating System
 
-VetFlow is a high-performance, multi-tenant veterinary clinic software-as-a-service (SaaS) platform built for medical records management, front-desk operations, prescription fulfillment, billing audit compliance, and branch synchronization.
+ClinixDev is a high-performance, multi-tenant clinic software-as-a-service (SaaS) platform. The MVP is purpose-built for **veterinary clinics** — owners/patients, appointments, doctor consultations, prescriptions, lab tests, medical documents, inventory, and tax-aware branded invoicing — while the underlying model is **generic (patients + clinic types)** so it scales to dental, general, and specialty clinics over time.
 
-Designed with robust architectural patterns, VetFlow enforces strict data isolation using **PostgreSQL Row-Level Security (RLS)** at the database tier and offers a fully polished landing page featuring interactive animations, typewriter effects, and animated stats counters.
+Designed with robust architectural patterns, ClinixDev enforces strict tenant isolation using **PostgreSQL Row-Level Security (RLS)** and **Storage object policies**, writes **compliance-grade audit logs** for sensitive actions, and is engineered as a **HIPAA-ready** architecture for future human clinics.
+
+### Architecture highlights
+- **Generic patient model** (`patients` with `patient_type` + `metadata` JSONB) — vet-first, multi-clinic-type ready.
+- **Superadmin-only provisioning** — clinics + their admin are created by the platform; public self-serve signup is disabled and routed to **Request Access**.
+- **Secure public booking** via a `SECURITY DEFINER` RPC (`submit_public_appointment`) with branch validation + IP rate limiting (no arbitrary `organization_id`/`branch_id` inserts).
+- **Branded PDFs** (logo/accent/footer) gated per-clinic by a superadmin `branded_pdfs` feature flag.
+- **Labs & documents** in the consultation room; documents are stored behind storage RLS and served via short-lived signed URLs with **audited downloads**.
+- **Resend emails** — appointment notifications, invoice receipts, and an automatic **thank-you email** when an invoice is marked paid.
 
 ---
 
 ## 📸 Platform Tour & Screenshots
 
-Here is a visual overview of the VetFlow system, captured via automated E2E testing:
+Here is a visual overview of the ClinixDev system, captured via automated E2E testing:
 
 ### 🌐 Public Portal & Authentication
 
@@ -66,9 +74,9 @@ Anti-tamper invoicing ledger with VAT, discount computation, and PDF receipt dis
 </details>
 
 <details>
-<summary><b>8. Customer & Pet Registries</b></summary>
+<summary><b>8. Customer & Patient Registries</b></summary>
 
-Detailed profiles for owners and pet medical records.
+Detailed profiles for owners and patient medical records.
 ![Customers](e2e/screenshots/dashboard-admin-customers.png)
 ![Pets](e2e/screenshots/dashboard-admin-pets.png)
 </details>
@@ -136,7 +144,7 @@ NEXT_PUBLIC_DEMO_MODE=true
 
 | Role | Email | Password | Allowed View / Path |
 |------|-------|----------|---------------------|
-| **Super Admin** | `superadmin@vetflow.com` | `password123` | `/super-admin/dashboard` |
+| **Super Admin** | `salmanjoyiaa@gmail.com` | `password123` | `/super-admin/dashboard` |
 | **Clinic Admin** | `admin.a@vetcare.com` | `password123` | `/dashboard` (All features) |
 | **Doctor** | `doctor.a@vetcare.com` | `password123` | `/dashboard` & `/dashboard/doctors` |
 | **Receptionist** | `receptionist.a@vetcare.com` | `password123` | `/dashboard` (Front Desk Desk) |

@@ -72,8 +72,8 @@ export default function ProvisionClinicForm({ clinicTypes }: Props) {
         setError(res.error || 'Failed to provision clinic.');
         setIsLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
       setIsLoading(false);
     }
   };

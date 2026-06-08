@@ -60,7 +60,8 @@ export async function GET(
     });
 
     return NextResponse.redirect(signed.signedUrl);
-  } catch (err: any) {
-    return new NextResponse(`Download failed: ${err.message}`, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return new NextResponse(`Download failed: ${message}`, { status: 500 });
   }
 }

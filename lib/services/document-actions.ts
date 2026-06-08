@@ -127,8 +127,8 @@ export async function uploadVisitDocumentAction(formData: FormData) {
     });
 
     return { success: true, document: doc };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'An unexpected error occurred.' };
   }
 }
 
@@ -178,7 +178,7 @@ export async function deleteDocumentAction(documentId: string) {
     });
 
     return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'An unexpected error occurred.' };
   }
 }

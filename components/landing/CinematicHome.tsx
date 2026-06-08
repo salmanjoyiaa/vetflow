@@ -10,7 +10,6 @@ import {
   Calendar,
   FileText,
   ShieldCheck,
-  Layers,
   Users,
   ArrowRight,
   LogIn,

@@ -67,8 +67,8 @@ export async function createLabOrderAction(payload: unknown) {
     });
 
     return { success: true, labOrder: order };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'An unexpected error occurred.' };
   }
 }
 
@@ -124,7 +124,7 @@ export async function updateLabOrderResultAction(payload: unknown) {
     });
 
     return { success: true, labOrder: updated };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'An unexpected error occurred.' };
   }
 }
