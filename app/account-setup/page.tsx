@@ -16,7 +16,7 @@ import { AlertCircle, Building2, LogOut, RefreshCw } from 'lucide-react';
 
 export const metadata = {
   title: 'Account Setup',
-  description: 'Complete your VetFlow account setup.',
+  description: 'Complete your ClinixDev account setup.',
 };
 
 function bootstrapMessage(status: ProfileBootstrapStatus | null, missingServiceRole: boolean): string {
@@ -26,7 +26,7 @@ function bootstrapMessage(status: ProfileBootstrapStatus | null, missingServiceR
   if (status === 'upsert_failed') {
     return 'We could not provision your profile in the database. Wait a moment and refresh, or contact support if this continues.';
   }
-  return 'Your sign-in succeeded, but your VetFlow profile is not ready yet. Try again in a moment or register a new clinic.';
+  return 'Your sign-in succeeded, but your ClinixDev profile is not ready yet. Contact your platform administrator to finish clinic provisioning.';
 }
 
 function SetupActions({

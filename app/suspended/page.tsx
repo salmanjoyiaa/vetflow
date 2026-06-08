@@ -4,7 +4,7 @@ import { resolveServerAuthContext } from '@/lib/auth/context';
 import { ShieldAlert } from 'lucide-react';
 
 export const metadata = {
-  title: 'Account Suspended — VetFlow',
+  title: 'Account Suspended — ClinixDev',
   description: 'Your clinic account has been suspended.',
 };
 
@@ -36,10 +36,10 @@ export default async function SuspendedPage() {
         </h1>
         <p className="text-sm text-on-surface-variant leading-relaxed mb-6">
           {ctx.organizationName ?? 'Your clinic'} has been suspended. Staff cannot
-          access dashboard features until VetFlow support reactivates the account.
+          access dashboard features until ClinixDev support reactivates the account.
         </p>
         <p className="text-xs text-on-surface-variant/70 mb-8">
-          Contact VetFlow support or your platform administrator for assistance.
+          Contact ClinixDev support or your platform administrator for assistance.
         </p>
         <div className="flex flex-col gap-3">
           <Link

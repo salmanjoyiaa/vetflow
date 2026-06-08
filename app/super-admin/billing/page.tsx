@@ -8,7 +8,7 @@ import { estimateMrrForSubscriptions } from '@/lib/super-admin/mrr';
 import { CreditCard, DollarSign, Users } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Platform Billing',
+  title: 'Platform Billing',
   description: 'Manage SaaS subscriptions across all clinic tenants.',
 };
 
@@ -70,7 +70,7 @@ export default async function SuperAdminBillingPage() {
     <div className="space-y-8">
       <PageHeader
         title="Platform billing"
-        description="SaaS subscription management for all VetFlow clinic tenants. Patient-visit payments remain in each clinic's dashboard."
+        description="SaaS subscription management for all ClinixDev clinic tenants. Patient-visit payments remain in each clinic's dashboard."
         icon={CreditCard}
       />
 

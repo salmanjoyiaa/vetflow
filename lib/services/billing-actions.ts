@@ -10,7 +10,12 @@ import {
   resolveServerAuthContext,
 } from '@/lib/auth/context';
 import { writeAuditLog } from '@/lib/services/audit';
-import { CheckoutSchema, type CheckoutInput } from '@/lib/validations/schemas';
+import {
+  CheckoutSchema,
+  UpdateInvoicePaymentSchema,
+  type CheckoutInput,
+} from '@/lib/validations/schemas';
+import { sendEmail, compileInvoiceDeliveryTemplate } from '@/lib/email';
 
 /**
  * Executes checkout transaction on the server.
@@ -156,6 +161,8 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
 
     // 6. Create Invoice Row
     const invoiceNumber = `INV-${Date.now()}`;
+    const isPaid = parsed.paymentStatus === 'paid';
+
     const { data: invoice, error: invoiceErr } = await adminClient
       .from('invoices')
       .insert({
@@ -170,10 +177,10 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
         tax_percentage: taxPercentage,
         tax_amount: taxAmountTotal,
         total,
-        payment_status: 'paid', // V1 handles cash/card manual paid status immediately
+        payment_status: isPaid ? 'paid' : 'unpaid',
         notes: parsed.notes || null,
         created_by: ctx.userId,
-        paid_at: new Date().toISOString(),
+        paid_at: isPaid ? new Date().toISOString() : null,
       })
       .select()
       .single();
@@ -195,23 +202,24 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
       throw new Error(itemsErr.message || 'Failed to save invoice billing items.');
     }
 
-    // 8. Register Payment record
-    const { error: payErr } = await adminClient
-      .from('payments')
-      .insert({
-        organization_id: ctx.organizationId,
-        branch_id: visit.branch_id,
-        invoice_id: invoice.id,
-        amount: total,
-        payment_method: parsed.paymentMethod,
-        reference_number: parsed.paymentReference || null,
-        created_by: ctx.userId,
-      });
+    // 8. Register Payment record when paid at checkout
+    if (isPaid) {
+      const { error: payErr } = await adminClient
+        .from('payments')
+        .insert({
+          organization_id: ctx.organizationId,
+          branch_id: visit.branch_id,
+          invoice_id: invoice.id,
+          amount: total,
+          payment_method: parsed.paymentMethod,
+          reference_number: parsed.paymentReference || null,
+          created_by: ctx.userId,
+        });
 
-    if (payErr) {
-      // Revert invoice items and invoice shell
-      await adminClient.from('invoices').delete().eq('id', invoice.id);
-      throw new Error(payErr.message || 'Failed to register payment transaction.');
+      if (payErr) {
+        await adminClient.from('invoices').delete().eq('id', invoice.id);
+        throw new Error(payErr.message || 'Failed to register payment transaction.');
+      }
     }
 
     // 9. Deduct stock levels for physical items and register stock movements
@@ -278,19 +286,176 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
       afterData: invoice,
     });
 
+    if (isPaid) {
+      await writeAuditLog({
+        organizationId: ctx.organizationId,
+        branchId: visit.branch_id,
+        actorUserId: ctx.userId,
+        actorRole: ctx.role || 'receptionist',
+        action: 'PAYMENT_RECEIVED',
+        resourceType: 'PAYMENT',
+        resourceId: invoice.id,
+        afterData: { total, paymentMethod: parsed.paymentMethod },
+      });
+    }
+
+    const { data: clinicalNote } = await adminClient
+      .from('clinical_notes')
+      .select('id')
+      .eq('visit_id', visit.id)
+      .maybeSingle();
+
+    if (parsed.sendEmailReceipt) {
+      const customer = visit.customers as { email?: string | null } | null;
+      if (customer?.email) {
+        await sendEmail({
+          to: customer.email,
+          subject: `Invoice ${invoiceNumber} — ${ctx.organizationName || 'ClinixDev'}`,
+          html: compileInvoiceDeliveryTemplate(
+            ctx.organizationName || 'ClinixDev',
+            invoiceNumber,
+            total.toFixed(2)
+          ),
+        });
+      }
+    }
+
+    return {
+      success: true,
+      invoiceId: invoice.id,
+      prescriptionId: prescription?.id || null,
+      clinicalNotesId: clinicalNote?.id || null,
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'An unexpected error occurred during checkout.' };
+  }
+}
+
+export async function updateInvoicePaymentStatusAction(payload: unknown) {
+  try {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
+    }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'billing_checkout');
+    assertFeature(ctx, 'sales');
+
+    const parsed = UpdateInvoicePaymentSchema.parse(payload);
+    const adminClient = await createAdminClient();
+
+    const { data: invoice, error: invErr } = await adminClient
+      .from('invoices')
+      .select('*')
+      .eq('id', parsed.invoiceId)
+      .eq('organization_id', ctx.organizationId)
+      .single();
+
+    if (invErr || !invoice) {
+      throw new Error('Invoice not found or access denied.');
+    }
+
+    assertBranchAccess(ctx, invoice.branch_id);
+
+    if (invoice.payment_status === 'paid') {
+      throw new Error('Invoice is already marked as paid.');
+    }
+
+    const total = Number(invoice.total);
+
+    const { error: payErr } = await adminClient.from('payments').insert({
+      organization_id: ctx.organizationId,
+      branch_id: invoice.branch_id,
+      invoice_id: invoice.id,
+      amount: total,
+      payment_method: parsed.paymentMethod,
+      reference_number: parsed.paymentReference || null,
+      created_by: ctx.userId,
+    });
+
+    if (payErr) {
+      throw new Error(payErr.message || 'Failed to register payment.');
+    }
+
+    const { error: updateErr } = await adminClient
+      .from('invoices')
+      .update({
+        payment_status: 'paid',
+        paid_at: new Date().toISOString(),
+      })
+      .eq('id', invoice.id);
+
+    if (updateErr) {
+      throw new Error(updateErr.message || 'Failed to update invoice status.');
+    }
+
     await writeAuditLog({
       organizationId: ctx.organizationId,
-      branchId: visit.branch_id,
+      branchId: invoice.branch_id,
       actorUserId: ctx.userId,
       actorRole: ctx.role || 'receptionist',
       action: 'PAYMENT_RECEIVED',
-      resourceType: 'PAYMENT',
+      resourceType: 'INVOICE',
       resourceId: invoice.id,
       afterData: { total, paymentMethod: parsed.paymentMethod },
     });
 
-    return { success: true, invoiceId: invoice.id };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred during checkout.' };
+    return { success: true };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to update payment status.',
+    };
+  }
+}
+
+export async function resendInvoiceEmailAction(invoiceId: string) {
+  try {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
+    }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'billing_checkout');
+
+    const adminClient = await createAdminClient();
+    const { data: invoice, error } = await adminClient
+      .from('invoices')
+      .select('invoice_number, total, branch_id, customers ( email )')
+      .eq('id', invoiceId)
+      .eq('organization_id', ctx.organizationId)
+      .single();
+
+    if (error || !invoice) {
+      throw new Error('Invoice not found.');
+    }
+
+    assertBranchAccess(ctx, invoice.branch_id);
+
+    const customer = invoice.customers as { email?: string | null } | null;
+    if (!customer?.email) {
+      throw new Error('Customer has no email on file.');
+    }
+
+    const emailRes = await sendEmail({
+      to: customer.email,
+      subject: `Invoice ${invoice.invoice_number} — ${ctx.organizationName || 'ClinixDev'}`,
+      html: compileInvoiceDeliveryTemplate(
+        ctx.organizationName || 'ClinixDev',
+        invoice.invoice_number,
+        Number(invoice.total).toFixed(2)
+      ),
+    });
+
+    if (!emailRes.success) {
+      throw new Error(emailRes.error || 'Failed to send email.');
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to resend email.',
+    };
   }
 }

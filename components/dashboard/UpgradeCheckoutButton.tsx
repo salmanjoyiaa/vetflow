@@ -19,7 +19,7 @@ export default function UpgradeCheckoutButton({
 
   const handleCheckout = async () => {
     if (!stripeEnabled) {
-      setError('Contact sales@vetflow.com for enterprise billing.');
+      setError('Contact sales@clinixdev.com for enterprise billing.');
       return;
     }
 

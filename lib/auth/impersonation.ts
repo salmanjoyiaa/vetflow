@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { resolveServerSession } from '@/lib/services/auth';
 import { writeAuditLog } from '@/lib/services/audit';
 
-export const IMPERSONATION_COOKIE = 'vetflow_impersonation_org_id';
+export const IMPERSONATION_COOKIE = 'clinix_impersonation_org_id';
 
 export interface ImpersonationState {
   isImpersonating: boolean;

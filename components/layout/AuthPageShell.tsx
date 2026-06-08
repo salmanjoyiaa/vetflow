@@ -23,7 +23,7 @@ export default function AuthPageShell({
               <Stethoscope className="w-6 h-6 text-primary" />
             </div>
             <span className="text-2xl font-bold text-on-surface font-[family-name:var(--font-display)]">
-              VetFlow
+              ClinixDev
             </span>
           </Link>
           <p className="text-xs text-on-surface-variant mt-1">{subtitle}</p>

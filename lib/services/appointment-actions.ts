@@ -14,8 +14,11 @@ import {
   compileAppointmentRequestTemplate, 
   compileAppointmentConfirmedTemplate 
 } from '@/lib/email';
+import { createCustomerAction } from '@/lib/services/customer-actions';
+import { createPetAction } from '@/lib/services/pet-actions';
 import {
   AppointmentRequestSchema,
+  AppointmentWithPatientSchema,
   MarkEmergencySchema,
   RescheduleAppointmentSchema,
   StaffAppointmentSchema,
@@ -118,7 +121,7 @@ export async function confirmAppointmentAction(appointmentId: string) {
 
     const branchObj = appt.branches as { name?: string; address?: string } | null;
     const emailHtml = compileAppointmentConfirmedTemplate(
-      ctx.organizationName || 'VetFlow Center',
+      ctx.organizationName || 'ClinixDev Center',
       appt.pet_name,
       appt.preferred_date,
       appt.preferred_time,
@@ -238,6 +241,90 @@ export async function createStaffAppointmentAction(payload: unknown) {
     });
 
     return { success: true, appointmentId: appt.id };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Creates customer and/or pet when needed, then books the appointment in one flow.
+ */
+export async function createAppointmentWithPatientAction(payload: unknown) {
+  try {
+    const parsed = AppointmentWithPatientSchema.parse(payload);
+
+    let customerId = parsed.customerId;
+    let petId = parsed.petId;
+
+    if (!customerId) {
+      if (!parsed.customer) {
+        throw new Error('Customer details are required.');
+      }
+      const custRes = await createCustomerAction({
+        firstName: parsed.customer.firstName,
+        lastName: parsed.customer.lastName,
+        phone: parsed.customer.phone,
+        email: parsed.customer.email || '',
+        address: parsed.customer.address || '',
+        branchId: parsed.branchId,
+      });
+
+      if (!custRes.success) {
+        const existingId = (custRes as { existingCustomerId?: string }).existingCustomerId;
+        if (existingId) {
+          customerId = existingId;
+        } else {
+          throw new Error(custRes.error || 'Failed to create customer.');
+        }
+      } else {
+        const created = (custRes as { customer?: { id: string } }).customer;
+        if (!created?.id) {
+          throw new Error('Failed to create customer.');
+        }
+        customerId = created.id;
+      }
+    }
+
+    if (!petId) {
+      if (!parsed.pet) {
+        throw new Error('Pet details are required.');
+      }
+      const petRes = await createPetAction({
+        customerId: customerId!,
+        name: parsed.pet.name,
+        species: parsed.pet.species,
+        breed: parsed.pet.breed || '',
+        gender: parsed.pet.gender || 'Male',
+      });
+      if (!petRes.success || !petRes.pet) {
+        throw new Error(petRes.error || 'Failed to create pet.');
+      }
+      petId = petRes.pet.id;
+    }
+
+    const apptRes = await createStaffAppointmentAction({
+      customerId: customerId!,
+      petId: petId!,
+      branchId: parsed.branchId,
+      doctorId: parsed.doctorId,
+      preferredDate: parsed.preferredDate,
+      preferredTime: parsed.preferredTime,
+      reason: parsed.reason,
+      isEmergency: parsed.isEmergency,
+      intakeNotes: parsed.intakeNotes,
+    });
+
+    if (!apptRes.success) {
+      return apptRes;
+    }
+
+    return {
+      success: true,
+      appointmentId: apptRes.appointmentId,
+      customerId,
+      petId,
+    };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
     return { success: false, error: message };

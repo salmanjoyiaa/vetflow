@@ -225,7 +225,7 @@ export default function PrescriptionPdfDocument({
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <View style={styles.logoPlaceholder} />
-            <Text style={styles.logoText}>VetFlow Rx</Text>
+            <Text style={styles.logoText}>ClinixDev Rx</Text>
           </View>
           <View style={styles.clinicDetails}>
             <Text style={{ fontWeight: 'bold', color: '#0F172A' }}>{clinicName}</Text>
@@ -318,7 +318,7 @@ export default function PrescriptionPdfDocument({
         {/* FOOTER */}
         <View style={styles.footer}>
           <Text>This prescription is only valid for veterinary use.</Text>
-          <Text style={{ marginTop: 4 }}>Powered by VetFlow Clinic Operations</Text>
+          <Text style={{ marginTop: 4 }}>Powered by ClinixDev Clinic Operations</Text>
         </View>
 
       </Page>

@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import { isDemoMode, findDemoUserById, type DemoUser } from '@/lib/demo/credentials';
 import { cookies } from 'next/headers';
 
-export const DEMO_USER_COOKIE = 'vetflow_demo_user';
+export const DEMO_USER_COOKIE = 'clinix_demo_user';
 
 function demoUserToSession(demo: DemoUser): UserSessionDetails {
   return {

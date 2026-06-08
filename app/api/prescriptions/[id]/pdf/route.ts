@@ -70,7 +70,7 @@ export async function GET(
     const stream = await renderToStream(
       React.createElement(PrescriptionPdfDocument, {
         date: new Date(prescription.created_at).toLocaleDateString(),
-        clinicName: session.organizationName || 'VetFlow Center',
+        clinicName: session.organizationName || 'ClinixDev Center',
         branchName: branchObj?.name || 'Main Branch',
         branchAddress: branchObj?.address || '',
         branchPhone: branchObj?.phone || '',

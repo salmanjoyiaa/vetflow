@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { FileText, Download, ExternalLink } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Prescriptions',
+  title: 'Prescriptions',
   description: 'View and manage clinic prescriptions across your branch.',
 };
 
@@ -21,7 +21,7 @@ export default async function PrescriptionsPage() {
   const session = ctx;
 
   const cookieStore = await cookies();
-  const activeBranchCookie = cookieStore.get('vetflow_branch_id')?.value;
+  const activeBranchCookie = cookieStore.get('clinix_branch_id')?.value;
   let activeBranchId = activeBranchCookie;
 
   if (!activeBranchId && session.branches.length > 0) {

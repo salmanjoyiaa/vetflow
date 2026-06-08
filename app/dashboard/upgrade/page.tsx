@@ -14,7 +14,7 @@ import { Sparkles, Check } from 'lucide-react';
 
 export const metadata = {
   title: 'Upgrade Plan',
-  description: 'VetFlow premium upgrade pathway',
+  description: 'ClinixDev premium upgrade pathway',
 };
 
 const PLANS = [

@@ -9,7 +9,7 @@ import SettingsForm from '@/components/forms/SettingsForm';
 import { Settings } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Clinic Settings',
+  title: 'Clinic Settings',
   description: 'Configure clinic preferences, timezone, currency, and tax settings.',
 };
 

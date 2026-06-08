@@ -11,7 +11,7 @@ import BranchListClient from '@/components/dashboard/BranchListClient';
 import { MapPin } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Branch Administration',
+  title: 'Branch Administration',
   description: 'Manage branches of your veterinary organization.',
 };
 

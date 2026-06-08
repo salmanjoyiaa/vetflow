@@ -6,7 +6,7 @@ import PageHeader from '@/components/ui/premium/PageHeader';
 import { Building2 } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Clinic Administration',
+  title: 'Clinic Administration',
   description: 'Manage clinic tenants and subscription states.',
 };
 

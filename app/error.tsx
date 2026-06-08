@@ -23,7 +23,7 @@ export default function GlobalError({
         </div>
         <h1 className="text-lg font-bold text-on-surface mb-2">Something went wrong</h1>
         <p className="text-xs text-on-surface-variant mb-6">
-          VetFlow hit an unexpected error. Try again or return to a safe page.
+          ClinixDev hit an unexpected error. Try again or return to a safe page.
         </p>
         <div className="flex flex-col gap-2">
           <button

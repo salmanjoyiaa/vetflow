@@ -216,7 +216,7 @@ export default function InvoicePdfDocument({
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <View style={styles.logoPlaceholder} />
-            <Text style={styles.logoText}>VetFlow</Text>
+            <Text style={styles.logoText}>ClinixDev</Text>
           </View>
           <View style={styles.clinicDetails}>
             <Text style={{ fontWeight: 'bold', color: '#0F172A' }}>{clinicName}</Text>
@@ -295,7 +295,7 @@ export default function InvoicePdfDocument({
 
         {/* FOOTER */}
         <View style={styles.footer}>
-          <Text>Thank you for trusting VetFlow with your pet's medical care.</Text>
+          <Text>Thank you for trusting ClinixDev with your pet's medical care.</Text>
           <Text style={{ marginTop: 4 }}>This document is a secure system-generated payment receipt.</Text>
         </View>
 

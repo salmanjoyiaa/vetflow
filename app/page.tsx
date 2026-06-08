@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import LandingPage from '@/components/landing/LandingPage';
 
 export const metadata: Metadata = {
-  title: 'VetFlow — All-in-One Veterinary Practice Management Platform',
+  title: 'ClinixDev — Cinematic Clinic Management Platform',
   description:
-    'VetFlow is a premium, all-in-one veterinary clinic management system designed for animal hospitals, pet stores with doctors, and multi-branch veterinary businesses.',
+    'ClinixDev is a premium clinic management platform. Launching first for veterinary clinics, engineered to scale to dental, general, and specialty clinics.',
 };
 
 export default function HomePage() {

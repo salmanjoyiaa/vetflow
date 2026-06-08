@@ -104,7 +104,7 @@ export const DEMO_USERS: DemoUser[] = [
   },
   {
     id: 'c9000000-0000-0000-0000-000000000000',
-    email: 'setup.demo@vetflow.com',
+    email: 'setup.demo@clinixdev.com',
     password: 'password123',
     firstName: 'New',
     lastName: 'User',

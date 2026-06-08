@@ -17,7 +17,7 @@ import {
 } from '@/lib/auth/features';
 import { createClient } from '@/lib/supabase/server';
 
-export const BRANCH_COOKIE_NAME = 'vetflow_branch_id';
+export const BRANCH_COOKIE_NAME = 'clinix_branch_id';
 
 export interface ServerAuthContext extends UserSessionDetails {
   allowedBranchIds: string[];

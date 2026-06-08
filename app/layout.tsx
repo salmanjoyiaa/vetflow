@@ -15,11 +15,11 @@ const plusJakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: 'VetFlow — All-in-One Veterinary Practice Management Platform',
-    template: '%s | VetFlow',
+    default: 'ClinixDev — Cinematic Clinic Management Platform',
+    template: '%s | ClinixDev',
   },
   description:
-    'VetFlow is a premium, all-in-one veterinary clinic management system designed for animal hospitals, pet stores with doctors, and multi-branch veterinary businesses.',
+    'ClinixDev is a premium, multi-tenant clinic management platform. Launching first for veterinary clinics, built to support dental, general, and specialty clinics over time.',
 };
 
 export default function RootLayout({

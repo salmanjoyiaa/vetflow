@@ -8,7 +8,7 @@ import PageHeader from '@/components/ui/premium/PageHeader';
 import { ClipboardList } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Walk-In Queue',
+  title: 'Walk-In Queue',
   description: 'Manage walk-in consultations and active doctor assignments.',
 };
 
@@ -25,7 +25,7 @@ export default async function WalkInsPage() {
 
   // 1. Resolve branch context
   const cookieStore = await cookies();
-  const activeBranchCookie = cookieStore.get('vetflow_branch_id')?.value;
+  const activeBranchCookie = cookieStore.get('clinix_branch_id')?.value;
   let activeBranchId = activeBranchCookie;
 
   if (!activeBranchId && session.branches.length > 0) {

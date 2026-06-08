@@ -3,7 +3,7 @@ import PublicBookingFormClient from '@/components/forms/PublicBookingFormClient'
 import { Stethoscope } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Online Booking Portal',
+  title: 'Online Booking Portal',
   description: 'Request a veterinary consultation or clinic check-up.',
 };
 
@@ -29,7 +29,7 @@ export default async function PublicBookingPage({
           <Stethoscope className="w-10 h-10 text-destructive mx-auto mb-4" />
           <h2 className="text-base font-bold text-on-surface mb-1">Clinic Not Found</h2>
           <p className="text-xs text-on-surface-variant">
-            The requested veterinary clinic address is not registered on the VetFlow network.
+            The requested clinic address is not registered on the ClinixDev network.
           </p>
         </div>
       </main>

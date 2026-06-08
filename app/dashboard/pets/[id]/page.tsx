@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Patient Medical File',
+  title: 'Patient Medical File',
   description: 'Review patient bios, clinical notes, and prescriptions.',
 };
 

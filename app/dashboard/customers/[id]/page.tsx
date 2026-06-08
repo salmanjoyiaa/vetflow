@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Customer Profile',
+  title: 'Customer Profile',
   description: 'View customer details and registered pets.',
 };
 
@@ -172,12 +172,25 @@ export default async function CustomerDetailPage({
                     )}
                   </div>
 
-                  <div className="pt-4 border-t border-outline-variant/40 mt-4 flex justify-end">
+                  <div className="pt-4 border-t border-outline-variant/40 mt-4 flex flex-wrap justify-end gap-2">
+                    <Link
+                      href={`/dashboard/appointments?new=1&customerId=${customer.id}&petId=${pet.id}`}
+                      className="inline-flex items-center gap-1 text-[10px] font-bold text-primary border border-primary/20 px-2 py-1 rounded-lg hover:bg-primary/5"
+                    >
+                      <Calendar className="w-3 h-3" />
+                      Book appointment
+                    </Link>
+                    <Link
+                      href={`/dashboard/walk-ins?petId=${pet.id}`}
+                      className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 border border-emerald-500/30 px-2 py-1 rounded-lg hover:bg-emerald-500/5"
+                    >
+                      Check in walk-in
+                    </Link>
                     <Link
                       href={`/dashboard/pets/${pet.id}`}
                       className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline"
                     >
-                      View Medical File
+                      Medical file
                       <ChevronRight className="w-3 h-3" />
                     </Link>
                   </div>

@@ -51,7 +51,7 @@ const DEMO_CREDENTIALS = [
   },
   {
     label: 'New User',
-    email: 'setup.demo@vetflow.com',
+    email: 'setup.demo@clinixdev.com',
     password: 'password123',
     icon: UserPlus,
     color: 'text-rose-400',

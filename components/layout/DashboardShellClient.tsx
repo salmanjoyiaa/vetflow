@@ -213,7 +213,13 @@ export default function DashboardShellClient({
                             {r.type}
                           </span>
                           <p className="text-xs font-semibold text-on-surface">{r.title}</p>
-                          <p className="text-[10px] text-on-surface-variant">{r.subtitle}</p>
+                          <p
+                            className={`text-[10px] ${
+                              r.phoneMatch ? 'text-primary font-semibold' : 'text-on-surface-variant'
+                            }`}
+                          >
+                            {r.phoneMatch ? `Phone match: ${r.subtitle}` : r.subtitle}
+                          </p>
                         </Link>
                       </li>
                     ))}
@@ -232,7 +238,7 @@ export default function DashboardShellClient({
             </div>
             <div>
               <span className="font-bold text-sm text-on-surface block font-[family-name:var(--font-display)]">
-                VetFlow
+                ClinixDev
               </span>
               <span className="text-[9px] text-on-surface-variant uppercase tracking-wider">
                 {session.organizationName || 'Clinic'}
@@ -292,7 +298,7 @@ export default function DashboardShellClient({
                   </div>
                   <div className="min-w-0">
                     <span className="font-bold text-sm text-on-surface block truncate">
-                      VetFlow
+                      ClinixDev
                     </span>
                     <span className="text-[9px] text-on-surface-variant uppercase tracking-wider block truncate">
                       {session.organizationName || 'Clinic'}

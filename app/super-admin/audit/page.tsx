@@ -5,7 +5,7 @@ import PageHeader from '@/components/ui/premium/PageHeader';
 import { ScrollText } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Platform Audit Log',
+  title: 'Platform Audit Log',
   description: 'Review platform and tenant audit trail.',
 };
 

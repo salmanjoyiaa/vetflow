@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { ArrowLeft, Stethoscope } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Consultation Room',
+  title: 'Consultation Room',
   description: 'Active medical charting and prescription room.',
 };
 

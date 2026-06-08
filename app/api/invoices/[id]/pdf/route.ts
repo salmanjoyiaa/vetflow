@@ -52,7 +52,7 @@ export async function GET(
       React.createElement(InvoicePdfDocument, {
         invoiceNumber: invoice.invoice_number,
         date: new Date(invoice.created_at).toLocaleDateString(),
-        clinicName: session.organizationName || 'VetFlow Center',
+        clinicName: session.organizationName || 'ClinixDev Center',
         branchName: branchObj?.name || 'Main Branch',
         branchAddress: branchObj?.address || '',
         branchPhone: branchObj?.phone || '',

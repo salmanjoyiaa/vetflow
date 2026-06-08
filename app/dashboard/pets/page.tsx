@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Heart, ChevronRight, User, Calendar, Weight } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Pet Registry',
+  title: 'Patient Registry',
   description: 'Manage registered pets and review active patient cases.',
 };
 

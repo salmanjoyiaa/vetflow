@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { ArrowLeft, Receipt } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Patient Checkout',
+  title: 'Patient Checkout',
   description: 'Discharge and compile billing records for patient.',
 };
 
@@ -37,7 +37,7 @@ export default async function CreateInvoicePage({
       branch_id,
       pet_id,
       pets ( id, name, species, breed ),
-      customers ( first_name, last_name, phone )
+      customers ( first_name, last_name, phone, email )
     `)
     .eq('id', visitId)
     .eq('organization_id', session.organizationId)
@@ -166,12 +166,14 @@ export default async function CreateInvoicePage({
           firstName: customerDetails.first_name,
           lastName: customerDetails.last_name,
           phone: customerDetails.phone,
+          email: customerDetails.email,
         }}
         items={billingItems}
         taxPercentage={taxSetting?.is_enabled ? Number(taxSetting.tax_percentage) : 0}
         taxName={taxSetting?.tax_name || 'VAT'}
         appliesToProducts={taxSetting?.applies_to_products || false}
         appliesToServices={taxSetting?.applies_to_services || false}
+        prescriptionId={prescription?.id || null}
       />
 
     </div>

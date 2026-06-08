@@ -15,6 +15,10 @@ import DashboardWidgetGrid, {
   type DashboardKpi,
 } from '@/components/dashboard/DashboardWidgetGrid';
 import EmptyState from '@/components/ui/premium/EmptyState';
+import ReceptionistHomeClient, {
+  type ReceptionistAppointmentRow,
+  type ReceptionistVisitRow,
+} from '@/components/dashboard/ReceptionistHomeClient';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -32,11 +36,13 @@ import {
   Clock,
   FileText,
   BriefcaseMedical,
+  Search,
+  Layers,
 } from 'lucide-react';
 import type { UserSessionDetails } from '@/lib/services/auth';
 
 export const metadata = {
-  title: 'VetFlow Dashboard — Overview',
+  title: 'Dashboard — Overview',
   description: 'Clinic overview with key performance indicators and quick actions.',
 };
 
@@ -90,6 +96,9 @@ export default async function DashboardOverview() {
   let activeConsultations = 0;
   let emergencyCount = 0;
   let openPrescriptions = 0;
+  let receptionistUpcoming: ReceptionistAppointmentRow[] = [];
+  let receptionistWaiting: ReceptionistVisitRow[] = [];
+  let receptionistCheckout: ReceptionistVisitRow[] = [];
 
   if (isDemoMode()) {
     todayAppointments = MOCK_DASHBOARD_KPIS.todayAppointments;
@@ -103,6 +112,33 @@ export default async function DashboardOverview() {
     activeConsultations = 1;
     emergencyCount = 1;
     openPrescriptions = 3;
+    readyForCheckout = 1;
+    if (role === 'receptionist') {
+      receptionistUpcoming = [
+        {
+          id: 'ap1',
+          petName: 'Max',
+          customerName: 'John Doe',
+          customerPhone: '555-9090',
+          preferredTime: '10:00',
+          isEmergency: false,
+        },
+        {
+          id: 'ap2',
+          petName: 'Bella',
+          customerName: 'Jane Smith',
+          customerPhone: '555-8080',
+          preferredTime: '14:30',
+          isEmergency: true,
+        },
+      ];
+      receptionistWaiting = [
+        { id: 'v1', petName: 'Bella', customerName: 'Jane Smith', reason: 'Ear check', status: 'waiting' },
+      ];
+      receptionistCheckout = [
+        { id: 'v3', petName: 'Rocky', customerName: 'Bob Johnson', reason: 'Vaccination', status: 'ready_for_checkout' },
+      ];
+    }
   } else {
     const supabase = await createClient();
     const queries: Promise<void>[] = [];
@@ -271,6 +307,72 @@ export default async function DashboardOverview() {
       })
     );
 
+    if (role === 'receptionist') {
+      const mapVisit = (v: {
+        id: string;
+        reason: string;
+        status: string;
+        pets: { name: string } | { name: string }[] | null;
+        customers: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null;
+      }): ReceptionistVisitRow => {
+        const pet = Array.isArray(v.pets) ? v.pets[0] : v.pets;
+        const cust = Array.isArray(v.customers) ? v.customers[0] : v.customers;
+        return {
+          id: v.id,
+          petName: pet?.name || 'Unknown',
+          customerName: cust ? `${cust.first_name} ${cust.last_name}` : 'Unknown',
+          reason: v.reason,
+          status: v.status,
+        };
+      };
+
+      queries.push(
+        supabase
+          .from('appointments')
+          .select('id, pet_name, customer_name, customer_phone, preferred_time, is_emergency')
+          .eq('branch_id', activeBranchId)
+          .eq('preferred_date', today)
+          .in('status', ['confirmed', 'rescheduled', 'requested'])
+          .order('preferred_time', { ascending: true })
+          .limit(5)
+          .then((r) => {
+            receptionistUpcoming =
+              r.data?.map((a) => ({
+                id: a.id,
+                petName: a.pet_name,
+                customerName: a.customer_name,
+                customerPhone: a.customer_phone || '',
+                preferredTime: a.preferred_time?.slice(0, 5) || '',
+                isEmergency: a.is_emergency ?? false,
+              })) || [];
+          })
+      );
+      queries.push(
+        supabase
+          .from('visits')
+          .select('id, reason, status, pets(name), customers(first_name, last_name)')
+          .eq('branch_id', activeBranchId)
+          .eq('status', 'waiting')
+          .order('checked_in_at', { ascending: true })
+          .limit(5)
+          .then((r) => {
+            receptionistWaiting = (r.data || []).map(mapVisit);
+          })
+      );
+      queries.push(
+        supabase
+          .from('visits')
+          .select('id, reason, status, pets(name), customers(first_name, last_name)')
+          .eq('branch_id', activeBranchId)
+          .eq('status', 'ready_for_checkout')
+          .order('checked_in_at', { ascending: true })
+          .limit(5)
+          .then((r) => {
+            receptionistCheckout = (r.data || []).map(mapVisit);
+          })
+      );
+    }
+
     await Promise.all(queries);
   }
 
@@ -305,6 +407,18 @@ export default async function DashboardOverview() {
       />
 
       {kpis.length > 0 && <DashboardWidgetGrid kpis={kpis} />}
+
+      {role === 'receptionist' && (
+        <ReceptionistHomeClient
+          todayAppointments={todayAppointments}
+          waitingWalkIns={waitingWalkIns}
+          readyForCheckout={readyForCheckout}
+          unpaidInvoices={unpaidInvoices}
+          upcomingAppointments={receptionistUpcoming}
+          waitingVisits={receptionistWaiting}
+          checkoutVisits={receptionistCheckout}
+        />
+      )}
 
       {showSecondary && (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -659,10 +773,24 @@ function buildQuickActions(
       },
       {
         key: 'customer',
-        href: '/dashboard/customers',
-        icon: <Plus className="w-4 h-4" />,
-        label: 'Add Customer',
-        description: 'Register a new client & pet',
+        href: '/dashboard/customers?focus=phone',
+        icon: <Search className="w-4 h-4" />,
+        label: 'Search patient',
+        description: 'Find owner by phone number',
+      },
+      {
+        key: 'inventory',
+        href: '/dashboard/inventory?tab=intake',
+        icon: <Layers className="w-4 h-4" />,
+        label: 'Stock intake',
+        description: 'Manual or scan supplier invoice',
+      },
+      {
+        key: 'unpaid',
+        href: '/dashboard/invoices?status=unpaid',
+        icon: <Receipt className="w-4 h-4" />,
+        label: 'Unpaid invoices',
+        description: 'Follow up on outstanding bills',
       },
     ];
     if (readyForCheckout > 0) {

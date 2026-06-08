@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Platform Performance',
+  title: 'Platform Performance',
   description: 'Track platform tenant activity and global subscription statistics.',
 };
 

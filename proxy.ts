@@ -2,8 +2,8 @@ import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
-const IMPERSONATION_COOKIE = 'vetflow_impersonation_org_id';
-const DEMO_USER_COOKIE = 'vetflow_demo_user';
+const IMPERSONATION_COOKIE = 'clinix_impersonation_org_id';
+const DEMO_USER_COOKIE = 'clinix_demo_user';
 
 // Demo user roles lookup (mirrors lib/demo/credentials.ts but inlined for edge runtime)
 const DEMO_ROLES: Record<string, { isSuperAdmin: boolean; hasOrg: boolean }> = {

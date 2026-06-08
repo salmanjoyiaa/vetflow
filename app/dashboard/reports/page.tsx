@@ -10,7 +10,7 @@ import ReportsChartsWrapper from '@/components/dashboard/ReportsChartsWrapper';
 import { TrendingUp, DollarSign, Activity, Calendar, AlertCircle } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Reports & Analytics',
+  title: 'Reports & Analytics',
   description: 'Track clinic sales development and practice KPIs.',
 };
 

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Invoice Details',
+  title: 'Invoice Details',
   description: 'View transaction details and download invoice printout.',
 };
 

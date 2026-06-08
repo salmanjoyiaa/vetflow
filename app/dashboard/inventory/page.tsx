@@ -5,14 +5,21 @@ import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import ProductForm from '@/components/forms/ProductForm';
 import StockAdjustmentForm from '@/components/forms/StockAdjustmentForm';
+import StockInvoiceIntakeClient from '@/components/inventory/StockInvoiceIntakeClient';
+import InventoryTabsClient from '@/components/inventory/InventoryTabsClient';
 import { Layers, AlertCircle, ShoppingBag, ShieldAlert } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Inventory Catalog',
+  title: 'Inventory Catalog',
   description: 'Manage clinic products, services, and branch stock levels.',
 };
 
-export default async function InventoryPage() {
+export default async function InventoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab } = await searchParams;
   const ctx = await resolveServerAuthContext();
   if (!ctx) {
     redirect('/login');
@@ -25,7 +32,7 @@ export default async function InventoryPage() {
 
   // 1. Resolve branch context
   const cookieStore = await cookies();
-  const activeBranchCookie = cookieStore.get('vetflow_branch_id')?.value;
+  const activeBranchCookie = cookieStore.get('clinix_branch_id')?.value;
   let activeBranchId = activeBranchCookie;
 
   if (!activeBranchId && session.branches.length > 0) {
@@ -107,6 +114,19 @@ export default async function InventoryPage() {
         )}
       </div>
 
+      <InventoryTabsClient initialTab={tab === 'intake' ? 'intake' : 'catalog'} />
+
+      {tab === 'intake' ? (
+        <StockInvoiceIntakeClient
+          activeBranchId={activeBranchId}
+          products={(products || []).map((p) => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku,
+          }))}
+        />
+      ) : (
+        <>
       {/* STATS MATRIX */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="glass-panel rounded-2xl border border-outline-variant/40 p-4 shadow-premium">
@@ -203,6 +223,8 @@ export default async function InventoryPage() {
             Create products, medicines, or services to begin prescription and invoicing checkout.
           </p>
         </div>
+      )}
+        </>
       )}
 
     </div>

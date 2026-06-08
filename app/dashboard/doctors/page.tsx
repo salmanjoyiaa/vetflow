@@ -10,7 +10,7 @@ import PageHeader from '@/components/ui/premium/PageHeader';
 import { BriefcaseMedical, Play, ClipboardList, User, AlertTriangle } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Doctor Dashboard',
+  title: 'Doctor Dashboard',
   description: 'Attending physician workspace queue.',
 };
 

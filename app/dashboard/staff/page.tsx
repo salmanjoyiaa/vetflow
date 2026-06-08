@@ -10,7 +10,7 @@ import StaffListClient from '@/components/dashboard/StaffListClient';
 import { Users } from 'lucide-react';
 
 export const metadata = {
-  title: 'VetFlow Staff Management',
+  title: 'Staff Management',
   description: 'Manage clinic staff, assign roles, and bind branches.',
 };
 

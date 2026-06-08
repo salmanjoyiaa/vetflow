@@ -8,7 +8,7 @@ import AppointmentsPageHeader from '@/components/dashboard/AppointmentsPageHeade
 import { Suspense } from 'react';
 
 export const metadata = {
-  title: 'VetFlow Appointments Scheduler',
+  title: 'Appointments Scheduler',
   description: 'Manage clinic appointments and online bookings.',
 };
 
@@ -25,7 +25,7 @@ export default async function AppointmentsPage() {
 
   // 1. Resolve branch context
   const cookieStore = await cookies();
-  const activeBranchCookie = cookieStore.get('vetflow_branch_id')?.value;
+  const activeBranchCookie = cookieStore.get('clinix_branch_id')?.value;
   let activeBranchId = activeBranchCookie;
 
   if (!activeBranchId && session.branches.length > 0) {

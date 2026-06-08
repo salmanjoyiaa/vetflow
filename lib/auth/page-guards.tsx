@@ -46,7 +46,7 @@ export function renderFeatureDenied(feature: Feature) {
   return (
     <DeniedState
       title="Feature not enabled"
-      message={`${FEATURE_LABELS[feature]} is not enabled for your clinic. Contact VetFlow support or upgrade your plan.`}
+      message={`${FEATURE_LABELS[feature]} is not enabled for your clinic. Contact ClinixDev support or upgrade your plan.`}
     />
   );
 }

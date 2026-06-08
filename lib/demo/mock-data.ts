@@ -332,7 +332,7 @@ export const MOCK_PRODUCTS = [
   {
     id: 'pr3',
     name: 'General Consultation',
-    brand: 'VetFlow',
+    brand: 'ClinixDev',
     sku: 'SVC-CONSULT',
     unit: 'session',
     type: 'service',
