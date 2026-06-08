@@ -95,6 +95,28 @@ export function compilePrescriptionDeliveryTemplate(clinicName: string, petName:
   `;
 }
 
+export function compileThankYouTemplate(
+  clinicName: string,
+  invoiceNumber: string,
+  total: string,
+  customerName?: string
+) {
+  return `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #faf9f6; border-radius: 16px;">
+      <h2 style="color: #17403a;">Thank you for your payment</h2>
+      <p>Dear ${customerName || 'Valued Client'},</p>
+      <p>We have received your payment for invoice <strong>${invoiceNumber}</strong> at <strong>${clinicName}</strong>. Thank you for trusting us with your care.</p>
+      <div style="background-color: #ffffff; padding: 15px; border-radius: 12px; margin: 20px 0; border: 1px solid #e3e2de;">
+        <p style="margin: 0; font-size: 14px;"><strong>Invoice:</strong> ${invoiceNumber}</p>
+        <p style="margin: 5px 0 0 0; font-size: 14px;"><strong>Amount Paid:</strong> $${total}</p>
+      </div>
+      <p style="font-size: 13px; color: #5a5a5a;">We hope to see you again. If you have any questions about this payment, please contact our front-desk.</p>
+      <hr style="border: 0; border-top: 1px solid #e3e2de; margin: 20px 0;" />
+      <p style="font-size: 10px; color: #a1a1a1; text-align: center;">Powered by ClinixDev Clinic Operations</p>
+    </div>
+  `;
+}
+
 export function compileInvoiceDeliveryTemplate(clinicName: string, invoiceNumber: string, total: string) {
   return `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #faf9f6; border-radius: 16px;">

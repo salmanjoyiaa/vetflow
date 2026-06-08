@@ -15,7 +15,11 @@ import {
   UpdateInvoicePaymentSchema,
   type CheckoutInput,
 } from '@/lib/validations/schemas';
-import { sendEmail, compileInvoiceDeliveryTemplate } from '@/lib/email';
+import {
+  sendEmail,
+  compileInvoiceDeliveryTemplate,
+  compileThankYouTemplate,
+} from '@/lib/email';
 
 /**
  * Executes checkout transaction on the server.
@@ -305,19 +309,36 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
       .eq('visit_id', visit.id)
       .maybeSingle();
 
-    if (parsed.sendEmailReceipt) {
-      const customer = visit.customers as { email?: string | null } | null;
-      if (customer?.email) {
-        await sendEmail({
-          to: customer.email,
-          subject: `Invoice ${invoiceNumber} — ${ctx.organizationName || 'ClinixDev'}`,
-          html: compileInvoiceDeliveryTemplate(
-            ctx.organizationName || 'ClinixDev',
-            invoiceNumber,
-            total.toFixed(2)
-          ),
-        });
-      }
+    const customer = visit.customers as {
+      email?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+    } | null;
+
+    if (parsed.sendEmailReceipt && customer?.email) {
+      await sendEmail({
+        to: customer.email,
+        subject: `Invoice ${invoiceNumber} — ${ctx.organizationName || 'ClinixDev'}`,
+        html: compileInvoiceDeliveryTemplate(
+          ctx.organizationName || 'ClinixDev',
+          invoiceNumber,
+          total.toFixed(2)
+        ),
+      });
+    }
+
+    // Thank-you email when the invoice is paid at checkout.
+    if (isPaid && customer?.email) {
+      await sendEmail({
+        to: customer.email,
+        subject: `Thank you for your payment — ${ctx.organizationName || 'ClinixDev'}`,
+        html: compileThankYouTemplate(
+          ctx.organizationName || 'ClinixDev',
+          invoiceNumber,
+          total.toFixed(2),
+          [customer.first_name, customer.last_name].filter(Boolean).join(' ') || undefined
+        ),
+      });
     }
 
     return {
@@ -346,7 +367,7 @@ export async function updateInvoicePaymentStatusAction(payload: unknown) {
 
     const { data: invoice, error: invErr } = await adminClient
       .from('invoices')
-      .select('*')
+      .select('*, customers ( email, first_name, last_name )')
       .eq('id', parsed.invoiceId)
       .eq('organization_id', ctx.organizationId)
       .single();
@@ -399,6 +420,25 @@ export async function updateInvoicePaymentStatusAction(payload: unknown) {
       resourceId: invoice.id,
       afterData: { total, paymentMethod: parsed.paymentMethod },
     });
+
+    // Thank-you email once the invoice transitions to paid.
+    const customer = invoice.customers as {
+      email?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+    } | null;
+    if (customer?.email) {
+      await sendEmail({
+        to: customer.email,
+        subject: `Thank you for your payment — ${ctx.organizationName || 'ClinixDev'}`,
+        html: compileThankYouTemplate(
+          ctx.organizationName || 'ClinixDev',
+          invoice.invoice_number,
+          total.toFixed(2),
+          [customer.first_name, customer.last_name].filter(Boolean).join(' ') || undefined
+        ),
+      });
+    }
 
     return { success: true };
   } catch (err: unknown) {
