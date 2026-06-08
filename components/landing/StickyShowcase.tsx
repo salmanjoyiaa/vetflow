@@ -1,11 +1,11 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { AnimatePresence, motion, useScroll, useTransform, useMotionValueEvent } from 'framer-motion';
+import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import DashboardMockup, { type MockupVariant } from '@/components/landing/DashboardMockup';
 import { Calendar, Stethoscope, Receipt, Boxes } from 'lucide-react';
 
-/** Shared top clearance for fixed landing nav */
+/** Shared top clearance for fixed landing nav (nav bar + top margin) */
 export const LANDING_NAV_OFFSET = 'pt-[var(--landing-nav-height)]';
 
 const SHOWCASE_ITEMS: {
@@ -91,111 +91,48 @@ function ShowcaseCopy({
   );
 }
 
-/** Compact layout for viewports below lg — no tall scroll track */
-function CompactShowcase() {
+function ShowcaseSection({ className = '' }: { className?: string }) {
   const [activeIndex, setActiveIndex] = useState(0);
 
   return (
-    <section className="relative py-20 px-5 md:px-8 lg:hidden">
+    <section className={`relative py-20 px-5 md:px-8 ${className}`}>
       <div className="absolute inset-0 grid-fade-bg pointer-events-none opacity-30" />
-      <div className="relative max-w-6xl mx-auto space-y-10">
+      <div className="relative max-w-6xl mx-auto space-y-10 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-12 xl:gap-16 lg:items-center">
         <ShowcaseCopy activeIndex={activeIndex} onItemClick={setActiveIndex} />
-        <div className="flex flex-wrap gap-2">
-          {SHOWCASE_ITEMS.map((item, i) => (
-            <button
-              key={item.variant}
-              type="button"
-              onClick={() => setActiveIndex(i)}
-              className={`text-[10px] font-bold px-3 py-1.5 rounded-full border transition-all ${
-                activeIndex === i
-                  ? 'bg-primary/15 text-primary border-primary/30'
-                  : 'border-outline-variant/50 text-on-surface-variant'
-              }`}
-            >
-              {item.title}
-            </button>
-          ))}
-        </div>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={SHOWCASE_ITEMS[activeIndex].variant}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-          >
-            <DashboardMockup variant={SHOWCASE_ITEMS[activeIndex].variant} enableTilt />
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    </section>
-  );
-}
-
-/** Desktop sticky scroll-scrubbed showcase */
-function StickyDesktopShowcase() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const stepVh = 32;
-
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ['start start', 'end end'],
-  });
-
-  const mockupScale = useTransform(scrollYProgress, [0, 0.15, 0.85, 1], [0.94, 1, 1, 0.96]);
-  const mockupOpacity = useTransform(scrollYProgress, [0, 0.08, 0.92, 1], [0.85, 1, 1, 0.85]);
-
-  useMotionValueEvent(scrollYProgress, 'change', (v) => {
-    const idx = Math.min(
-      SHOWCASE_ITEMS.length - 1,
-      Math.max(0, Math.floor(v * SHOWCASE_ITEMS.length))
-    );
-    setActiveIndex(idx);
-  });
-
-  const handleItemClick = (idx: number) => {
-    if (!containerRef.current) return;
-    const elementTop = containerRef.current.offsetTop;
-    const scrollRange = containerRef.current.offsetHeight - window.innerHeight;
-    const targetProgress = (idx + 0.5) / SHOWCASE_ITEMS.length;
-    const targetScrollY = elementTop + targetProgress * scrollRange;
-
-    window.scrollTo({
-      top: targetScrollY,
-      behavior: 'smooth',
-    });
-  };
-
-  return (
-    <section
-      ref={containerRef}
-      className="relative hidden lg:block sticky-showcase-container"
-      style={{ height: `${SHOWCASE_ITEMS.length * stepVh}vh` }}
-    >
-      <div className="sticky top-[var(--landing-nav-height)] h-[80vh] flex items-center overflow-hidden w-full">
-        <div className="absolute inset-0 grid-fade-bg pointer-events-none opacity-40" />
-        <div className="relative max-w-6xl mx-auto px-5 md:px-8 w-full grid grid-cols-2 gap-12 xl:gap-16 items-center">
-          <ShowcaseCopy activeIndex={activeIndex} onItemClick={handleItemClick} />
-
-          <motion.div style={{ scale: mockupScale, opacity: mockupOpacity }} className="relative">
-            <div className="absolute -inset-8 bg-primary/10 rounded-3xl blur-3xl pointer-events-none" />
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={SHOWCASE_ITEMS[activeIndex].variant}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2 lg:hidden">
+            {SHOWCASE_ITEMS.map((item, i) => (
+              <button
+                key={item.variant}
+                type="button"
+                onClick={() => setActiveIndex(i)}
+                className={`text-[10px] font-bold px-3 py-1.5 rounded-full border transition-all ${
+                  activeIndex === i
+                    ? 'bg-primary/15 text-primary border-primary/30'
+                    : 'border-outline-variant/50 text-on-surface-variant'
+                }`}
               >
-                <DashboardMockup
-                  variant={SHOWCASE_ITEMS[activeIndex].variant}
-                  enableTilt
-                  className="relative"
-                />
-              </motion.div>
-            </AnimatePresence>
-          </motion.div>
+                {item.title}
+              </button>
+            ))}
+          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={SHOWCASE_ITEMS[activeIndex].variant}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="relative"
+            >
+              <div className="absolute -inset-8 bg-primary/10 rounded-3xl blur-3xl pointer-events-none hidden lg:block" />
+              <DashboardMockup
+                variant={SHOWCASE_ITEMS[activeIndex].variant}
+                enableTilt
+                className="relative"
+              />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     </section>
@@ -203,10 +140,5 @@ function StickyDesktopShowcase() {
 }
 
 export default function StickyShowcase() {
-  return (
-    <>
-      <CompactShowcase />
-      <StickyDesktopShowcase />
-    </>
-  );
+  return <ShowcaseSection />;
 }

@@ -83,8 +83,20 @@ export default async function DashboardOverview() {
           quickLinks={[]}
         />
         <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm p-6 rounded-2xl">
-          You must be assigned to a clinic branch to view dashboard metrics. Please contact your
-          clinic administrator to get branch access.
+          {ctx.isImpersonating ? (
+            <>
+              This clinic has no active branches yet. Finish provisioning from{' '}
+              <Link href="/super-admin/organizations" className="text-primary font-semibold hover:underline">
+                Clinics
+              </Link>{' '}
+              (add a branch) before dashboard metrics can load.
+            </>
+          ) : (
+            <>
+              You must be assigned to a clinic branch to view dashboard metrics. Please contact your
+              clinic administrator to get branch access.
+            </>
+          )}
         </div>
       </div>
     );

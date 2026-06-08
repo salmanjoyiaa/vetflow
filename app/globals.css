@@ -45,7 +45,7 @@
 }
 
 :root {
-  --landing-nav-height: 5rem;
+  --landing-nav-height: calc(5rem + 0.75rem);
   --background: 260 14% 8%;
   --foreground: 280 20% 91%;
   --card: 260 12% 12%;

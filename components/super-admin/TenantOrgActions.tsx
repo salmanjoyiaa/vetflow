@@ -48,8 +48,7 @@ export default function TenantOrgActions({
         organizationId,
         reason: reason.trim(),
       });
-      if (res.success && res.redirectTo) {
-        router.push(res.redirectTo);
+      if (res.success) {
         router.refresh();
       } else {
         setError(res.error || 'Impersonation failed');

@@ -1,6 +1,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -14,6 +15,8 @@ const StartSchema = z.object({
 });
 
 export async function startImpersonationAction(payload: unknown) {
+  let shouldRedirect = false;
+
   try {
     const session = await resolveServerSession();
     if (!session?.isSuperAdmin) {
@@ -65,13 +68,20 @@ export async function startImpersonationAction(payload: unknown) {
     });
 
     revalidatePath('/super-admin', 'layout');
-    return { success: true, redirectTo: '/dashboard' };
+    revalidatePath('/dashboard', 'layout');
+    shouldRedirect = true;
   } catch (err: unknown) {
     return {
       success: false,
       error: err instanceof Error ? err.message : 'Impersonation failed',
     };
   }
+
+  if (shouldRedirect) {
+    redirect('/dashboard');
+  }
+
+  return { success: false, error: 'Impersonation failed' };
 }
 
 const ForceEndSchema = z.object({ sessionId: z.string().uuid() });

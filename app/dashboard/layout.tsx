@@ -17,7 +17,7 @@ export default async function DashboardLayout({
     redirect('/super-admin/dashboard');
   }
 
-  if (!ctx.role || ctx.branches.length === 0) {
+  if (!ctx.isImpersonating && (!ctx.role || ctx.branches.length === 0)) {
     redirect('/account-setup');
   }
 

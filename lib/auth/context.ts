@@ -4,7 +4,7 @@ import {
   resolveServerSession,
   type UserSessionDetails,
 } from '@/lib/services/auth';
-import { IMPERSONATION_COOKIE } from '@/lib/auth/impersonation';
+import { IMPERSONATION_COOKIE, clearImpersonationCookie } from '@/lib/auth/impersonation';
 import {
   getCapabilitiesForRole,
   hasCapability,
@@ -145,7 +145,15 @@ export async function resolveServerAuthContext(): Promise<ServerAuthContext | nu
   const impersonationOrgId = cookieStore.get(IMPERSONATION_COOKIE)?.value;
 
   if (session.isSuperAdmin && impersonationOrgId) {
-    return resolveImpersonatedClinicSession(session, impersonationOrgId, branchCookie);
+    const impersonated = await resolveImpersonatedClinicSession(
+      session,
+      impersonationOrgId,
+      branchCookie
+    );
+    if (impersonated) {
+      return impersonated;
+    }
+    await clearImpersonationCookie();
   }
 
   const allowedBranchIds = session.branches.map((b) => b.id);
