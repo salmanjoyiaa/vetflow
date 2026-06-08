@@ -5,8 +5,8 @@ import { AnimatePresence, motion, useScroll, useTransform, useMotionValueEvent }
 import DashboardMockup, { type MockupVariant } from '@/components/landing/DashboardMockup';
 import { Calendar, Stethoscope, Receipt, Boxes } from 'lucide-react';
 
-/** Shared top clearance for fixed landing nav (matches hero pt-28) */
-export const LANDING_NAV_OFFSET = 'pt-28';
+/** Shared top clearance for fixed landing nav */
+export const LANDING_NAV_OFFSET = 'pt-[var(--landing-nav-height)]';
 
 const SHOWCASE_ITEMS: {
   variant: MockupVariant;
@@ -53,7 +53,7 @@ function ShowcaseCopy({ activeIndex }: { activeIndex: number }) {
           <motion.div
             key={item.variant}
             animate={{
-              opacity: activeIndex === i ? 1 : 0.4,
+              opacity: activeIndex === i ? 1 : 0.55,
               x: activeIndex === i ? 0 : -6,
             }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
@@ -128,7 +128,7 @@ function CompactShowcase() {
 function StickyDesktopShowcase() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const stepVh = 45;
+  const stepVh = 40;
 
   const { scrollYProgress } = useScroll({
     target: containerRef,

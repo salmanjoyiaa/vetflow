@@ -9,6 +9,7 @@ import {
 } from '@/lib/services/customer-actions';
 import { createAppointmentWithPatientAction } from '@/lib/services/appointment-actions';
 import { normalizePhoneInput, looksLikePhone } from '@/lib/reception/phone';
+import Select from '@/components/ui/premium/Select';
 import {
   X,
   Loader2,
@@ -488,18 +489,18 @@ export default function NewAppointmentWizard({
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase block mb-1">
                   Select doctor
                 </label>
-                <select
+                <Select
                   value={doctorId}
-                  onChange={(e) => setDoctorId(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-container border border-outline-variant rounded-xl text-xs"
-                >
-                  <option value="">— Assign at check-in —</option>
-                  {doctors.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      Dr. {d.firstName} {d.lastName}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setDoctorId}
+                  placeholder="— Assign at check-in —"
+                  options={[
+                    { value: '', label: '— Assign at check-in —' },
+                    ...doctors.map((d) => ({
+                      value: d.id,
+                      label: `Dr. ${d.firstName} ${d.lastName}`.trim(),
+                    })),
+                  ]}
+                />
               </div>
 
               <div>

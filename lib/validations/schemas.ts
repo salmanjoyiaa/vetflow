@@ -17,6 +17,7 @@ export const ProductSchema = z.object({
   stockQuantity: z.number().int().nonnegative(),
   reorderLevel: z.number().int().nonnegative(),
   categoryId: EntityIdSchema.nullable().optional(),
+  categoryName: z.string().max(100).optional().or(z.literal('')),
   branchId: EntityIdSchema,
 });
 

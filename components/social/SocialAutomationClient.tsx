@@ -215,15 +215,12 @@ export default function SocialAutomationClient({
           <Select
             label="Platform"
             value={platform}
-            onChange={(e) => setPlatform(e.target.value)}
-          >
-            {PLATFORMS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-                {!connectedPlatforms.has(p.value) ? ' (not connected)' : ''}
-              </option>
-            ))}
-          </Select>
+            onChange={setPlatform}
+            options={PLATFORMS.map((p) => ({
+              value: p.value,
+              label: `${p.label}${!connectedPlatforms.has(p.value) ? ' (not connected)' : ''}`,
+            }))}
+          />
 
           <div>
             <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">

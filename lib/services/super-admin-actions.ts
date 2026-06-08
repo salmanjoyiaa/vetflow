@@ -260,12 +260,31 @@ export async function toggleOrganizationStateAction(orgId: string, isSuspended: 
 
     const adminClient = await createAdminClient();
 
-    // Enforce state update on subscription record
     const statusVal = isSuspended ? 'suspended' : 'active';
-    const { error } = await adminClient
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + 30);
+
+    const { data: existing } = await adminClient
       .from('subscription_status')
-      .update({ status: statusVal })
-      .eq('organization_id', orgId);
+      .select('id')
+      .eq('organization_id', orgId)
+      .maybeSingle();
+
+    const { error } = existing
+      ? await adminClient
+          .from('subscription_status')
+          .update({ status: statusVal })
+          .eq('organization_id', orgId)
+      : await adminClient.from('subscription_status').insert({
+          organization_id: orgId,
+          plan_id: 'starter',
+          plan_name: 'starter',
+          status: statusVal,
+          trial_start: new Date().toISOString(),
+          trial_end: trialEnd.toISOString(),
+          features: {},
+          notes: 'Auto-provisioned on status toggle',
+        });
 
     if (error) {
       throw new Error(error.message || 'Failed to update organization status.');

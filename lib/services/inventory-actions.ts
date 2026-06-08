@@ -18,6 +18,25 @@ import {
   type StockAdjustmentInput,
 } from '@/lib/validations/schemas';
 
+async function findOrCreateCategory(organizationId: string, name: string): Promise<string> {
+  const admin = await createAdminClient();
+  const { data: existing } = await admin
+    .from('product_categories')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .ilike('name', name)
+    .maybeSingle();
+  if (existing?.id) return existing.id;
+
+  const { data: created, error } = await admin
+    .from('product_categories')
+    .insert({ organization_id: organizationId, name })
+    .select('id')
+    .single();
+  if (error || !created) throw new Error(error?.message || 'Failed to create category.');
+  return created.id;
+}
+
 export async function createProductAction(payload: unknown) {
   try {
     const ctx = await resolveServerAuthContext();
@@ -31,6 +50,11 @@ export async function createProductAction(payload: unknown) {
     const parsed = ProductSchema.parse(payload);
     assertBranchAccess(ctx, parsed.branchId);
 
+    let categoryId = parsed.categoryId || null;
+    if (!categoryId && parsed.categoryName?.trim()) {
+      categoryId = await findOrCreateCategory(ctx.organizationId!, parsed.categoryName.trim());
+    }
+
     const supabase = await createClient();
 
     const { data: product, error } = await supabase
@@ -38,7 +62,7 @@ export async function createProductAction(payload: unknown) {
       .insert({
         organization_id: ctx.organizationId,
         branch_id: parsed.branchId,
-        category_id: parsed.categoryId || null,
+        category_id: categoryId,
         name: parsed.name,
         brand: parsed.brand || null,
         sku: parsed.sku || null,

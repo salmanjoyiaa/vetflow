@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { logoutAction } from '@/lib/services/auth-actions';
+import LogoutButton from '@/components/ui/premium/LogoutButton';
 import { platformTenantSearchAction } from '@/lib/services/super-admin-actions';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -13,7 +13,6 @@ import {
   CreditCard,
   ScrollText,
   Users,
-  LogOut,
   Menu,
   X,
   Shield,
@@ -211,15 +210,7 @@ export default function SuperAdminShellClient({
                   <span className="text-[9px] text-on-surface-variant block">Super Admin</span>
                 </div>
               </div>
-              <form action={logoutAction}>
-                <button
-                  type="submit"
-                  className="text-on-surface-variant hover:text-destructive p-1.5 rounded-lg hover:bg-surface-container-high"
-                  title="Sign Out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </form>
+              <LogoutButton className="text-on-surface-variant hover:text-destructive p-1.5 rounded-lg hover:bg-surface-container-high transition-colors" />
             </div>
           </div>
         </aside>
@@ -287,14 +278,9 @@ export default function SuperAdminShellClient({
               <span className="hidden lg:inline text-[9px] font-semibold text-on-surface-variant/50 border border-outline-variant/40 px-1.5 py-0.5 rounded">
                 ⌘K
               </span>
-              <form action={logoutAction} className="lg:hidden">
-                <button
-                  type="submit"
-                  className="text-xs font-bold text-on-surface-variant hover:text-destructive flex items-center gap-1"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </form>
+              <div className="lg:hidden">
+                <LogoutButton className="text-on-surface-variant hover:text-destructive p-1.5 rounded-lg" />
+              </div>
             </div>
           </header>
           <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">{children}</main>

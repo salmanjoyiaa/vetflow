@@ -65,7 +65,7 @@ type VisitRow = {
 export default async function DashboardOverview() {
   const ctx = await resolveServerAuthContext();
   if (!ctx) redirect('/login');
-  if (ctx.isSuperAdmin) redirect('/super-admin/dashboard');
+  if (ctx.isSuperAdmin && !ctx.isImpersonating) redirect('/super-admin/dashboard');
 
   const session = ctx;
   const activeBranchId = ctx.activeBranchId;

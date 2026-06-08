@@ -10,6 +10,8 @@ import {
   resolveAuthenticatedDestination,
   DEMO_USER_COOKIE,
 } from '@/lib/services/auth';
+import { clearImpersonationCookie } from '@/lib/auth/impersonation';
+import { createAdminClient } from '@/lib/supabase/server';
 import { isDemoMode, findDemoUser } from '@/lib/demo/credentials';
 
 export interface ActionResponse {
@@ -112,11 +114,29 @@ export async function requestAccessAction(payload: unknown): Promise<ActionRespo
  * Destroys user session and signs them out.
  */
 export async function logoutAction(): Promise<void> {
+  const cookieStore = await cookies();
+
   if (isDemoMode()) {
-    const cookieStore = await cookies();
     cookieStore.delete(DEMO_USER_COOKIE);
+    await clearImpersonationCookie();
     redirect('/login');
   }
+
+  const session = await resolveServerSession();
+  if (session?.isSuperAdmin) {
+    try {
+      const admin = await createAdminClient();
+      await admin
+        .from('impersonation_sessions')
+        .update({ is_active: false, ended_at: new Date().toISOString() })
+        .eq('super_admin_id', session.userId)
+        .eq('is_active', true);
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  await clearImpersonationCookie();
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect('/login');

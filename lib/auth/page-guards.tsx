@@ -35,6 +35,7 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   manage_subscription: 'Subscription & billing',
   use_ai_assistant: 'AI assistant',
   manage_social: 'Social media automation',
+  view_patient_history: 'Patient medical history',
 };
 
 export function renderCapabilityDenied(capability: Capability) {

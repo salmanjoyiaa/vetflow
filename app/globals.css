@@ -45,6 +45,7 @@
 }
 
 :root {
+  --landing-nav-height: 5rem;
   --background: 260 14% 8%;
   --foreground: 280 20% 91%;
   --card: 260 12% 12%;
@@ -69,6 +70,20 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+html.lenis {
+  scroll-behavior: auto;
+}
+
+select option {
+  background-color: var(--color-surface-container-high);
+  color: var(--color-on-surface);
 }
 
 body {

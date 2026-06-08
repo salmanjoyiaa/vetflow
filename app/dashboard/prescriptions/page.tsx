@@ -88,7 +88,7 @@ export default async function PrescriptionsPage() {
                       ({rx.pets?.species || 'N/A'})
                     </span>
                   </span>
-                  <span className="text-[10px] text-on-surface-variant/50 block mt-0.5">
+                  <span className="text-[10px] text-on-surface-variant block mt-0.5">
                     Dr. {rx.user_profiles?.first_name} {rx.user_profiles?.last_name} • Rev{' '}
                     {rx.revision_number} •{' '}
                     {new Date(rx.created_at).toLocaleDateString()}
@@ -111,7 +111,11 @@ export default async function PrescriptionsPage() {
                   </span>
                   {rx.pets?.id && (
                     <Link
-                      href={`/dashboard/pets/${rx.pets.id}`}
+                      href={
+                        session.role === 'doctor'
+                          ? `/dashboard/doctors/patients/${rx.pets.id}`
+                          : `/dashboard/pets/${rx.pets.id}`
+                      }
                       className="text-[10px] font-semibold text-primary flex items-center gap-1 hover:underline"
                     >
                       Medical file <ExternalLink className="w-3 h-3" />

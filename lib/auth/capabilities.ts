@@ -20,7 +20,8 @@ export type Capability =
   | 'manage_settings'
   | 'manage_subscription'
   | 'use_ai_assistant'
-  | 'manage_social';
+  | 'manage_social'
+  | 'view_patient_history';
 
 const ROLE_CAPABILITIES: Record<ClinicRole, Capability[]> = {
   clinic_admin: [
@@ -48,6 +49,7 @@ const ROLE_CAPABILITIES: Record<ClinicRole, Capability[]> = {
     'manage_appointments',
     'clinical_queue',
     'manage_prescriptions',
+    'view_patient_history',
     'mark_attendance',
     'use_ai_assistant',
   ],
@@ -88,6 +90,7 @@ export const ROUTE_CAPABILITIES: Record<string, Capability | undefined> = {
   '/dashboard/customers': 'manage_customers',
   '/dashboard/pets': 'manage_pets',
   '/dashboard/doctors': 'clinical_queue',
+  '/dashboard/doctors/patients': 'view_patient_history',
   '/dashboard/prescriptions': 'manage_prescriptions',
   '/dashboard/invoices': 'billing_checkout',
   '/dashboard/inventory': 'manage_inventory',

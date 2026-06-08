@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CompleteConsultationSchema, type CompleteConsultationInput } from '@/lib/validations/schemas';
@@ -196,7 +197,15 @@ export default function ConsultationWorkspaceClient({
           <div className="flex items-center justify-between border-b border-outline-variant/35 pb-4 mb-4">
             <div>
               <span className="text-[9px] font-black text-primary uppercase tracking-wider block">Patient Brief</span>
-              <h3 className="text-base font-black text-on-surface">{pet.name}</h3>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-base font-black text-on-surface">{pet.name}</h3>
+                <Link
+                  href={`/dashboard/doctors/patients/${patientId}`}
+                  className="text-[10px] font-semibold text-primary hover:underline shrink-0"
+                >
+                  Full patient history
+                </Link>
+              </div>
             </div>
             <span className="bg-primary/5 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full capitalize">
               {pet.species}

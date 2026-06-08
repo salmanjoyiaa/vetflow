@@ -49,6 +49,7 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
 
     const canSearchCustomers = hasCapability(ctx.role, 'manage_customers');
     const canSearchPets = hasCapability(ctx.role, 'manage_pets');
+    const canViewPatientHistory = hasCapability(ctx.role, 'view_patient_history');
     const canSearchInvoices = hasCapability(ctx.role, 'billing_checkout');
     const canSearchClinical = hasCapability(ctx.role, 'clinical_queue');
 
@@ -166,7 +167,9 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
         subtitle: `${p.species}${ownerName ? ` · ${ownerName}` : ''}`,
         href: canSearchPets
           ? `/dashboard/pets/${p.id}`
-          : '/dashboard/doctors',
+          : canViewPatientHistory
+            ? `/dashboard/doctors/patients/${p.id}`
+            : '/dashboard/doctors',
       });
     }
 

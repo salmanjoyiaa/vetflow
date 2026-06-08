@@ -30,6 +30,19 @@ export type OrgRegistryRow = {
   } | null;
 };
 
+const PLAN_LABELS: Record<string, string> = {
+  trial: 'Trial (30 days)',
+  starter: 'Starter',
+  growth: 'Pro',
+  pro: 'Pro',
+  enterprise: 'Enterprise',
+};
+
+function formatPlanName(planName: string | undefined | null): string {
+  if (!planName) return '—';
+  return PLAN_LABELS[planName] ?? planName.charAt(0).toUpperCase() + planName.slice(1);
+}
+
 interface OrganizationRegistryClientProps {
   orgs: OrgRegistryRow[];
 }
@@ -144,8 +157,8 @@ export default function OrganizationRegistryClient({ orgs }: OrganizationRegistr
                       <td className="px-6 py-4 font-mono text-primary font-semibold">
                         /book/{org.slug}
                       </td>
-                      <td className="px-6 py-4 capitalize text-on-surface font-semibold">
-                        {sub?.plan_name || '—'}
+                      <td className="px-6 py-4 text-on-surface font-semibold">
+                        {formatPlanName(sub?.plan_name)}
                       </td>
                       <td className="px-6 py-4">
                         {isActive ? (

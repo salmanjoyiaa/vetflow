@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createStaffMemberAction } from '@/lib/services/staff-actions';
 import { StaffSchema, type StaffInput } from '@/lib/validations/schemas';
 import { Loader2, Plus, X } from 'lucide-react';
+import Select from '@/components/ui/premium/Select';
 
 interface StaffFormProps {
   branches: { id: string; name: string }[];
@@ -33,6 +34,7 @@ export default function StaffForm({ branches }: StaffFormProps) {
   });
 
   const selectedBranches = watch('branchIds') || [];
+  const roleWatch = watch('role');
 
   const handleBranchCheckboxChange = (branchId: string, checked: boolean) => {
     if (checked) {
@@ -176,13 +178,14 @@ export default function StaffForm({ branches }: StaffFormProps) {
                 <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                   Select Role
                 </label>
-                <select
-                  {...register('role')}
-                  className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl outline-none text-xs text-on-surface font-semibold"
-                >
-                  <option value="doctor">Doctor</option>
-                  <option value="receptionist">Receptionist</option>
-                </select>
+                <Select
+                  value={roleWatch}
+                  onChange={(v) => setValue('role', v as StaffInput['role'], { shouldValidate: true })}
+                  options={[
+                    { value: 'doctor', label: 'Doctor' },
+                    { value: 'receptionist', label: 'Receptionist' },
+                  ]}
+                />
                 {errors.role && (
                   <span className="text-[10px] text-destructive mt-1 block">{errors.role.message}</span>
                 )}

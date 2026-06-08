@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Lenis from 'lenis';
+import 'lenis/dist/lenis.css';
 import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
 import ParticleField from '@/components/landing/ParticleField';
 import DashboardMockup from '@/components/landing/DashboardMockup';
@@ -163,6 +164,7 @@ export default function CinematicHome() {
 
   useEffect(() => {
     if (reduceMotion) return;
+    document.documentElement.classList.add('lenis');
     const lenis = new Lenis({ duration: 1.1, smoothWheel: true });
     let raf = 0;
     const loop = (time: number) => {
@@ -173,6 +175,7 @@ export default function CinematicHome() {
     return () => {
       cancelAnimationFrame(raf);
       lenis.destroy();
+      document.documentElement.classList.remove('lenis');
     };
   }, [reduceMotion]);
 
@@ -292,7 +295,7 @@ export default function CinematicHome() {
       </AnimatePresence>
 
       {/* HERO */}
-      <section ref={heroRef} className="relative min-h-screen flex items-center pt-28 pb-16 mesh-gradient overflow-hidden">
+      <section ref={heroRef} className="relative min-h-screen flex items-center pt-[var(--landing-nav-height)] pb-16 mesh-gradient overflow-hidden">
         <div className="absolute inset-0">
           <ParticleField className="w-full h-full opacity-50" />
         </div>

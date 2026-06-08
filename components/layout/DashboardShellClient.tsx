@@ -8,7 +8,7 @@ import { canAccessRoute } from '@/lib/auth/capabilities';
 import { canAccessRouteByFeature } from '@/lib/auth/features';
 import { setActiveBranchAction } from '@/lib/services/branch-cookie-actions';
 import { globalClinicSearchAction } from '@/lib/services/search-actions';
-import { logoutAction } from '@/lib/services/auth-actions';
+import LogoutButton from '@/components/ui/premium/LogoutButton';
 import ImpersonationBanner from '@/components/layout/ImpersonationBanner';
 import DashboardPageTransition from '@/components/layout/DashboardPageTransition';
 import type { LucideIcon } from 'lucide-react';
@@ -24,7 +24,6 @@ import {
   TrendingUp,
   MapPin,
   Settings,
-  LogOut,
   Search,
   Menu,
   X,
@@ -282,15 +281,7 @@ export default function DashboardShellClient({
                   </span>
                 </div>
               </div>
-              <form action={logoutAction}>
-                <button
-                  type="submit"
-                  className="text-on-surface-variant hover:text-destructive p-1.5 rounded-lg hover:bg-surface-container-high"
-                  title="Sign Out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </form>
+              <LogoutButton className="text-on-surface-variant hover:text-destructive p-1.5 rounded-lg hover:bg-surface-container-high transition-colors" />
             </div>
           </div>
         </aside>
@@ -350,16 +341,7 @@ export default function DashboardShellClient({
                       </span>
                     </div>
                   </div>
-                  <form action={logoutAction}>
-                    <button
-                      type="submit"
-                      className="text-on-surface-variant hover:text-destructive p-1.5 rounded-lg hover:bg-surface-container-high"
-                      title="Sign Out"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <LogOut className="w-4 h-4" />
-                    </button>
-                  </form>
+                  <LogoutButton className="text-on-surface-variant hover:text-destructive p-1.5 rounded-lg hover:bg-surface-container-high transition-colors" />
                 </div>
               </div>
             </aside>

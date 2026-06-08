@@ -316,7 +316,7 @@ export default function AppointmentsListClient({
                             >
                               {doctors.map((d) => (
                                 <option key={d.id} value={d.id}>
-                                  Dr. {d.firstName}
+                                  Dr. {d.firstName} {d.lastName}
                                 </option>
                               ))}
                             </select>

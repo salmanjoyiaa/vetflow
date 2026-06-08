@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { ProvisionClinicSchema, type ProvisionClinicInput } from '@/lib/validations/auth';
 import { provisionClinicAction } from '@/lib/services/super-admin-actions';
 import { Loader2, Building2, CheckCircle2 } from 'lucide-react';
+import Select from '@/components/ui/premium/Select';
 
 interface ClinicTypeOption {
   id: string;
@@ -47,6 +48,8 @@ export default function ProvisionClinicForm({ clinicTypes }: Props) {
   });
 
   const orgName = watch('orgName');
+  const clinicTypeId = watch('clinicTypeId');
+  const planId = watch('planId');
   const autoSlug = () => {
     if (orgName) {
       setValue(
@@ -126,23 +129,19 @@ export default function ProvisionClinicForm({ clinicTypes }: Props) {
           </div>
           <div>
             <label className={labelCls}>Clinic type</label>
-            <select {...register('clinicTypeId')} className={inputCls}>
-              {clinicTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
+            <Select
+              value={clinicTypeId}
+              onChange={(v) => setValue('clinicTypeId', v, { shouldValidate: true })}
+              options={clinicTypes.map((t) => ({ value: t.id, label: t.label }))}
+            />
           </div>
           <div>
             <label className={labelCls}>Plan</label>
-            <select {...register('planId')} className={inputCls}>
-              {PLANS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
+            <Select
+              value={planId}
+              onChange={(v) => setValue('planId', v as ProvisionClinicInput['planId'], { shouldValidate: true })}
+              options={PLANS.map((p) => ({ value: p.id, label: p.label }))}
+            />
           </div>
         </div>
       </section>
