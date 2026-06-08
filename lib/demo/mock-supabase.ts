@@ -131,6 +131,14 @@ class MockSupabaseQueryBuilder {
     return this;
   }
 
+  is(column: string, value: any) {
+    this.filters.push((item) => {
+      if (item[column] === undefined) return true;
+      return item[column] === value;
+    });
+    return this;
+  }
+
   in(column: string, values: any[]) {
     this.filters.push((item) => values.includes(item[column]));
     return this;

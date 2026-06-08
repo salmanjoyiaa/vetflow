@@ -115,6 +115,46 @@ export default async function ConsultationRoomPage({
     sellingPrice: Number(p.selling_price),
   })) || [];
 
+  // 5. Lab test catalog (org-scoped), existing lab orders, and documents for this visit
+  const [{ data: labCatalogData }, { data: labOrdersData }, { data: documentsData }] =
+    await Promise.all([
+      supabase
+        .from('lab_tests')
+        .select('id, name')
+        .eq('organization_id', session.organizationId)
+        .eq('is_active', true)
+        .order('name'),
+      supabase
+        .from('lab_orders')
+        .select('id, test_name, status, result_text, result_document_id, created_at')
+        .eq('visit_id', visitId)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('documents')
+        .select('id, file_name, category, mime_type, size_bytes, created_at')
+        .eq('visit_id', visitId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false }),
+    ]);
+
+  const labCatalog = (labCatalogData || []).map((t) => ({ id: t.id, name: t.name }));
+  const labOrders = (labOrdersData || []).map((o) => ({
+    id: o.id,
+    testName: o.test_name,
+    status: o.status as string,
+    resultText: o.result_text as string | null,
+    resultDocumentId: o.result_document_id as string | null,
+    createdAt: o.created_at as string,
+  }));
+  const documents = (documentsData || []).map((d) => ({
+    id: d.id,
+    fileName: d.file_name,
+    category: d.category as string,
+    mimeType: d.mime_type as string | null,
+    sizeBytes: d.size_bytes as number | null,
+    createdAt: d.created_at as string,
+  }));
+
   const petDetails = visit.pets as any;
   const customerDetails = visit.customers as any;
 
@@ -163,6 +203,10 @@ export default async function ConsultationRoomPage({
         visitReason={visit.reason}
         isEmergency={visit.is_emergency ?? false}
         triageNotes={visit.triage_notes as string | null}
+        patientId={visit.pet_id as string}
+        labCatalog={labCatalog}
+        labOrders={labOrders}
+        documents={documents}
       />
 
     </div>

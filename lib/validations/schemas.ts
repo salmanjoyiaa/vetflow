@@ -60,6 +60,34 @@ export const StaffSchema = z.object({
   branchIds: z.array(z.string().uuid()).min(1, { message: 'Assign at least one branch' }),
 });
 
+// --- LAB ORDERS (per visit) ---
+export const LabOrderSchema = z.object({
+  visitId: z.string().uuid(),
+  labTestId: z.string().uuid().nullable().optional(),
+  testName: z.string().min(1, { message: 'Test name is required' }),
+  notes: z.string().max(500).optional().or(z.literal('')),
+});
+export type LabOrderInput = z.infer<typeof LabOrderSchema>;
+
+export const LabResultSchema = z.object({
+  labOrderId: z.string().uuid(),
+  status: z.enum(['ordered', 'in_progress', 'completed', 'cancelled']),
+  resultText: z.string().max(4000).optional().or(z.literal('')),
+  resultDocumentId: z.string().uuid().nullable().optional(),
+});
+export type LabResultInput = z.infer<typeof LabResultSchema>;
+
+// --- DOCUMENT METADATA (file upload handled via FormData) ---
+export const DocumentMetaSchema = z.object({
+  visitId: z.string().uuid().nullable().optional(),
+  patientId: z.string().uuid().nullable().optional(),
+  category: z
+    .enum(['lab_result', 'imaging', 'consent', 'referral', 'other'])
+    .default('other'),
+  description: z.string().max(500).optional().or(z.literal('')),
+});
+export type DocumentMetaInput = z.infer<typeof DocumentMetaSchema>;
+
 // --- CLINIC / APP SETTINGS ---
 export const SettingsSchema = z.object({
   timezone: z.string().min(1, { message: 'Timezone is required' }),

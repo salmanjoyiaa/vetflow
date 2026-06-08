@@ -6,6 +6,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CompleteConsultationSchema, type CompleteConsultationInput } from '@/lib/validations/schemas';
 import { completeConsultationAction } from '@/lib/services/clinical-actions';
+import ConsultationLabsDocsPanel from '@/components/forms/ConsultationLabsDocsPanel';
 import { 
   Heart, 
   User, 
@@ -19,7 +20,8 @@ import {
   Loader2,
   FileCheck2,
   History,
-  CheckCircle
+  CheckCircle,
+  FlaskConical
 } from 'lucide-react';
 
 interface Product {
@@ -27,6 +29,27 @@ interface Product {
   name: string;
   type: string;
   sellingPrice: number;
+}
+
+interface LabCatalogItem {
+  id: string;
+  name: string;
+}
+interface LabOrder {
+  id: string;
+  testName: string;
+  status: string;
+  resultText: string | null;
+  resultDocumentId: string | null;
+  createdAt: string;
+}
+interface DocumentItem {
+  id: string;
+  fileName: string;
+  category: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  createdAt: string;
 }
 
 interface VisitHistory {
@@ -57,6 +80,10 @@ interface ConsultationWorkspaceClientProps {
   visitReason: string;
   isEmergency?: boolean;
   triageNotes?: string | null;
+  patientId: string;
+  labCatalog: LabCatalogItem[];
+  labOrders: LabOrder[];
+  documents: DocumentItem[];
 }
 
 export default function ConsultationWorkspaceClient({
@@ -68,9 +95,13 @@ export default function ConsultationWorkspaceClient({
   visitReason,
   isEmergency = false,
   triageNotes,
+  patientId,
+  labCatalog,
+  labOrders,
+  documents,
 }: ConsultationWorkspaceClientProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'consult' | 'history'>('consult');
+  const [activeTab, setActiveTab] = useState<'consult' | 'history' | 'labs'>('consult');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -214,24 +245,35 @@ export default function ConsultationWorkspaceClient({
         <div className="flex glass-panel p-1 rounded-xl border border-outline-variant/40 shadow-sm">
           <button
             onClick={() => setActiveTab('consult')}
-            className={`w-1/2 py-2.5 text-xs font-bold rounded-lg transition-all ${
+            className={`flex-1 py-2.5 text-[11px] font-bold rounded-lg transition-all ${
               activeTab === 'consult' 
                 ? 'bg-primary text-white shadow-sm' 
                 : 'text-on-surface-variant/60 hover:text-on-surface'
             }`}
           >
-            Clinical Workspace
+            Workspace
+          </button>
+          <button
+            onClick={() => setActiveTab('labs')}
+            className={`flex-1 py-2.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
+              activeTab === 'labs' 
+                ? 'bg-primary text-white shadow-sm' 
+                : 'text-on-surface-variant/60 hover:text-on-surface'
+            }`}
+          >
+            <FlaskConical className="w-3.5 h-3.5" />
+            Labs/Docs ({labOrders.length + documents.length})
           </button>
           <button
             onClick={() => setActiveTab('history')}
-            className={`w-1/2 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
               activeTab === 'history' 
                 ? 'bg-primary text-white shadow-sm' 
                 : 'text-on-surface-variant/60 hover:text-on-surface'
             }`}
           >
-            <History className="w-4 h-4" />
-            Medical History ({history.length})
+            <History className="w-3.5 h-3.5" />
+            History ({history.length})
           </button>
         </div>
 
@@ -595,6 +637,19 @@ export default function ConsultationWorkspaceClient({
           </div>
 
         </form>
+      )}
+
+      {/* LABS & DOCUMENTS PANEL */}
+      {activeTab === 'labs' && (
+        <div className="md:col-span-8 pb-12">
+          <ConsultationLabsDocsPanel
+            visitId={visitId}
+            patientId={patientId}
+            labCatalog={labCatalog}
+            labOrders={labOrders}
+            documents={documents}
+          />
+        </div>
       )}
 
     </div>

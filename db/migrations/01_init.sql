@@ -531,7 +531,8 @@ CREATE TABLE public.documents (
     file_name VARCHAR(255) NOT NULL,
     mime_type VARCHAR(100),
     size_bytes BIGINT,
-    category VARCHAR(50) NOT NULL DEFAULT 'medical', -- medical, lab_result, imaging, consent, other
+    category VARCHAR(50) NOT NULL DEFAULT 'other', -- lab_result, imaging, consent, referral, other
+    description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     deleted_at TIMESTAMP WITH TIME ZONE
 );
