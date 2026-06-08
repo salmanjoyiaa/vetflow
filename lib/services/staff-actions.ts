@@ -100,6 +100,90 @@ export async function createStaffMemberAction(payload: unknown) {
   }
 }
 
+const UpdateStaffSchema = z.object({
+  userId: z.string().uuid(),
+  firstName: z.string().min(1, { message: 'First name is required' }),
+  lastName: z.string().min(1, { message: 'Last name is required' }),
+  phone: z.string().min(5, { message: 'Phone number is required' }),
+  role: z.enum(['doctor', 'receptionist'], { message: 'Invalid role' }),
+  branchIds: z.array(z.string().uuid()).min(1, { message: 'Assign at least one branch' }),
+});
+
+/**
+ * Updates an existing staff member's profile, role, and branch assignments.
+ * Reconciles branch_members to match the submitted branch set. Clinic-admin only.
+ */
+export async function updateStaffMemberAction(payload: unknown) {
+  try {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
+    }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_staff');
+
+    const parsed = UpdateStaffSchema.parse(payload);
+    for (const branchId of parsed.branchIds) {
+      assertBranchAccess(ctx, branchId);
+    }
+
+    const adminClient = await createAdminClient();
+
+    // Guard: the target must belong to this organization (and not be an admin).
+    const { data: member, error: memberLookupError } = await adminClient
+      .from('organization_members')
+      .select('role')
+      .eq('organization_id', ctx.organizationId)
+      .eq('user_id', parsed.userId)
+      .maybeSingle();
+
+    if (memberLookupError) throw new Error(memberLookupError.message);
+    if (!member) throw new Error('Staff member not found in your organization.');
+    if (member.role === 'clinic_admin') {
+      throw new Error('Clinic administrator accounts cannot be edited here.');
+    }
+
+    const { error: profileError } = await adminClient
+      .from('user_profiles')
+      .update({
+        first_name: parsed.firstName,
+        last_name: parsed.lastName,
+        phone: parsed.phone,
+      })
+      .eq('id', parsed.userId);
+    if (profileError) throw new Error(profileError.message);
+
+    const { error: roleError } = await adminClient
+      .from('organization_members')
+      .update({ role: parsed.role })
+      .eq('organization_id', ctx.organizationId)
+      .eq('user_id', parsed.userId);
+    if (roleError) throw new Error(roleError.message);
+
+    // Reconcile branch assignments: clear then re-insert the submitted set.
+    await adminClient.from('branch_members').delete().eq('user_id', parsed.userId);
+    const { error: branchError } = await adminClient.from('branch_members').insert(
+      parsed.branchIds.map((branchId) => ({ branch_id: branchId, user_id: parsed.userId }))
+    );
+    if (branchError) throw new Error(branchError.message);
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId,
+      branchId: parsed.branchIds[0],
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'clinic_admin',
+      action: 'STAFF_UPDATED',
+      resourceType: 'USER_PROFILE',
+      resourceId: parsed.userId,
+      afterData: { role: parsed.role, branchIds: parsed.branchIds },
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'An unexpected error occurred.' };
+  }
+}
+
 /**
  * Toggles a staff member active/inactive status in the organization.
  */

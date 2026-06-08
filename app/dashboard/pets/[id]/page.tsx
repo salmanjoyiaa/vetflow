@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { resolveServerAuthContext } from '@/lib/auth/context';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import Link from 'next/link';
 import { 
   Heart, 
@@ -105,26 +106,19 @@ export default async function PetDetailPage({
   return (
     <div className="space-y-8">
       
-      {/* BACK BUTTON AND TITLE */}
-      <div className="space-y-2">
-        <Link 
-          href={`/dashboard/customers/${pet.customer_id}`} 
-          className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Owner Profile
-        </Link>
-        
-        <div>
-          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-            <Heart className="w-5 h-5 text-primary" />
-            Medical File: {pet.name}
-          </h2>
-          <p className="text-xs text-on-surface-variant/70 mt-1">
-            Clinical charting history and diagnostics for this patient.
-          </p>
-        </div>
-      </div>
+      <Link
+        href={`/dashboard/customers/${pet.customer_id}`}
+        className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Owner Profile
+      </Link>
+
+      <PageHeader
+        title={`Medical File: ${pet.name}`}
+        description="Clinical charting history and diagnostics for this patient."
+        icon={Heart}
+      />
 
       <div className="grid md:grid-cols-3 gap-8">
         

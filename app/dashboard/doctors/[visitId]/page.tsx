@@ -3,6 +3,7 @@ import { resolveServerAuthContext } from '@/lib/auth/context';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import ConsultationWorkspaceClient from '@/components/forms/ConsultationWorkspaceClient';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import Link from 'next/link';
 import { ArrowLeft, Stethoscope } from 'lucide-react';
 
@@ -161,25 +162,19 @@ export default async function ConsultationRoomPage({
   return (
     <div className="space-y-8">
       
-      {/* HEADER */}
-      <div className="space-y-2">
-        <Link 
-          href="/dashboard/doctors" 
-          className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Attending Queue
-        </Link>
-        <div>
-          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-            <Stethoscope className="w-5 h-5 text-primary" />
-            Active Consultation Room
-          </h2>
-          <p className="text-xs text-on-surface-variant/70 mt-1">
-            Attending Vet workspace for patient diagnosis, notes, and prescriptions.
-          </p>
-        </div>
-      </div>
+      <Link
+        href="/dashboard/doctors"
+        className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Attending Queue
+      </Link>
+
+      <PageHeader
+        title="Active Consultation Room"
+        description="Attending Vet workspace for patient diagnosis, notes, and prescriptions."
+        icon={Stethoscope}
+      />
 
       {/* CORE WORKSPACE */}
       <ConsultationWorkspaceClient 

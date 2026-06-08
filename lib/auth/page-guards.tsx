@@ -29,8 +29,12 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   view_reports: 'Reports',
   manage_branches: 'Branch management',
   manage_staff: 'Staff management',
+  manage_attendance: 'Staff scheduling & attendance',
+  mark_attendance: 'Attendance check-in',
   manage_settings: 'Clinic settings',
   manage_subscription: 'Subscription & billing',
+  use_ai_assistant: 'AI assistant',
+  manage_social: 'Social media automation',
 };
 
 export function renderCapabilityDenied(capability: Capability) {

@@ -40,29 +40,42 @@ export async function completeConsultationAction(payload: unknown) {
     const numOrNull = (v: number | undefined) =>
       v !== undefined && !Number.isNaN(v) ? v : null;
 
-    // 2. Create Clinical Notes
-    const { data: notes, error: notesError } = await supabase
-      .from('clinical_notes')
-      .insert({
-        visit_id: parsed.visitId,
-        chief_complaint: parsed.chiefComplaint,
-        history: parsed.history || null,
-        examination_findings: parsed.examinationFindings || null,
-        diagnosis: parsed.diagnosis,
-        treatment_plan: parsed.treatmentPlan || null,
-        internal_notes: parsed.internalNotes || null,
-        follow_up_recommendation: parsed.followUpRecommendation || null,
-        temperature_c: numOrNull(parsed.temperatureC),
-        heart_rate_bpm: numOrNull(parsed.heartRateBpm),
-        respiratory_rate: numOrNull(parsed.respiratoryRate),
-        weight_kg: numOrNull(parsed.weightKg),
-        created_by: ctx.userId,
-      })
-      .select()
-      .single();
+    // 2. Create or update clinical notes (idempotent if doctor retries)
+    const notePayload = {
+      chief_complaint: parsed.chiefComplaint,
+      history: parsed.history || null,
+      examination_findings: parsed.examinationFindings || null,
+      diagnosis: parsed.diagnosis,
+      treatment_plan: parsed.treatmentPlan || null,
+      internal_notes: parsed.internalNotes || null,
+      follow_up_recommendation: parsed.followUpRecommendation || null,
+      temperature_c: numOrNull(parsed.temperatureC),
+      heart_rate_bpm: numOrNull(parsed.heartRateBpm),
+      respiratory_rate: numOrNull(parsed.respiratoryRate),
+      weight_kg: numOrNull(parsed.weightKg),
+    };
 
-    if (notesError) {
-      throw new Error(notesError.message || 'Failed to save clinical notes.');
+    const { data: existingNotes } = await supabase
+      .from('clinical_notes')
+      .select('id')
+      .eq('visit_id', parsed.visitId)
+      .maybeSingle();
+
+    const notesResult = existingNotes
+      ? await supabase
+          .from('clinical_notes')
+          .update(notePayload)
+          .eq('id', existingNotes.id)
+          .select()
+          .single()
+      : await supabase
+          .from('clinical_notes')
+          .insert({ visit_id: parsed.visitId, ...notePayload, created_by: ctx.userId })
+          .select()
+          .single();
+
+    if (notesResult.error) {
+      throw new Error(notesResult.error.message || 'Failed to save clinical notes.');
     }
 
     // 3. Create Prescription if items are specified
@@ -125,16 +138,18 @@ export async function completeConsultationAction(payload: unknown) {
 
     // 4. Update Visit status (defaulting to checkout if billing is needed)
     // In V1, we route all complete consultations to 'ready_for_checkout' for billing reviews
-    const { error: visitUpdateError } = await supabase
+    const { data: updatedVisit, error: visitUpdateError } = await supabase
       .from('visits')
       .update({
         status: 'ready_for_checkout',
         completed_at: new Date().toISOString(),
       })
-      .eq('id', visit.id);
+      .eq('id', visit.id)
+      .select('id, status')
+      .single();
 
-    if (visitUpdateError) {
-      throw new Error(visitUpdateError.message || 'Failed to update visit status.');
+    if (visitUpdateError || updatedVisit?.status !== 'ready_for_checkout') {
+      throw new Error(visitUpdateError?.message || 'Failed to transition visit to checkout.');
     }
 
     // Record audit trail

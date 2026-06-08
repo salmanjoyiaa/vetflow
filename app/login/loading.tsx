@@ -4,7 +4,8 @@ import { Loader2 } from 'lucide-react';
 export default function LoginLoading() {
   return (
     <AuthPageShell
-      title="Welcome back"
+      title="Welcome"
+      titleAccent="back"
       subtitle="Trustworthy veterinary business platform"
     >
       <div className="flex flex-col items-center justify-center py-12 gap-3">

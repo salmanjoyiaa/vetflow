@@ -43,12 +43,16 @@ export async function parseStockInvoiceImageAction(formData: FormData): Promise<
     assertCapability(ctx, 'manage_inventory');
     assertFeature(ctx, 'inventory');
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    // Prefer Groq (GROQ_API_KEY); fall back to an OpenAI-compatible key.
+    const groqKey = process.env.GROQ_API_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const useGroq = Boolean(groqKey);
+    const apiKey = groqKey || openaiKey;
     if (!apiKey) {
       return {
         success: false,
         error:
-          'OPENAI_API_KEY is not configured. Add it to your environment to enable invoice scanning.',
+          'GROQ_API_KEY is not configured. Add it to your environment to enable invoice scanning.',
       };
     }
 
@@ -57,18 +61,28 @@ export async function parseStockInvoiceImageAction(formData: FormData): Promise<
       throw new Error('No image file provided.');
     }
 
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    // Groq vision is image-only; PDFs are not supported by the vision endpoint.
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowed.includes(file.type)) {
-      throw new Error('Supported formats: JPG, PNG, WebP, or PDF.');
+      throw new Error('Supported formats: JPG, PNG, or WebP. Export PDFs to an image first.');
+    }
+
+    // Groq accepts base64 images up to 20MB (4MB recommended for low latency).
+    const MAX_BYTES = 20 * 1024 * 1024;
+    if (file.size > MAX_BYTES) {
+      throw new Error('Image is too large. Please upload a file under 20MB.');
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const base64 = buffer.toString('base64');
-    const mime = file.type === 'application/pdf' ? 'image/jpeg' : file.type;
-    const dataUrl = `data:${mime};base64,${base64}`;
+    const dataUrl = `data:${file.type};base64,${base64}`;
 
-    const model = process.env.OPENAI_VISION_MODEL || 'gpt-4o-mini';
-    const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+    const model = useGroq
+      ? process.env.GROQ_VISION_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct'
+      : process.env.OPENAI_VISION_MODEL || 'gpt-4o-mini';
+    const baseUrl = useGroq
+      ? process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1'
+      : process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',

@@ -1,3 +1,4 @@
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { isDemoMode } from '@/lib/demo/credentials';
@@ -33,32 +34,20 @@ export async function createClient() {
   );
 }
 
-// Server client utilizing the service-role key for privileged/admin actions bypass RLS.
-// This client MUST NEVER be imported by or exposed to client-side components.
+// Service-role client for privileged server actions (audit logs, stock adjustments).
+// Must not use SSR cookie handling — user JWT would otherwise apply RLS instead of bypassing it.
 export async function createAdminClient() {
   if (isDemoMode()) {
     return mockSupabaseClient as any;
   }
 
-  const cookieStore = await cookies();
-
-  return createServerClient(
+  return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // Ignore
-          }
-        },
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
       },
     }
   );

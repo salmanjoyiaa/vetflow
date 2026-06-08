@@ -3,6 +3,7 @@ import { resolveServerAuthContext } from '@/lib/auth/context';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import PetForm from '@/components/forms/PetForm';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import Link from 'next/link';
 import { 
   User, 
@@ -64,23 +65,19 @@ export default async function CustomerDetailPage({
   return (
     <div className="space-y-8">
       
-      {/* BACK BUTTON AND TITLE */}
-      <div className="space-y-2">
-        <Link 
-          href="/dashboard/customers" 
-          className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Directory
-        </Link>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-            <User className="w-5 h-5 text-primary" />
-            Customer Profile
-          </h2>
-          <PetForm customerId={customer.id} />
-        </div>
-      </div>
+      <Link
+        href="/dashboard/customers"
+        className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Directory
+      </Link>
+
+      <PageHeader
+        title="Customer Profile"
+        icon={User}
+        actions={<PetForm customerId={customer.id} />}
+      />
 
       {/* CORE DETAILS MATRIX */}
       <div className="grid md:grid-cols-3 gap-8">

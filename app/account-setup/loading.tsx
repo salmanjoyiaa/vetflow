@@ -4,7 +4,8 @@ import { Loader2 } from 'lucide-react';
 export default function AccountSetupLoading() {
   return (
     <AuthPageShell
-      title="Account setup"
+      title="Account"
+      titleAccent="setup"
       subtitle="Trustworthy veterinary business platform"
     >
       <div className="flex flex-col items-center justify-center py-12 gap-3">

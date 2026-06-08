@@ -60,6 +60,8 @@ export const ROUTE_FEATURES: Record<string, Feature | undefined> = {
   '/dashboard/invoices': 'sales',
   '/dashboard/reports': 'reports',
   '/dashboard/branches': 'multi_branch',
+  '/dashboard/ai-assistant': 'ai_assistant',
+  '/dashboard/social': 'social_automation',
 };
 
 export function resolveFeatures(

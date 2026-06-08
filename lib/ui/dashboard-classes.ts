@@ -1,4 +1,8 @@
-/** Shared Tailwind classes for dark ClinicOS dashboard surfaces */
+/**
+ * Shared Tailwind classes for dark ClinicOS dashboard surfaces.
+ * Prefer premium components (Button, Input, PageHeader, DataTable, Modal) over raw classes.
+ * Page spacing: wrap content in `space-y-8`. Tables: use DataTable + horizontal scroll on mobile.
+ */
 export const pageTitleClass =
   'text-xl font-bold text-on-surface tracking-tight font-[family-name:var(--font-display)]';
 export const pageDescClass = 'text-xs text-on-surface-variant mt-1';

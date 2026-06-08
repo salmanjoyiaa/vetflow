@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+/** Postgres uuid strings, including deterministic seed IDs (Zod 4 uuid() rejects some fixtures). */
+const UUID_LIKE =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+export const EntityIdSchema = z.string().regex(UUID_LIKE, { message: 'Invalid ID' });
+
 // --- INVENTORY / PRODUCTS ---
 export const ProductSchema = z.object({
   name: z.string().min(1, { message: 'Product name is required' }),
@@ -11,13 +16,13 @@ export const ProductSchema = z.object({
   sellingPrice: z.number().nonnegative(),
   stockQuantity: z.number().int().nonnegative(),
   reorderLevel: z.number().int().nonnegative(),
-  categoryId: z.string().uuid().nullable().optional(),
-  branchId: z.string().uuid({ message: 'Invalid branch' }),
+  categoryId: EntityIdSchema.nullable().optional(),
+  branchId: EntityIdSchema,
 });
 
 export const StockAdjustmentSchema = z.object({
-  productId: z.string().uuid(),
-  branchId: z.string().uuid(),
+  productId: EntityIdSchema,
+  branchId: EntityIdSchema,
   quantity: z.number().int(),
   type: z.enum(['purchase_added', 'manual_adjustment', 'expired_removed', 'return']),
   reason: z.string().min(1, { message: 'Reason is required' }),
@@ -35,7 +40,7 @@ export const PetSchema = z.object({
   microchipNumber: z.string().optional().or(z.literal('')),
   allergies: z.string().optional().or(z.literal('')),
   medicalNotes: z.string().optional().or(z.literal('')),
-  customerId: z.string().uuid({ message: 'Invalid customer selection' }),
+  customerId: EntityIdSchema,
 });
 export const PatientSchema = PetSchema;
 
@@ -122,7 +127,7 @@ export const BranchSchema = z.object({
 // --- SUPER ADMIN / TENANT SUBSCRIPTION ---
 export const SubscriptionSchema = z.object({
   organizationId: z.string().uuid(),
-  planName: z.enum(['trial', 'growth', 'enterprise']),
+  planName: z.enum(['trial', 'starter', 'pro', 'enterprise']),
   status: z.enum(['active', 'trial', 'suspended', 'cancelled']),
   trialEnd: z.string(),
   renewalDate: z.string().optional().or(z.literal('')),
@@ -131,7 +136,7 @@ export const SubscriptionSchema = z.object({
 
 // --- BILLING / CHECKOUT ---
 export const CheckoutSchema = z.object({
-  visitId: z.string().uuid(),
+  visitId: EntityIdSchema,
   discount: z.number().nonnegative(),
   paymentStatus: z.enum(['paid', 'unpaid']),
   paymentMethod: z.enum(['cash', 'card', 'bank_transfer']),
@@ -176,7 +181,7 @@ export const PrescriptionItemSchema = z.object({
 });
 
 export const CompleteConsultationSchema = z.object({
-  visitId: z.string().uuid(),
+  visitId: EntityIdSchema,
   chiefComplaint: z.string().min(1, { message: 'Chief complaint is required' }),
   history: z.string().optional().or(z.literal('')),
   examinationFindings: z.string().optional().or(z.literal('')),
@@ -273,11 +278,11 @@ export const AppointmentRequestSchema = z.object({
 
 // --- WALK-INS ---
 export const WalkInSchema = z.object({
-  petId: z.string().uuid({ message: 'Select a valid pet' }),
-  customerId: z.string().uuid({ message: 'Select a valid customer' }),
-  doctorId: z.string().uuid({ message: 'Select a valid doctor' }),
+  petId: EntityIdSchema,
+  customerId: EntityIdSchema,
+  doctorId: EntityIdSchema,
   reason: z.string().min(1, { message: 'Reason for visit is required' }),
-  branchId: z.string().uuid({ message: 'Select a valid branch' }),
+  branchId: EntityIdSchema,
   isEmergency: z.boolean().default(false),
   triageNotes: z.string().optional().or(z.literal('')),
 });

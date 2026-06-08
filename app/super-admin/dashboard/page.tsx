@@ -1,7 +1,18 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { isDemoMode } from '@/lib/demo/credentials';
 import { MOCK_SUPER_ADMIN_DATA } from '@/lib/demo/mock-data';
-import { estimateMrrForSubscriptions, estimatePlanMrr } from '@/lib/super-admin/mrr';
+import {
+  buildPlanPriceMap,
+  computeArr,
+  computeMrr,
+  planPrice,
+  type PlanPriceMap,
+} from '@/lib/super-admin/mrr';
+import {
+  SUPERADMIN_TOGGLEABLE_FEATURES,
+  OPT_IN_FEATURES,
+  FEATURE_LABELS,
+} from '@/lib/auth/features';
 import PlatformChartsClient from '@/components/super-admin/PlatformChartsClient';
 import KpiCard from '@/components/ui/premium/KpiCard';
 import GlassPanel from '@/components/ui/premium/GlassPanel';
@@ -16,6 +27,7 @@ import {
   GitBranch,
   DollarSign,
   ArrowRight,
+  LayoutDashboard,
   Shield,
   Calendar,
 } from 'lucide-react';
@@ -53,34 +65,55 @@ export default async function SuperAdminDashboard() {
   let subs: {
     status: string;
     plan_name: string | null;
+    plan_id: string | null;
     trial_end: string | null;
     organization_id: string;
+    organization_name: string;
+    features: Record<string, boolean> | null;
   }[] = [];
+  let priceMap: PlanPriceMap = {};
   let totalUsers = 0;
   let totalBranches = 0;
   let recentOrgs: { id: string; name: string; slug: string; created_at: string }[] = [];
-  let allOrgs: { created_at: string; name: string; trial_end?: string | null }[] = [];
+  let allOrgs: {
+    id: string;
+    created_at: string;
+    name: string;
+    clinic_type_id: string | null;
+    trial_end?: string | null;
+  }[] = [];
+  let payments: { amount: number; organization_id: string }[] = [];
   let loadError: string | null = null;
 
   if (isDemoMode()) {
+    priceMap = { trial: 0, starter: 29, pro: 79, enterprise: 199 };
     subs = MOCK_SUPER_ADMIN_DATA.subscriptions.map((s, i) => ({
       ...s,
+      plan_id: s.plan_name,
       trial_end: null,
       organization_id: `demo-${i}`,
+      organization_name: s.plan_name || `Demo clinic ${i + 1}`,
+      features: null,
     }));
     totalUsers = MOCK_SUPER_ADMIN_DATA.totalUsers;
     totalBranches = MOCK_SUPER_ADMIN_DATA.totalBranches;
     recentOrgs = MOCK_SUPER_ADMIN_DATA.recentOrgs;
-    allOrgs = MOCK_SUPER_ADMIN_DATA.recentOrgs;
+    allOrgs = MOCK_SUPER_ADMIN_DATA.recentOrgs.map((o) => ({
+      id: o.id,
+      name: o.name,
+      created_at: o.created_at,
+      clinic_type_id: 'vet',
+    }));
   } else {
     try {
       const adminClient = await createAdminClient();
 
-      const [subsRes, profilesCountRes, branchesCountRes, recentOrgsRes, allOrgsRes] =
+      const [subsRes, plansRes, profilesCountRes, branchesCountRes, recentOrgsRes, allOrgsRes, paymentsRes] =
         await Promise.all([
           adminClient
             .from('subscription_status')
-            .select('status, plan_name, trial_end, organization_id'),
+            .select('status, plan_name, plan_id, trial_end, features, organization_id, organizations ( name )'),
+          adminClient.from('plans').select('id, price'),
           adminClient.from('user_profiles').select('id', { count: 'exact', head: true }),
           adminClient.from('branches').select('id', { count: 'exact', head: true }),
           adminClient
@@ -90,23 +123,45 @@ export default async function SuperAdminDashboard() {
             .limit(5),
           adminClient
             .from('organizations')
-            .select('id, name, created_at, subscription_status ( trial_end )')
+            .select('id, name, created_at, clinic_type_id, subscription_status ( trial_end )')
             .order('created_at', { ascending: false }),
+          adminClient.from('payments').select('amount, organization_id'),
         ]);
 
       if (subsRes.error) throw new Error(subsRes.error.message);
+      if (plansRes.error) throw new Error(plansRes.error.message);
       if (profilesCountRes.error) throw new Error(profilesCountRes.error.message);
       if (branchesCountRes.error) throw new Error(branchesCountRes.error.message);
       if (recentOrgsRes.error) throw new Error(recentOrgsRes.error.message);
 
-      subs = subsRes.data || [];
+      priceMap = buildPlanPriceMap(plansRes.data);
+      subs = (subsRes.data || []).map((s) => ({
+        status: s.status,
+        plan_name: s.plan_name,
+        plan_id: s.plan_id,
+        trial_end: s.trial_end,
+        organization_id: s.organization_id,
+        organization_name:
+          (s.organizations as { name?: string } | null)?.name || 'Unknown clinic',
+        features: (s.features as Record<string, boolean> | null) ?? null,
+      }));
       totalUsers = profilesCountRes.count || 0;
       totalBranches = branchesCountRes.count || 0;
       recentOrgs = recentOrgsRes.data || [];
       allOrgs = (allOrgsRes.data || []).map((o) => {
         const sub = (o.subscription_status as { trial_end: string | null }[] | null)?.[0];
-        return { created_at: o.created_at, name: o.name, trial_end: sub?.trial_end };
+        return {
+          id: o.id,
+          created_at: o.created_at,
+          name: o.name,
+          clinic_type_id: o.clinic_type_id,
+          trial_end: sub?.trial_end,
+        };
       });
+      payments = (paymentsRes.data || []).map((p) => ({
+        amount: Number(p.amount) || 0,
+        organization_id: p.organization_id,
+      }));
     } catch (err: unknown) {
       loadError = err instanceof Error ? err.message : 'Failed to load platform data';
     }
@@ -128,7 +183,8 @@ export default async function SuperAdminDashboard() {
   const trialClinics = subs.filter((s) => s.status === 'trial').length;
   const activeClinics = subs.filter((s) => s.status === 'active').length;
   const suspendedClinics = subs.filter((s) => s.status === 'suspended').length;
-  const estimatedMRR = estimateMrrForSubscriptions(subs);
+  const estimatedMRR = computeMrr(subs, priceMap);
+  const estimatedARR = computeArr(estimatedMRR);
 
   const statusDistribution = [
     { name: 'active', value: activeClinics },
@@ -142,10 +198,75 @@ export default async function SuperAdminDashboard() {
   const mrrByPlanMap = new Map<string, number>();
   for (const sub of subs) {
     if (sub.status !== 'active') continue;
-    const plan = sub.plan_name || 'Other';
-    mrrByPlanMap.set(plan, (mrrByPlanMap.get(plan) || 0) + estimatePlanMrr(sub.plan_name));
+    const plan = sub.plan_name || sub.plan_id || 'Other';
+    mrrByPlanMap.set(
+      plan,
+      (mrrByPlanMap.get(plan) || 0) + planPrice(sub.plan_id ?? sub.plan_name, priceMap)
+    );
   }
   const mrrByPlan = Array.from(mrrByPlanMap.entries()).map(([plan, mrr]) => ({ plan, mrr }));
+
+  // ── Funnel / health metrics (point-in-time, from current state) ──
+  const cancelledClinics = subs.filter((s) => s.status === 'cancelled').length;
+  const paidClinics = activeClinics;
+  const churnRate =
+    totalClinics > 0 ? Math.round(((cancelledClinics + suspendedClinics) / totalClinics) * 100) : 0;
+  const conversionRate =
+    paidClinics + trialClinics > 0
+      ? Math.round((paidClinics / (paidClinics + trialClinics)) * 100)
+      : 0;
+
+  // ── Clinic-type distribution ──
+  const clinicTypeMap = new Map<string, number>();
+  for (const o of allOrgs) {
+    const key = o.clinic_type_id || 'unknown';
+    clinicTypeMap.set(key, (clinicTypeMap.get(key) || 0) + 1);
+  }
+  const clinicTypeDistribution = Array.from(clinicTypeMap.entries()).map(([name, value]) => ({
+    name,
+    value,
+  }));
+
+  // ── Feature adoption (% of tenants with each feature enabled) ──
+  const featureAdoption = SUPERADMIN_TOGGLEABLE_FEATURES.map((feature) => {
+    const enabled = subs.filter((s) => {
+      const f = s.features?.[feature];
+      return OPT_IN_FEATURES.includes(feature) ? f === true : f !== false;
+    }).length;
+    return {
+      feature: FEATURE_LABELS[feature] || feature,
+      pct: totalClinics > 0 ? Math.round((enabled / totalClinics) * 100) : 0,
+    };
+  });
+
+  // ── Revenue from real payments ──
+  const orgPlanMap = new Map<string, string>();
+  for (const s of subs) orgPlanMap.set(s.organization_id, s.plan_name || s.plan_id || 'other');
+  const orgNameMap = new Map<string, string>();
+  for (const s of subs) orgNameMap.set(s.organization_id, s.organization_name);
+  for (const o of allOrgs) if (!orgNameMap.has(o.id)) orgNameMap.set(o.id, o.name);
+
+  const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+  const revenueByOrgMap = new Map<string, number>();
+  for (const p of payments) {
+    revenueByOrgMap.set(p.organization_id, (revenueByOrgMap.get(p.organization_id) || 0) + p.amount);
+  }
+  const revenueByPlanMap = new Map<string, number>();
+  for (const [orgId, rev] of revenueByOrgMap.entries()) {
+    const plan = orgPlanMap.get(orgId) || 'other';
+    revenueByPlanMap.set(plan, (revenueByPlanMap.get(plan) || 0) + rev);
+  }
+  const revenueByPlan = Array.from(revenueByPlanMap.entries()).map(([plan, revenue]) => ({
+    plan,
+    revenue: Math.round(revenue * 100) / 100,
+  }));
+  const revenueByClinic = Array.from(revenueByOrgMap.entries())
+    .map(([orgId, revenue]) => ({
+      clinic: orgNameMap.get(orgId) || 'Unknown',
+      revenue: Math.round(revenue * 100) / 100,
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 8);
 
   const trialExpiringSoon = subs.filter((s) => {
     if (s.status !== 'trial' || !s.trial_end) return false;
@@ -168,6 +289,7 @@ export default async function SuperAdminDashboard() {
           <PageHeader
             title="Platform performance"
             description="Unified telemetry covering tenant aggregates, billing, signups, and system health."
+            icon={LayoutDashboard}
           />
         </div>
       </div>
@@ -179,22 +301,38 @@ export default async function SuperAdminDashboard() {
         <KpiCard label="Suspended" value={suspendedClinics} icon={BadgeAlert} />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <KpiCard label="System Users" value={totalUsers} icon={Users} />
         <KpiCard label="Active Branches" value={totalBranches} icon={GitBranch} />
         <KpiCard
-          label="Estimated MRR"
-          value={`$${estimatedMRR}/mo`}
+          label="MRR"
+          value={`$${estimatedMRR.toLocaleString()}/mo`}
           icon={DollarSign}
           trend="Active subscriptions"
-          className="col-span-2 lg:col-span-1"
         />
+        <KpiCard
+          label="ARR"
+          value={`$${estimatedARR.toLocaleString()}/yr`}
+          icon={DollarSign}
+          trend="MRR x 12"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <KpiCard label="Paid clinics" value={paidClinics} icon={CheckCircle2} />
+        <KpiCard label="Total revenue" value={`$${totalRevenue.toLocaleString()}`} icon={DollarSign} trend="All payments" />
+        <KpiCard label="Trial -> paid" value={`${conversionRate}%`} icon={PlusCircle} trend="Paid vs trial" />
+        <KpiCard label="Churn" value={`${churnRate}%`} icon={BadgeAlert} trend="Suspended + cancelled" />
       </div>
 
       <PlatformChartsClient
         statusDistribution={statusDistribution}
         signupTrend={signupTrend}
         mrrByPlan={mrrByPlan}
+        clinicTypeDistribution={clinicTypeDistribution}
+        featureAdoption={featureAdoption}
+        revenueByPlan={revenueByPlan}
+        revenueByClinic={revenueByClinic}
       />
 
       {trialExpiringSoon.length > 0 && (
@@ -206,7 +344,12 @@ export default async function SuperAdminDashboard() {
           <ul className="text-xs space-y-2">
             {trialExpiringSoon.map((s) => (
               <li key={s.organization_id} className="flex justify-between text-on-surface-variant">
-                <span>{s.plan_name || 'Trial'}</span>
+                <Link
+                  href={`/super-admin/organizations/${s.organization_id}`}
+                  className="font-semibold text-on-surface hover:text-primary hover:underline"
+                >
+                  {s.organization_name}
+                </Link>
                 <span>{s.trial_end ? new Date(s.trial_end).toLocaleDateString() : '—'}</span>
               </li>
             ))}

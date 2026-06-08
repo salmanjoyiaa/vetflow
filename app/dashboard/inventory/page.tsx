@@ -1,12 +1,14 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { resolveServerAuthContext } from '@/lib/auth/context';
+import { hasCapability } from '@/lib/auth/capabilities';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import ProductForm from '@/components/forms/ProductForm';
 import StockAdjustmentForm from '@/components/forms/StockAdjustmentForm';
 import StockInvoiceIntakeClient from '@/components/inventory/StockInvoiceIntakeClient';
 import InventoryTabsClient from '@/components/inventory/InventoryTabsClient';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import { Layers, AlertCircle, ShoppingBag, ShieldAlert } from 'lucide-react';
 
 export const metadata = {
@@ -92,27 +94,20 @@ export default async function InventoryPage({
   return (
     <div className="space-y-8">
       
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-            <Layers className="w-5 h-5 text-primary" />
-            Inventory & Catalog
-          </h2>
-          <p className="text-xs text-on-surface-variant/70 mt-1">
-            Configure medicines, foods, accessories, services, and check stock levels.
-          </p>
-        </div>
-
-        {/* Product addition form (Admins only) */}
-        {session.role === 'clinic_admin' && (
-          <ProductForm 
-            categories={categories || []} 
-            branches={session.branches} 
-            activeBranchId={activeBranchId} 
-          />
-        )}
-      </div>
+      <PageHeader
+        title="Inventory & Catalog"
+        description="Configure medicines, foods, accessories, services, and check stock levels."
+        icon={Layers}
+        actions={
+          hasCapability(session.role, 'manage_inventory') ? (
+            <ProductForm
+              categories={categories || []}
+              branches={session.branches}
+              activeBranchId={activeBranchId}
+            />
+          ) : undefined
+        }
+      />
 
       <InventoryTabsClient initialTab={tab === 'intake' ? 'intake' : 'catalog'} />
 

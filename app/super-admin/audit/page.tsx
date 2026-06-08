@@ -12,16 +12,30 @@ export const metadata = {
 export default async function SuperAdminAuditPage({
   searchParams,
 }: {
-  searchParams: Promise<{ org?: string }>;
+  searchParams: Promise<{
+    org?: string;
+    actor?: string;
+    action?: string;
+    category?: string;
+    severity?: string;
+    from?: string;
+    to?: string;
+  }>;
 }) {
-  const { org: initialOrgId } = await searchParams;
+  const sp = await searchParams;
   const adminClient = await createAdminClient();
 
   const [logsRes, orgsRes] = await Promise.all([
     listAuditLogsAction({
       page: 1,
       pageSize: 50,
-      organizationId: initialOrgId,
+      organizationId: sp.org,
+      actorUserId: sp.actor,
+      actionPrefix: sp.action,
+      category: sp.category as 'data' | 'access' | 'security' | 'billing' | undefined,
+      severity: sp.severity as 'info' | 'warning' | 'critical' | undefined,
+      dateFrom: sp.from,
+      dateTo: sp.to,
     }),
     adminClient.from('organizations').select('id, name').order('name'),
   ]);
@@ -34,14 +48,23 @@ export default async function SuperAdminAuditPage({
     <div className="space-y-8">
       <PageHeader
         title="Audit log"
-        description="Immutable record of platform and tenant actions. Filter by organization or action type."
+        description="Immutable record of platform and tenant actions. Filter by organization, category, severity, actor, or date."
         icon={ScrollText}
       />
       <AuditLogTableClient
         initialLogs={logs}
         initialTotal={total}
         organizations={organizations}
-        initialOrgId={initialOrgId || ''}
+        initialOrgId={sp.org || ''}
+        initialFilters={{
+          org: sp.org || '',
+          actor: sp.actor || '',
+          action: sp.action || '',
+          category: sp.category || '',
+          severity: sp.severity || '',
+          dateFrom: sp.from || '',
+          dateTo: sp.to || '',
+        }}
       />
     </div>
   );

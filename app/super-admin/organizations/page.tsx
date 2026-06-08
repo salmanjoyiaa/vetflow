@@ -74,20 +74,20 @@ export default async function SuperAdminOrganizations() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <PageHeader
-          title="Clinic tenant registry"
-          description="Review tenants, suspend or activate accounts, enter clinics with audit, and adjust plans."
-          icon={Building2}
-        />
-        <Link
-          href="/super-admin/organizations/new"
-          className="inline-flex items-center gap-1.5 bg-primary hover:opacity-90 text-white py-2.5 px-4 rounded-2xl font-bold text-sm shadow-premium transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          Provision clinic
-        </Link>
-      </div>
+      <PageHeader
+        title="Clinic tenant registry"
+        description="Review tenants, suspend or activate accounts, enter clinics with audit, and adjust plans."
+        icon={Building2}
+        actions={
+          <Link
+            href="/super-admin/organizations/new"
+            className="inline-flex items-center gap-1.5 bg-primary hover:opacity-90 text-white py-2.5 px-4 rounded-2xl font-bold text-sm shadow-premium transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Provision clinic
+          </Link>
+        }
+      />
       <OrganizationRegistryClient orgs={orgs} />
     </div>
   );

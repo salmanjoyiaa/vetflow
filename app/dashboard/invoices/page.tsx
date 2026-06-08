@@ -4,6 +4,7 @@ import { resolveServerAuthContext } from '@/lib/auth/context';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import InvoicesListClient from '@/components/dashboard/InvoicesListClient';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import { Receipt } from 'lucide-react';
 
 export const metadata = {
@@ -93,15 +94,11 @@ export default async function InvoicesPage({
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-          <Receipt className="w-5 h-5 text-primary" />
-          Billing & invoicing
-        </h2>
-        <p className="text-xs text-on-surface-variant/70 mt-1">
-          Filter by payment status, print PDFs, mark invoices paid, or resend receipts.
-        </p>
-      </div>
+      <PageHeader
+        title="Billing & invoicing"
+        description="Filter by payment status, print PDFs, mark invoices paid, or resend receipts."
+        icon={Receipt}
+      />
 
       <InvoicesListClient invoices={rows} initialStatus={initialStatus} />
     </div>

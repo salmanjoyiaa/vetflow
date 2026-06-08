@@ -73,8 +73,8 @@ export default async function AppointmentsPage() {
 
   const doctors = doctorsData?.map((d) => ({
     id: d.user_id,
-    firstName: (d.user_profiles as any).first_name || '',
-    lastName: (d.user_profiles as any).last_name || '',
+    firstName: (d.user_profiles as { first_name?: string } | null)?.first_name || '',
+    lastName: (d.user_profiles as { last_name?: string } | null)?.last_name || '',
   })) || [];
 
   // 4. Resolve slug and public booking URL

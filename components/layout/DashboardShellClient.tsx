@@ -10,6 +10,7 @@ import { setActiveBranchAction } from '@/lib/services/branch-cookie-actions';
 import { globalClinicSearchAction } from '@/lib/services/search-actions';
 import { logoutAction } from '@/lib/services/auth-actions';
 import ImpersonationBanner from '@/components/layout/ImpersonationBanner';
+import DashboardPageTransition from '@/components/layout/DashboardPageTransition';
 import type { LucideIcon } from 'lucide-react';
 import {
   Stethoscope,
@@ -31,6 +32,8 @@ import {
   BriefcaseMedical,
   Heart,
   Sparkles,
+  Bot,
+  Share2,
 } from 'lucide-react';
 
 interface NavItem {
@@ -50,6 +53,8 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { name: 'Invoices', href: '/dashboard/invoices', icon: Receipt },
   { name: 'Inventory', href: '/dashboard/inventory', icon: Layers },
   { name: 'Reports', href: '/dashboard/reports', icon: TrendingUp },
+  { name: 'AI Assistant', href: '/dashboard/ai-assistant', icon: Bot },
+  { name: 'Social', href: '/dashboard/social', icon: Share2 },
   { name: 'Branches', href: '/dashboard/branches', icon: MapPin },
   { name: 'Staff', href: '/dashboard/staff', icon: Users },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
@@ -251,7 +256,10 @@ export default function DashboardShellClient({
               const isActive = isNavActive(pathname, item.href);
               const Icon = item.icon;
               return (
-                <Link key={item.name} href={item.href} className={navLinkClass(isActive)}>
+                <Link key={item.name} href={item.href} className={`${navLinkClass(isActive)} relative`}>
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full" />
+                  )}
                   <Icon className="w-4 h-4" />
                   {item.name}
                 </Link>
@@ -375,10 +383,12 @@ export default function DashboardShellClient({
                     type="button"
                     disabled={isPending}
                     onClick={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
-                    className="flex items-center gap-2 px-3 py-1.5 glass rounded-xl text-xs text-on-surface font-bold"
+                    className={`flex items-center gap-2 px-3 py-1.5 glass rounded-xl text-xs font-bold transition-opacity ${
+                      isPending ? 'opacity-60' : ''
+                    } ${activeBranch ? 'text-on-surface ring-1 ring-primary/25' : 'text-on-surface-variant'}`}
                   >
                     <MapPin className="w-3.5 h-3.5 text-primary" />
-                    <span>{activeBranch?.name || 'Branch'}</span>
+                    <span>{isPending ? 'Switching…' : activeBranch?.name || 'Branch'}</span>
                     <ChevronDown className="w-3 h-3 text-outline" />
                   </button>
                   {isBranchDropdownOpen && (
@@ -419,15 +429,21 @@ export default function DashboardShellClient({
               <button
                 type="button"
                 onClick={() => setIsSearchOpen(true)}
-                className="hidden md:flex items-center gap-2 px-3 py-1.5 glass rounded-xl text-xs text-outline w-40"
+                className="flex items-center gap-2 px-3 py-1.5 glass rounded-xl text-xs text-outline md:w-40"
+                aria-label="Search clinic records"
               >
                 <Search className="w-3.5 h-3.5" />
-                <span>Search</span>
+                <span className="hidden md:inline">Search</span>
               </button>
+              <span className="hidden lg:inline text-[9px] font-semibold text-on-surface-variant/50 border border-outline-variant/40 px-1.5 py-0.5 rounded">
+                ⌘K
+              </span>
             </div>
           </header>
 
-          <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">{children}</main>
+          <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
+            <DashboardPageTransition>{children}</DashboardPageTransition>
+          </main>
         </div>
       </div>
     </div>

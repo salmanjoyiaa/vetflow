@@ -74,6 +74,64 @@ export async function startImpersonationAction(payload: unknown) {
   }
 }
 
+const ForceEndSchema = z.object({ sessionId: z.string().uuid() });
+
+/**
+ * Force-ends another super admin's active impersonation session from the
+ * monitor. Audited as a security event against the target organization.
+ */
+export async function forceEndImpersonationAction(payload: unknown) {
+  try {
+    const session = await resolveServerSession();
+    if (!session?.isSuperAdmin) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    const parsed = ForceEndSchema.parse(payload);
+    const adminClient = await createAdminClient();
+
+    const { data: row, error: fetchError } = await adminClient
+      .from('impersonation_sessions')
+      .select('id, target_organization_id, super_admin_id, is_active')
+      .eq('id', parsed.sessionId)
+      .maybeSingle();
+
+    if (fetchError || !row) {
+      return { success: false, error: fetchError?.message || 'Session not found' };
+    }
+
+    const { error } = await adminClient
+      .from('impersonation_sessions')
+      .update({ is_active: false, ended_at: new Date().toISOString() })
+      .eq('id', parsed.sessionId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    await writeAuditLog({
+      organizationId: row.target_organization_id,
+      branchId: null,
+      actorUserId: session.userId,
+      actorRole: 'super_admin',
+      action: 'IMPERSONATION_FORCE_ENDED',
+      resourceType: 'ORGANIZATION',
+      resourceId: row.target_organization_id,
+      category: 'security',
+      severity: 'warning',
+      afterData: { sessionId: row.id, endedBy: session.userId, originalActor: row.super_admin_id },
+    });
+
+    revalidatePath('/super-admin', 'layout');
+    return { success: true };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to end session',
+    };
+  }
+}
+
 export async function endImpersonationAction() {
   try {
     const session = await resolveServerSession();

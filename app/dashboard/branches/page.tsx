@@ -8,6 +8,7 @@ import { guardFeature } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import BranchForm from '@/components/forms/BranchForm';
 import BranchListClient from '@/components/dashboard/BranchListClient';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import { MapPin } from 'lucide-react';
 
 export const metadata = {
@@ -58,20 +59,12 @@ export default async function BranchesPage() {
   return (
     <div className="space-y-8">
       
-      {/* PAGE HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-primary" />
-            Branches
-          </h2>
-          <p className="text-xs text-on-surface-variant/70 mt-1">
-            Create, active/deactivate, and inspect local branch locations.
-          </p>
-        </div>
-
-        <BranchForm />
-      </div>
+      <PageHeader
+        title="Branches"
+        description="Create, active/deactivate, and inspect local branch locations."
+        icon={MapPin}
+        actions={<BranchForm />}
+      />
 
       {/* BRANCH MATRIX */}
       <BranchListClient initialBranches={branches || []} />

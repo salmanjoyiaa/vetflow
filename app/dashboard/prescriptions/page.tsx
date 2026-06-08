@@ -4,6 +4,7 @@ import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import { FileText, Download, ExternalLink } from 'lucide-react';
 
 export const metadata = {
@@ -66,15 +67,11 @@ export default async function PrescriptionsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-          <FileText className="w-5 h-5 text-primary" />
-          Prescriptions
-        </h2>
-        <p className="text-xs text-on-surface-variant/70 mt-1">
-          Review finalized and draft prescriptions for the active branch.
-        </p>
-      </div>
+      <PageHeader
+        title="Prescriptions"
+        description="Review finalized and draft prescriptions for the active branch."
+        icon={FileText}
+      />
 
       <div className="glass-panel rounded-2xl border border-outline-variant/40 shadow-premium overflow-hidden">
         {prescriptions && prescriptions.length > 0 ? (

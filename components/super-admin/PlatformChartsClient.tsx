@@ -19,16 +19,39 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'hsl(var(--outline))',
 };
 
+const TYPE_COLORS = [
+  'hsl(var(--primary))',
+  'hsl(var(--secondary))',
+  'hsl(40, 90%, 55%)',
+  'hsl(280, 60%, 60%)',
+  'hsl(var(--outline))',
+];
+
+const tooltipStyle = {
+  background: 'hsl(var(--surface-container))',
+  border: '1px solid hsl(var(--outline-variant))',
+  borderRadius: '12px',
+  fontSize: '11px',
+} as const;
+
 interface PlatformChartsClientProps {
   statusDistribution: { name: string; value: number }[];
   signupTrend: { date: string; count: number }[];
   mrrByPlan: { plan: string; mrr: number }[];
+  clinicTypeDistribution: { name: string; value: number }[];
+  featureAdoption: { feature: string; pct: number }[];
+  revenueByPlan: { plan: string; revenue: number }[];
+  revenueByClinic: { clinic: string; revenue: number }[];
 }
 
 export default function PlatformChartsClient({
   statusDistribution,
   signupTrend,
   mrrByPlan,
+  clinicTypeDistribution,
+  featureAdoption,
+  revenueByPlan,
+  revenueByClinic,
 }: PlatformChartsClientProps) {
   return (
     <div className="grid lg:grid-cols-3 gap-6">
@@ -117,6 +140,99 @@ export default function PlatformChartsClient({
                   }}
                 />
                 <Bar dataKey="mrr" fill="hsl(var(--secondary))" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {clinicTypeDistribution.length > 0 && (
+        <div className="glass-panel p-5">
+          <h3 className="text-xs font-bold text-on-surface uppercase tracking-wider mb-4">
+            Clinic-type mix
+          </h3>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={clinicTypeDistribution}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={40}
+                  outerRadius={70}
+                  paddingAngle={2}
+                >
+                  {clinicTypeDistribution.map((entry, i) => (
+                    <Cell key={entry.name} fill={TYPE_COLORS[i % TYPE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={tooltipStyle} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {featureAdoption.length > 0 && (
+        <div className="glass-panel p-5 lg:col-span-2">
+          <h3 className="text-xs font-bold text-on-surface uppercase tracking-wider mb-4">
+            Feature adoption (% of tenants)
+          </h3>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={featureAdoption} layout="vertical" margin={{ left: 20 }}>
+                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 9 }} unit="%" />
+                <YAxis
+                  type="category"
+                  dataKey="feature"
+                  width={130}
+                  tick={{ fontSize: 9, fill: 'hsl(var(--on-surface-variant))' }}
+                />
+                <Tooltip formatter={(v) => [`${Number(v)}%`, 'Adoption']} contentStyle={tooltipStyle} />
+                <Bar dataKey="pct" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {revenueByPlan.length > 0 && (
+        <div className="glass-panel p-5">
+          <h3 className="text-xs font-bold text-on-surface uppercase tracking-wider mb-4">
+            Revenue by plan
+          </h3>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={revenueByPlan}>
+                <XAxis dataKey="plan" tick={{ fontSize: 9, fill: 'hsl(var(--on-surface-variant))' }} />
+                <YAxis tick={{ fontSize: 9 }} />
+                <Tooltip formatter={(v) => [`$${Number(v).toLocaleString()}`, 'Revenue']} contentStyle={tooltipStyle} />
+                <Bar dataKey="revenue" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {revenueByClinic.length > 0 && (
+        <div className="glass-panel p-5 lg:col-span-2">
+          <h3 className="text-xs font-bold text-on-surface uppercase tracking-wider mb-4">
+            Top clinics by revenue
+          </h3>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={revenueByClinic} layout="vertical" margin={{ left: 20 }}>
+                <XAxis type="number" tick={{ fontSize: 9 }} />
+                <YAxis
+                  type="category"
+                  dataKey="clinic"
+                  width={130}
+                  tick={{ fontSize: 9, fill: 'hsl(var(--on-surface-variant))' }}
+                />
+                <Tooltip formatter={(v) => [`$${Number(v).toLocaleString()}`, 'Revenue']} contentStyle={tooltipStyle} />
+                <Bar dataKey="revenue" fill="hsl(var(--secondary))" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

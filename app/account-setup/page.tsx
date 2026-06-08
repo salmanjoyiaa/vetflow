@@ -41,7 +41,7 @@ function SetupActions({
       {showRegister && (
         <Link
           href="/register"
-          className="flex-1 text-center bg-primary text-on-primary py-3 px-4 rounded-2xl text-sm font-semibold"
+          className="flex-1 text-center btn-sheen bg-primary text-on-primary py-3 px-4 rounded-2xl text-sm font-bold shadow-premium hover:opacity-90 transition-all"
         >
           Register a Clinic
         </Link>
@@ -79,7 +79,8 @@ function ProfilePendingPanel({
 
   return (
     <AuthPageShell
-      title="Finishing account setup"
+      title="Finishing"
+      titleAccent="account setup"
       subtitle="Trustworthy veterinary business platform"
       footer={
         <>
@@ -129,7 +130,8 @@ function AccountSetupContent({ session }: { session: UserSessionDetails }) {
 
   return (
     <AuthPageShell
-      title={`Welcome, ${displayName}`}
+      title="Welcome,"
+      titleAccent={displayName}
       subtitle="Your sign-in works, but your account still needs clinic access"
       footer={
         <>

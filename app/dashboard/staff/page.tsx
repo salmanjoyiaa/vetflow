@@ -7,6 +7,12 @@ import {
 import DeniedState from '@/components/ui/premium/DeniedState';
 import StaffForm from '@/components/forms/StaffForm';
 import StaffListClient from '@/components/dashboard/StaffListClient';
+import StaffScheduleClient, {
+  type ShiftRow,
+  type AttendanceRow,
+} from '@/components/dashboard/StaffScheduleClient';
+import StaffTabsClient from '@/components/dashboard/StaffTabsClient';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import { Users } from 'lucide-react';
 
 export const metadata = {
@@ -78,8 +84,11 @@ export default async function StaffPage() {
     })
   );
 
+  const nameByUserId = new Map<string, string>();
   const staffList = members.map((member) => {
     const profile = profiles?.find((p) => p.id === member.user_id);
+    const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Unnamed';
+    nameByUserId.set(member.user_id, fullName);
     const memberBranches =
       branchMembers
         ?.filter((bm) => bm.user_id === member.user_id)
@@ -100,21 +109,84 @@ export default async function StaffPage() {
     };
   });
 
+  // ── Schedule & attendance data ──
+  const branchNameById = new Map((branches || []).map((b) => [b.id, b.name]));
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  const { data: shiftsData } = await supabase
+    .from('shifts')
+    .select('id, user_id, branch_id, shift_date, start_time, end_time, notes')
+    .eq('organization_id', orgId)
+    .gte('shift_date', todayIso)
+    .order('shift_date', { ascending: true })
+    .order('start_time', { ascending: true })
+    .limit(50);
+
+  const shiftRows: ShiftRow[] = (shiftsData || []).map((s) => ({
+    id: s.id,
+    staffName: nameByUserId.get(s.user_id) || 'Unknown',
+    branchName: branchNameById.get(s.branch_id) || 'Unknown branch',
+    shiftDate: s.shift_date,
+    startTime: s.start_time,
+    endTime: s.end_time,
+    notes: s.notes,
+  }));
+
+  const { data: attendanceData } = await supabase
+    .from('attendance_records')
+    .select('user_id, status, check_in_at, check_out_at')
+    .eq('organization_id', orgId)
+    .eq('work_date', todayIso);
+
+  type AttendanceRecord = {
+    user_id: string;
+    status: string | null;
+    check_in_at: string | null;
+    check_out_at: string | null;
+  };
+  const attendanceByUser = new Map<string, AttendanceRecord>(
+    ((attendanceData || []) as unknown as AttendanceRecord[]).map((a) => [a.user_id, a])
+  );
+
+  // Show every active non-admin staff member, with their attendance if present.
+  const attendanceRows: AttendanceRow[] = members
+    .filter((m) => m.is_active && m.role !== 'clinic_admin')
+    .map((m) => {
+      const rec = attendanceByUser.get(m.user_id);
+      return {
+        userId: m.user_id,
+        staffName: nameByUserId.get(m.user_id) || 'Unknown',
+        role: m.role,
+        status: rec?.status ?? null,
+        checkInAt: rec?.check_in_at ?? null,
+        checkOutAt: rec?.check_out_at ?? null,
+      };
+    });
+
+  const staffOptions = staffList
+    .filter((s) => s.role !== 'clinic_admin' && s.isActive)
+    .map((s) => ({ id: s.id, name: `${s.firstName} ${s.lastName}`.trim() }));
+
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-            <Users className="w-5 h-5 text-primary" />
-            Staff Management
-          </h2>
-          <p className="text-xs text-on-surface-variant mt-1">
-            Invite clinic members, bind roles, and assign branch site access.
-          </p>
-        </div>
-        <StaffForm branches={branches || []} />
-      </div>
-      <StaffListClient initialStaff={staffList} />
+      <PageHeader
+        title="Staff Management"
+        description="Invite clinic members, bind roles, schedule shifts, and track attendance."
+        icon={Users}
+        actions={<StaffForm branches={branches || []} />}
+      />
+      <StaffTabsClient
+        team={<StaffListClient initialStaff={staffList} branches={branches || []} />}
+        schedule={
+          <StaffScheduleClient
+            staff={staffOptions}
+            branches={branches || []}
+            shifts={shiftRows}
+            attendance={attendanceRows}
+            attendanceDate={todayIso}
+          />
+        }
+      />
     </div>
   );
 }

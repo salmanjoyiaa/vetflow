@@ -3,6 +3,7 @@ import { resolveServerAuthContext } from '@/lib/auth/context';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import { Heart, ChevronRight, User, Calendar, Weight } from 'lucide-react';
 
 export const metadata = {
@@ -51,16 +52,11 @@ export default async function PetsPage() {
   return (
     <div className="space-y-8">
       
-      {/* HEADER */}
-      <div>
-        <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-          <Heart className="w-5 h-5 text-primary" />
-          Patient Registry
-        </h2>
-        <p className="text-xs text-on-surface-variant/70 mt-1">
-          Review and inspect registered animals across the organization.
-        </p>
-      </div>
+      <PageHeader
+        title="Patient Registry"
+        description="Review and inspect registered animals across the organization."
+        icon={Heart}
+      />
 
       {/* PET TABLE */}
       {pets && pets.length > 0 ? (

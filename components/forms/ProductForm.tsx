@@ -6,7 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { createProductAction } from '@/lib/services/inventory-actions';
 import { ProductSchema, type ProductInput } from '@/lib/validations/schemas';
-import { Loader2, Plus, X } from 'lucide-react';
+import Modal from '@/components/ui/premium/Modal';
+import Button from '@/components/ui/premium/Button';
+import { Plus } from 'lucide-react';
 
 interface ProductFormProps {
   categories: { id: string; name: string }[];
@@ -63,27 +65,18 @@ export default function ProductForm({ categories, branches, activeBranchId }: Pr
 
   return (
     <>
-      <button
-        onClick={() => setIsOpen(true)}
-        className="bg-primary hover:bg-primary/95 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-2 transition-all"
-      >
-        <Plus className="w-4 h-4" />
+      <Button type="button" onClick={() => setIsOpen(true)} icon={<Plus className="w-4 h-4" />}>
         Add Catalog Item
-      </button>
+      </Button>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="glass-panel w-full max-w-lg rounded-2xl shadow-premium border border-outline-variant/40 p-6 relative overflow-y-auto max-h-[90vh]">
-            <button
-              onClick={() => setIsOpen(false)}
-              className="absolute right-4 top-4 text-on-surface-variant/40 hover:text-on-surface-variant transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-base font-bold text-on-surface mb-1">Create Catalog Item</h3>
-            <p className="text-xs text-on-surface-variant/60 mb-6">Register a new product, medicine, or clinic service.</p>
-
+      <Modal
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        title="Create Catalog Item"
+        description="Register a new product, medicine, or clinic service."
+        size="lg"
+      >
+        <div className="max-h-[70vh] overflow-y-auto pr-1">
             {error && (
               <div className="mb-4 p-3 bg-destructive/5 border border-destructive/20 text-destructive text-xs rounded-xl">
                 {error}
@@ -260,32 +253,16 @@ export default function ProductForm({ categories, branches, activeBranchId }: Pr
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="w-1/2 border border-outline-variant hover:bg-surface-container/50 py-2.5 rounded-xl text-xs font-semibold text-on-surface transition-all"
-                >
+                <Button type="button" variant="secondary" className="w-1/2" onClick={() => setIsOpen(false)}>
                   Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-1/2 bg-primary hover:opacity-90 text-white py-2.5 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-1.5"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Add Product'
-                  )}
-                </button>
+                </Button>
+                <Button type="submit" className="w-1/2" loading={isLoading}>
+                  Add Product
+                </Button>
               </div>
             </form>
-          </div>
         </div>
-      )}
+      </Modal>
     </>
   );
 }

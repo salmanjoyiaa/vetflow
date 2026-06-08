@@ -9,7 +9,8 @@ import {
   tableHeadClass,
   tableRowClass,
 } from '@/lib/ui/dashboard-classes';
-import { estimatePlanMrr } from '@/lib/super-admin/mrr';
+import { planPrice, type PlanPriceMap } from '@/lib/super-admin/mrr';
+import Link from 'next/link';
 import { Calendar, CheckCircle, XCircle } from 'lucide-react';
 
 export type BillingRow = {
@@ -17,17 +18,21 @@ export type BillingRow = {
   organizationName: string;
   slug: string;
   plan_name: string;
+  plan_id: string | null;
   status: string;
   trial_end: string | null;
   renewal_date: string | null;
   notes: string | null;
+  totalPaid: number;
+  lastPaymentDate: string | null;
 };
 
 interface BillingTableClientProps {
   rows: BillingRow[];
+  priceMap: PlanPriceMap;
 }
 
-export default function BillingTableClient({ rows }: BillingTableClientProps) {
+export default function BillingTableClient({ rows, priceMap }: BillingTableClientProps) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [planFilter, setPlanFilter] = useState('all');
 
@@ -46,7 +51,7 @@ export default function BillingTableClient({ rows }: BillingTableClientProps) {
 
   const filteredMrr = filtered
     .filter((r) => r.status === 'active')
-    .reduce((sum, r) => sum + estimatePlanMrr(r.plan_name), 0);
+    .reduce((sum, r) => sum + planPrice(r.plan_id ?? r.plan_name, priceMap), 0);
 
   return (
     <div className="space-y-4">
@@ -88,6 +93,7 @@ export default function BillingTableClient({ rows }: BillingTableClientProps) {
                 <th className="px-6 py-4">Plan</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Est. MRR</th>
+                <th className="px-6 py-4">Paid to date</th>
                 <th className="px-6 py-4">Timeline</th>
                 <th className="px-6 py-4 text-right">Manage</th>
               </tr>
@@ -95,11 +101,16 @@ export default function BillingTableClient({ rows }: BillingTableClientProps) {
             <tbody>
               {filtered.map((row) => {
                 const isActive = row.status === 'active' || row.status === 'trial';
-                const mrr = row.status === 'active' ? estimatePlanMrr(row.plan_name) : 0;
+                const mrr = row.status === 'active' ? planPrice(row.plan_id ?? row.plan_name, priceMap) : 0;
                 return (
                   <tr key={row.organizationId} className={tableRowClass}>
                     <td className="px-6 py-4">
-                      <span className="font-bold text-on-surface block">{row.organizationName}</span>
+                      <Link
+                        href={`/super-admin/organizations/${row.organizationId}`}
+                        className="font-bold text-on-surface block hover:text-primary hover:underline"
+                      >
+                        {row.organizationName}
+                      </Link>
                       <span className="text-[10px] text-on-surface-variant">/book/{row.slug}</span>
                     </td>
                     <td className="px-6 py-4 capitalize font-semibold text-on-surface">
@@ -120,6 +131,18 @@ export default function BillingTableClient({ rows }: BillingTableClientProps) {
                     </td>
                     <td className="px-6 py-4 text-secondary font-bold">
                       {mrr > 0 ? `$${mrr}` : '—'}
+                    </td>
+                    <td className="px-6 py-4 text-on-surface">
+                      {row.totalPaid > 0 ? (
+                        <span className="font-semibold">${row.totalPaid.toLocaleString()}</span>
+                      ) : (
+                        <span className="text-on-surface-variant">—</span>
+                      )}
+                      {row.lastPaymentDate && (
+                        <span className="block text-[10px] text-on-surface-variant">
+                          last {new Date(row.lastPaymentDate).toLocaleDateString()}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-on-surface-variant">
                       {row.renewal_date ? (

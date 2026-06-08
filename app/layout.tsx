@@ -14,12 +14,26 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://clinixdev.com'),
   title: {
     default: 'ClinixDev — Cinematic Clinic Management Platform',
     template: '%s | ClinixDev',
   },
   description:
     'ClinixDev is a premium, multi-tenant clinic management platform. Launching first for veterinary clinics, built to support dental, general, and specialty clinics over time.',
+  openGraph: {
+    title: 'ClinixDev — Cinematic Clinic Management Platform',
+    description:
+      'Secure multi-tenant clinic platform — appointments, consult, billing, and inventory for modern care teams.',
+    siteName: 'ClinixDev',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ClinixDev — Cinematic Clinic Management Platform',
+    description:
+      'Secure multi-tenant clinic platform — appointments, consult, billing, and inventory for modern care teams.',
+  },
 };
 
 export default function RootLayout({

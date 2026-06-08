@@ -107,9 +107,10 @@ export default function SubscriptionForm({
                     {...register('planName')}
                     className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface font-bold outline-none"
                   >
-                    <option value="trial">Sandbox Trial</option>
-                    <option value="growth">Growth Plan</option>
-                    <option value="enterprise">Enterprise Tier</option>
+                    <option value="trial">Trial</option>
+                    <option value="starter">Starter</option>
+                    <option value="pro">Pro</option>
+                    <option value="enterprise">Enterprise</option>
                   </select>
                 </div>
                 <div>

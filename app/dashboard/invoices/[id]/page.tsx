@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { resolveServerAuthContext } from '@/lib/auth/context';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import Link from 'next/link';
 import { 
   ArrowLeft, 
@@ -73,22 +74,18 @@ export default async function InvoiceDetailPage({
   return (
     <div className="space-y-8">
       
-      {/* BACK BUTTON */}
-      <div className="space-y-2">
-        <Link 
-          href="/dashboard/invoices" 
-          className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Invoices
-        </Link>
-        
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-primary" />
-            Invoice Receipt: {invoice.invoice_number}
-          </h2>
+      <Link
+        href="/dashboard/invoices"
+        className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Invoices
+      </Link>
 
+      <PageHeader
+        title={`Invoice Receipt: ${invoice.invoice_number}`}
+        icon={Receipt}
+        actions={
           <div className="flex gap-3">
             <a
               href={`/api/invoices/${invoice.id}/pdf`}
@@ -112,8 +109,8 @@ export default async function InvoiceDetailPage({
               </a>
             )}
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* INVOICE DETAILS GRID */}
       <div className="grid md:grid-cols-12 gap-8 items-start">

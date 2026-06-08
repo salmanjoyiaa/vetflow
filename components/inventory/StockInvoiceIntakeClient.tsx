@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { parseStockInvoiceImageAction, type StockInvoiceDraft } from '@/lib/services/stock-invoice-ocr';
 import { confirmStockIntakeAction } from '@/lib/services/inventory-actions';
-import { Camera, Loader2, Plus, Trash2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Camera, Loader2, Plus, Trash2, CheckCircle, AlertTriangle, X, ClipboardList } from 'lucide-react';
 
 type CatalogProduct = {
   id: string;
@@ -71,6 +71,7 @@ export default function StockInvoiceIntakeClient({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   const unmatchedCount = useMemo(
     () => rows.filter((r) => !r.productId && r.createNew).length,
@@ -92,6 +93,7 @@ export default function StockInvoiceIntakeClient({
       setInvoiceDate(res.draft.invoiceDate || '');
       setRows(draftToRows(res.draft, products));
       setWarnings(res.warnings || []);
+      setReviewOpen(true);
     } else {
       setError(res.error || 'Failed to parse image');
     }
@@ -147,6 +149,7 @@ export default function StockInvoiceIntakeClient({
     if (res.success) {
       setSuccess(true);
       setRows([]);
+      setReviewOpen(false);
       router.refresh();
     } else {
       setError(res.error || 'Failed to save intake');
@@ -195,7 +198,7 @@ export default function StockInvoiceIntakeClient({
           )}
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp,application/pdf"
+            accept="image/jpeg,image/png,image/webp"
             className="sr-only"
             disabled={isParsing}
             onChange={handleFile}
@@ -211,10 +214,40 @@ export default function StockInvoiceIntakeClient({
             ))}
           </ul>
         )}
+        {!reviewOpen && rows.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setReviewOpen(true)}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-primary"
+          >
+            <ClipboardList className="w-3.5 h-3.5" />
+            Review {rows.length} extracted item(s)
+          </button>
+        )}
       </div>
 
-      {rows.length > 0 && (
-        <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden">
+      {error && !reviewOpen && (
+        <div className="text-xs text-destructive p-3 bg-destructive/5 rounded-xl border border-destructive/20">
+          {error}
+        </div>
+      )}
+
+      {reviewOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="glass-panel w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-outline-variant/40 shadow-premium relative">
+            <div className="sticky top-0 z-10 bg-surface-container/95 backdrop-blur-md px-5 py-4 border-b border-outline-variant/40 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
+                <ClipboardList className="w-4 h-4 text-primary" />
+                Confirm stock intake
+              </h3>
+              <button
+                type="button"
+                onClick={() => setReviewOpen(false)}
+                className="text-on-surface-variant/50 hover:text-on-surface-variant"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           <div className="p-4 grid sm:grid-cols-3 gap-3 border-b border-outline-variant/30">
             <input
               placeholder="Supplier name"
@@ -321,25 +354,33 @@ export default function StockInvoiceIntakeClient({
               </span>
             )}
           </div>
-        </div>
-      )}
 
-      {error && (
-        <div className="text-xs text-destructive p-3 bg-destructive/5 rounded-xl border border-destructive/20">
-          {error}
-        </div>
-      )}
+            {error && (
+              <div className="mx-4 mb-4 text-xs text-destructive p-3 bg-destructive/5 rounded-xl border border-destructive/20">
+                {error}
+              </div>
+            )}
 
-      {rows.length > 0 && (
-        <button
-          type="button"
-          disabled={isSaving}
-          onClick={handleConfirm}
-          className="w-full sm:w-auto px-6 py-3 bg-primary text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-70"
-        >
-          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-          Confirm stock intake
-        </button>
+            <div className="sticky bottom-0 bg-surface-container/95 backdrop-blur-md px-5 py-4 border-t border-outline-variant/40 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setReviewOpen(false)}
+                className="px-4 py-2.5 border border-outline-variant rounded-xl text-xs font-semibold text-on-surface hover:bg-surface-container"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSaving || rows.length === 0}
+                onClick={handleConfirm}
+                className="px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-70"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                Confirm stock intake
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

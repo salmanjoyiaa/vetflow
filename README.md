@@ -23,7 +23,7 @@ Here is a visual overview of the ClinixDev system, captured via automated E2E te
 <details>
 <summary><b>1. Gemini-style Animated Landing Page</b></summary>
 
-Polished landing page with floating aurora gradient mesh background, animated counters, typing typewriter, and scroll-triggered animations.
+Polished landing page with floating aurora gradient mesh background, animated counters, sticky workflow showcase, and scroll-triggered animations.
 ![Landing Page](e2e/screenshots/homepage.png)
 </details>
 
@@ -140,14 +140,27 @@ Enable Demo Mode by ensuring `.env.local` contains:
 NEXT_PUBLIC_DEMO_MODE=true
 ```
 
-### Mock Accounts
+### Demo / Seeded Accounts
 
-| Role | Email | Password | Allowed View / Path |
-|------|-------|----------|---------------------|
+All seeded accounts use password **`password123`**. For production deploy, run [`db/seed/02_seed.sql`](db/seed/02_seed.sql) against your Supabase project after migrations.
+
+| Role | Email | Password | Dashboard path |
+|------|-------|----------|----------------|
 | **Super Admin** | `salmanjoyiaa@gmail.com` | `password123` | `/super-admin/dashboard` |
-| **Clinic Admin** | `admin.a@vetcare.com` | `password123` | `/dashboard` (All features) |
-| **Doctor** | `doctor.a@vetcare.com` | `password123` | `/dashboard` & `/dashboard/doctors` |
-| **Receptionist** | `receptionist.a@vetcare.com` | `password123` | `/dashboard` (Front Desk Desk) |
+| **Clinic Admin (VetCare)** | `admin.a@vetcare.com` | `password123` | `/dashboard` — includes AI Assistant + Social Automation |
+| **Doctor (VetCare)** | `doctor.a@vetcare.com` | `password123` | `/dashboard/doctors` |
+| **Receptionist (VetCare)** | `receptionist.a@vetcare.com` | `password123` | `/dashboard` (front desk) |
+| **Clinic Admin (Animal Hospital)** | `admin.b@animalhospital.com` | `password123` | `/dashboard` |
+| **Doctor (Animal Hospital)** | `doctor.b@animalhospital.com` | `password123` | `/dashboard/doctors` |
+
+**Social automation testing:** log in as `admin.a@vetcare.com` / `password123`, then open `/dashboard/social`.
+
+### Demo mode vs production
+
+| Mode | `NEXT_PUBLIC_DEMO_MODE` | Database |
+|------|-------------------------|----------|
+| Local preview (no Supabase) | `true` | In-memory mock data |
+| Production / staging | `false` | Live Supabase + migrations + seed |
 
 ---
 
@@ -166,11 +179,62 @@ npm install
 npx playwright install chromium
 ```
 
-### 4. Running the Development Server
+### 4. Environment variables
+Copy the template and fill in your values:
+```bash
+cp .env.example .env.local
+```
+
+Required for production:
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_APP_URL` (e.g. `http://localhost:3000` locally)
+- `NEXT_PUBLIC_DEMO_MODE=false`
+
+### 5. Supabase setup (production)
+Run migrations in order against your Supabase SQL editor or CLI:
+```
+db/migrations/01_init.sql
+db/migrations/02_security_perf_fixes.sql
+db/migrations/03_attendance_shifts.sql
+db/migrations/05_receptionist_inventory_rls.sql
+db/migrations/06_ai_social_features.sql
+db/migrations/07_social_connections.sql
+```
+Then seed demo data:
+```
+db/seed/02_seed.sql
+```
+
+### 6. Running the Development Server
 ```bash
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) to view the landing page. Click **Sign In** and enter any credential from the table above.
+
+---
+
+## ☁️ Deploying to Vercel
+
+1. Push this repo to GitHub and import it in [Vercel](https://vercel.com).
+2. Set environment variables from [`.env.example`](.env.example) in the Vercel project settings.
+3. Set production URLs:
+   - `NEXT_PUBLIC_APP_URL=https://your-app.vercel.app`
+   - `META_REDIRECT_URI=https://your-app.vercel.app/api/social/meta/callback` (if using social publishing)
+4. Deploy — Vercel runs `npm run build` automatically.
+5. Ensure your Supabase project has all migrations applied and is seeded if you want demo logins.
+
+### Meta social publishing (optional)
+
+Clinic admins connect Facebook Pages and Instagram Business accounts via OAuth on `/dashboard/social`. The in-app **Setup guide** walks through both clinic-admin and deploy-operator steps.
+
+**Deploy operator checklist:**
+1. Create a Meta Developer app at [developers.facebook.com](https://developers.facebook.com)
+2. Add **Facebook Login for Business** and **Instagram Graph API**
+3. Set OAuth redirect URI to `{APP_URL}/api/social/meta/callback`
+4. Request permissions: `pages_show_list`, `pages_manage_posts`, `pages_read_engagement`, `instagram_basic`, `instagram_content_publish`, `business_management`
+5. Add to Vercel: `META_APP_ID`, `META_APP_SECRET`, `SOCIAL_TOKEN_ENCRYPTION_KEY` (random 32+ char string), `META_REDIRECT_URI`, `NEXT_PUBLIC_APP_URL`
+
+Dev mode on the Meta app works for app admins and testers; Live mode + App Review is required for all users in production.
 
 ---
 

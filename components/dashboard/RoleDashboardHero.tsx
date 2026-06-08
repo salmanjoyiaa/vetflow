@@ -10,6 +10,7 @@ export type QuickLink = {
 
 interface RoleDashboardHeroProps {
   firstName: string;
+  greeting: string;
   organizationName?: string | null;
   role: UserSessionDetails['role'];
   quickLinks: QuickLink[];
@@ -42,20 +43,13 @@ function roleSubtitle(role: UserSessionDetails['role'], orgName?: string | null)
   }
 }
 
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
 export default function RoleDashboardHero({
   firstName,
+  greeting,
   organizationName,
   role,
   quickLinks,
 }: RoleDashboardHeroProps) {
-  const greeting = getGreeting();
 
   return (
     <div className="relative overflow-hidden rounded-3xl glass-panel border-primary/20 p-8 md:p-10 mesh-gradient">
@@ -65,8 +59,8 @@ export default function RoleDashboardHero({
       </div>
       <div className="relative z-10">
         <div className="flex items-center gap-2 mb-2">
-          <Activity className="w-4 h-4 text-primary-light" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-primary-light">
+          <Activity className="w-4 h-4 text-primary" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
             {roleLabel(role)} · Clinic Dashboard
           </span>
         </div>

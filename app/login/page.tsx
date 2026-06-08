@@ -134,7 +134,8 @@ function LoginForm() {
 
   return (
     <AuthPageShell
-      title="Welcome back"
+      title="Welcome"
+      titleAccent="back"
       subtitle="Trustworthy veterinary business platform"
       footer={
         <>
@@ -227,7 +228,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-primary text-on-primary py-3.5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-75"
+          className="w-full btn-sheen bg-primary text-on-primary py-3.5 rounded-2xl font-bold text-sm shadow-premium flex items-center justify-center gap-2 disabled:opacity-75 hover:opacity-90 transition-all"
         >
           {isLoading ? (
             <>

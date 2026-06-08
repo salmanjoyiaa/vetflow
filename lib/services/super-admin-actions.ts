@@ -200,10 +200,19 @@ export async function updateSubscriptionAction(payload: unknown) {
     const parsed = SubscriptionSchema.parse(payload);
     const adminClient = await createAdminClient();
 
-    // Perform the update
+    // Capture the prior state for the audit trail (before/after).
+    const { data: beforeSub } = await adminClient
+      .from('subscription_status')
+      .select()
+      .eq('organization_id', parsed.organizationId)
+      .maybeSingle();
+
+    // Perform the update. plan_id is kept in sync with plan_name so MRR
+    // (which prices off plans.price by id) stays accurate.
     const { data: sub, error } = await adminClient
       .from('subscription_status')
       .update({
+        plan_id: parsed.planName,
         plan_name: parsed.planName,
         status: parsed.status,
         trial_end: parsed.trialEnd,
@@ -224,9 +233,12 @@ export async function updateSubscriptionAction(payload: unknown) {
       branchId: null,
       actorUserId: session.userId,
       actorRole: 'super_admin',
-      action: 'TAX_SETTING_UPDATED', // General settings category override
+      action: 'SUBSCRIPTION_UPDATED',
       resourceType: 'SUBSCRIPTION',
       resourceId: sub.id,
+      category: 'billing',
+      severity: 'warning',
+      beforeData: beforeSub ?? null,
       afterData: sub,
     });
 
@@ -329,11 +341,19 @@ export async function updateOrganizationFeaturesAction(payload: unknown) {
   }
 }
 
-const AuditLogListSchema = z.object({
+const AuditLogFiltersSchema = z.object({
+  organizationId: z.string().uuid().optional().or(z.literal('')),
+  actionPrefix: z.string().max(100).optional().or(z.literal('')),
+  actorUserId: z.string().uuid().optional().or(z.literal('')),
+  category: z.enum(['data', 'access', 'security', 'billing']).optional().or(z.literal('')),
+  severity: z.enum(['info', 'warning', 'critical']).optional().or(z.literal('')),
+  dateFrom: z.string().optional().or(z.literal('')),
+  dateTo: z.string().optional().or(z.literal('')),
+});
+
+const AuditLogListSchema = AuditLogFiltersSchema.extend({
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(100).default(50),
-  organizationId: z.string().uuid().optional(),
-  actionPrefix: z.string().max(100).optional(),
 });
 
 export type AuditLogRow = {
@@ -345,8 +365,34 @@ export type AuditLogRow = {
   resource_type: string;
   resource_id: string | null;
   actor_user_id: string | null;
+  category: string | null;
+  severity: string | null;
+  before_data: unknown;
+  after_data: unknown;
   organizations: { name: string } | null;
 };
+
+const AUDIT_SELECT = `
+  id, created_at, organization_id, actor_role, action, resource_type, resource_id, actor_user_id,
+  category, severity, before_data, after_data,
+  organizations ( name )
+`;
+
+type AuditFilters = z.infer<typeof AuditLogFiltersSchema>;
+
+/** Builds a [gte, lteOrNull] ISO range for inclusive date filtering. */
+function auditDateBounds(f: AuditFilters): { gte: string | null; lte: string | null } {
+  let lte: string | null = null;
+  if (f.dateTo) {
+    const end = new Date(f.dateTo);
+    end.setHours(23, 59, 59, 999);
+    lte = end.toISOString();
+  }
+  return {
+    gte: f.dateFrom ? new Date(f.dateFrom).toISOString() : null,
+    lte,
+  };
+}
 
 export async function listAuditLogsAction(payload: unknown) {
   try {
@@ -359,25 +405,21 @@ export async function listAuditLogsAction(payload: unknown) {
     const adminClient = await createAdminClient();
     const from = (parsed.page - 1) * parsed.pageSize;
     const to = from + parsed.pageSize - 1;
+    const bounds = auditDateBounds(parsed);
 
     let query = adminClient
       .from('audit_logs')
-      .select(
-        `
-        id, created_at, organization_id, actor_role, action, resource_type, resource_id, actor_user_id,
-        organizations ( name )
-      `,
-        { count: 'exact' }
-      )
+      .select(AUDIT_SELECT, { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    if (parsed.organizationId) {
-      query = query.eq('organization_id', parsed.organizationId);
-    }
-    if (parsed.actionPrefix) {
-      query = query.ilike('action', `${parsed.actionPrefix}%`);
-    }
+    if (parsed.organizationId) query = query.eq('organization_id', parsed.organizationId);
+    if (parsed.actorUserId) query = query.eq('actor_user_id', parsed.actorUserId);
+    if (parsed.category) query = query.eq('category', parsed.category);
+    if (parsed.severity) query = query.eq('severity', parsed.severity);
+    if (parsed.actionPrefix) query = query.ilike('action', `${parsed.actionPrefix}%`);
+    if (bounds.gte) query = query.gte('created_at', bounds.gte);
+    if (bounds.lte) query = query.lte('created_at', bounds.lte);
 
     const { data, error, count } = await query;
 
@@ -387,7 +429,7 @@ export async function listAuditLogsAction(payload: unknown) {
 
     return {
       success: true,
-      logs: (data || []) as AuditLogRow[],
+      logs: (data || []) as unknown as AuditLogRow[],
       total: count || 0,
       page: parsed.page,
       pageSize: parsed.pageSize,
@@ -396,6 +438,164 @@ export async function listAuditLogsAction(payload: unknown) {
     return {
       success: false,
       error: err instanceof Error ? err.message : 'Failed to load audit logs',
+    };
+  }
+}
+
+function csvCell(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  const str = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  if (/[",\n]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+/**
+ * Exports filtered audit logs as a CSV string (max 5000 rows). The export
+ * itself is recorded in the audit trail as a security event.
+ */
+export async function exportAuditLogsCsvAction(payload: unknown) {
+  try {
+    const session = await resolveServerSession();
+    if (!session?.isSuperAdmin) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    const filters = AuditLogFiltersSchema.parse(payload ?? {});
+    const adminClient = await createAdminClient();
+    const bounds = auditDateBounds(filters);
+
+    let query = adminClient
+      .from('audit_logs')
+      .select(AUDIT_SELECT)
+      .order('created_at', { ascending: false })
+      .limit(5000);
+
+    if (filters.organizationId) query = query.eq('organization_id', filters.organizationId);
+    if (filters.actorUserId) query = query.eq('actor_user_id', filters.actorUserId);
+    if (filters.category) query = query.eq('category', filters.category);
+    if (filters.severity) query = query.eq('severity', filters.severity);
+    if (filters.actionPrefix) query = query.ilike('action', `${filters.actionPrefix}%`);
+    if (bounds.gte) query = query.gte('created_at', bounds.gte);
+    if (bounds.lte) query = query.lte('created_at', bounds.lte);
+
+    const { data, error } = await query;
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const rows = (data || []) as unknown as AuditLogRow[];
+    const header = [
+      'created_at',
+      'organization',
+      'organization_id',
+      'actor_user_id',
+      'actor_role',
+      'action',
+      'category',
+      'severity',
+      'resource_type',
+      'resource_id',
+      'before_data',
+      'after_data',
+    ];
+    const lines = [header.join(',')];
+    for (const r of rows) {
+      lines.push(
+        [
+          csvCell(r.created_at),
+          csvCell(r.organizations?.name),
+          csvCell(r.organization_id),
+          csvCell(r.actor_user_id),
+          csvCell(r.actor_role),
+          csvCell(r.action),
+          csvCell(r.category),
+          csvCell(r.severity),
+          csvCell(r.resource_type),
+          csvCell(r.resource_id),
+          csvCell(r.before_data),
+          csvCell(r.after_data),
+        ].join(',')
+      );
+    }
+
+    await writeAuditLog({
+      organizationId: filters.organizationId || null,
+      branchId: null,
+      actorUserId: session.userId,
+      actorRole: 'super_admin',
+      action: 'AUDIT_LOG_EXPORTED',
+      resourceType: 'AUDIT_LOG',
+      category: 'security',
+      severity: 'warning',
+      afterData: { rowCount: rows.length, filters },
+    });
+
+    return { success: true, csv: lines.join('\n'), rowCount: rows.length };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to export audit logs',
+    };
+  }
+}
+
+const PlatformSearchSchema = z.object({
+  query: z.string().min(2).max(100),
+});
+
+export type PlatformSearchResultItem = {
+  type: 'clinic';
+  id: string;
+  title: string;
+  subtitle: string;
+  href: string;
+};
+
+function escapeIlike(term: string): string {
+  return term.replace(/[%_]/g, '');
+}
+
+export async function platformTenantSearchAction(payload: unknown): Promise<{
+  success: boolean;
+  results?: PlatformSearchResultItem[];
+  error?: string;
+}> {
+  try {
+    const session = await resolveServerSession();
+    if (!session?.isSuperAdmin) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    const { query } = PlatformSearchSchema.parse(payload);
+    const term = escapeIlike(query.trim());
+    const pattern = `%${term}%`;
+    const adminClient = await createAdminClient();
+
+    const { data, error } = await adminClient
+      .from('organizations')
+      .select('id, name, slug')
+      .or(`name.ilike.${pattern},slug.ilike.${pattern}`)
+      .limit(8);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const results: PlatformSearchResultItem[] = (data || []).map((org) => ({
+      type: 'clinic',
+      id: org.id,
+      title: org.name,
+      subtitle: `/book/${org.slug}`,
+      href: `/super-admin/organizations/${org.id}`,
+    }));
+
+    return { success: true, results };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Search failed',
     };
   }
 }

@@ -1,5 +1,6 @@
 import { resolveServerAuthContext } from '@/lib/auth/context';
-import { canShowWidget } from '@/lib/auth/capabilities';
+import { canAccessRoute, canShowWidget, hasCapability } from '@/lib/auth/capabilities';
+import { canAccessRouteByFeature } from '@/lib/auth/features';
 import { createClient } from '@/lib/supabase/server';
 import { isDemoMode } from '@/lib/demo/credentials';
 import {
@@ -14,6 +15,9 @@ import RoleDashboardHero, {
 import DashboardWidgetGrid, {
   type DashboardKpi,
 } from '@/components/dashboard/DashboardWidgetGrid';
+import AttendanceWidgetClient, {
+  type MyAttendance,
+} from '@/components/dashboard/AttendanceWidgetClient';
 import EmptyState from '@/components/ui/premium/EmptyState';
 import ReceptionistHomeClient, {
   type ReceptionistAppointmentRow,
@@ -38,8 +42,11 @@ import {
   BriefcaseMedical,
   Search,
   Layers,
+  Bot,
+  Share2,
 } from 'lucide-react';
 import type { UserSessionDetails } from '@/lib/services/auth';
+import { getTimeGreeting } from '@/lib/utils/greeting';
 
 export const metadata = {
   title: 'Dashboard — Overview',
@@ -63,12 +70,14 @@ export default async function DashboardOverview() {
   const session = ctx;
   const activeBranchId = ctx.activeBranchId;
   const role = session.role;
+  const greeting = getTimeGreeting();
 
   if (!activeBranchId) {
     return (
       <div className="space-y-8">
         <RoleDashboardHero
           firstName={session.firstName || 'User'}
+          greeting={greeting}
           organizationName={session.organizationName}
           role={role}
           quickLinks={[]}
@@ -99,6 +108,14 @@ export default async function DashboardOverview() {
   let receptionistUpcoming: ReceptionistAppointmentRow[] = [];
   let receptionistWaiting: ReceptionistVisitRow[] = [];
   let receptionistCheckout: ReceptionistVisitRow[] = [];
+  let myAttendance: MyAttendance = {
+    checkedIn: false,
+    checkedOut: false,
+    status: null,
+    checkInAt: null,
+    checkOutAt: null,
+  };
+  const showAttendance = hasCapability(role, 'mark_attendance');
 
   if (isDemoMode()) {
     todayAppointments = MOCK_DASHBOARD_KPIS.todayAppointments;
@@ -373,10 +390,41 @@ export default async function DashboardOverview() {
       );
     }
 
+    if (showAttendance && session.organizationId) {
+      const todayDate = new Date().toISOString().slice(0, 10);
+      queries.push(
+        supabase
+          .from('attendance_records')
+          .select('status, check_in_at, check_out_at')
+          .eq('organization_id', session.organizationId)
+          .eq('user_id', session.userId)
+          .eq('work_date', todayDate)
+          .maybeSingle()
+          .then((r) => {
+            const rec = r.data as
+              | { status: string | null; check_in_at: string | null; check_out_at: string | null }
+              | null;
+            if (rec) {
+              myAttendance = {
+                checkedIn: Boolean(rec.check_in_at),
+                checkedOut: Boolean(rec.check_out_at),
+                status: rec.status,
+                checkInAt: rec.check_in_at,
+                checkOutAt: rec.check_out_at,
+              };
+            }
+          })
+      );
+    }
+
     await Promise.all(queries);
   }
 
-  const quickLinks = buildQuickLinks(role, readyForCheckout);
+  const features = session.features;
+  const canLink = (href: string) =>
+    canAccessRoute(role, href) && canAccessRouteByFeature(features, href);
+
+  const quickLinks = buildQuickLinks(role, readyForCheckout, canLink);
   const kpis = buildKpis(role, {
     todayAppointments,
     waitingWalkIns,
@@ -389,8 +437,8 @@ export default async function DashboardOverview() {
     openPrescriptions,
     totalCustomers,
     totalPets,
-  });
-  const quickActions = buildQuickActions(role, readyForCheckout);
+  }, canLink);
+  const quickActions = buildQuickActions(role, readyForCheckout, canLink);
   const showLowStock = canShowWidget(role, 'lowStock') && lowStockItems.length > 0;
   const showSecondary =
     canShowWidget(role, 'totalCustomers') ||
@@ -401,10 +449,13 @@ export default async function DashboardOverview() {
     <div className="space-y-8">
       <RoleDashboardHero
         firstName={session.firstName || 'User'}
+        greeting={greeting}
         organizationName={session.organizationName}
         role={role}
         quickLinks={quickLinks}
       />
+
+      {showAttendance && <AttendanceWidgetClient initial={myAttendance} />}
 
       {kpis.length > 0 && <DashboardWidgetGrid kpis={kpis} />}
 
@@ -573,16 +624,20 @@ export default async function DashboardOverview() {
   );
 }
 
-function buildQuickLinks(role: UserSessionDetails['role'], readyForCheckout: number): QuickLink[] {
+function buildQuickLinks(
+  role: UserSessionDetails['role'],
+  readyForCheckout: number,
+  canLink: (href: string) => boolean
+): QuickLink[] {
+  let links: QuickLink[] = [];
   if (role === 'doctor') {
-    return [
+    links = [
       { key: 'queue', href: '/dashboard/doctors', label: 'Clinical queue' },
       { key: 'rx', href: '/dashboard/prescriptions', label: 'Prescriptions' },
       { key: 'appt', href: '/dashboard/appointments', label: 'Appointments' },
     ];
-  }
-  if (role === 'receptionist') {
-    return [
+  } else if (role === 'receptionist') {
+    links = [
       { key: 'walkin', href: '/dashboard/walk-ins', label: 'Walk-in intake' },
       { key: 'appt', href: '/dashboard/appointments', label: 'Appointments' },
       {
@@ -592,12 +647,14 @@ function buildQuickLinks(role: UserSessionDetails['role'], readyForCheckout: num
       },
       { key: 'billing', href: '/dashboard/invoices', label: 'Billing' },
     ];
+  } else {
+    links = [
+      { key: 'staff', href: '/dashboard/staff', label: 'Manage staff' },
+      { key: 'reports', href: '/dashboard/reports', label: 'Reports' },
+      { key: 'upgrade', href: '/dashboard/upgrade', label: 'Upgrade plan' },
+    ];
   }
-  return [
-    { key: 'staff', href: '/dashboard/staff', label: 'Manage staff' },
-    { key: 'reports', href: '/dashboard/reports', label: 'Reports' },
-    { key: 'upgrade', href: '/dashboard/upgrade', label: 'Upgrade plan' },
-  ];
+  return links.filter((l) => canLink(l.href));
 }
 
 function buildKpis(
@@ -614,7 +671,8 @@ function buildKpis(
     openPrescriptions: number;
     totalCustomers: number;
     totalPets: number;
-  }
+  },
+  canLink: (href: string) => boolean
 ): DashboardKpi[] {
   const kpis: DashboardKpi[] = [];
 
@@ -658,7 +716,7 @@ function buildKpis(
         href: '/dashboard/prescriptions',
       });
     }
-    return kpis;
+    return kpis.filter((k) => !k.href || canLink(k.href));
   }
 
   if (canShowWidget(role, 'todayAppointments')) {
@@ -707,7 +765,7 @@ function buildKpis(
     });
   }
 
-  return kpis.slice(0, 4);
+  return kpis.filter((k) => !k.href || canLink(k.href)).slice(0, 4);
 }
 
 type QuickActionItem = {
@@ -720,7 +778,8 @@ type QuickActionItem = {
 
 function buildQuickActions(
   role: UserSessionDetails['role'],
-  readyForCheckout: number
+  readyForCheckout: number,
+  canLink: (href: string) => boolean
 ): QuickActionItem[] {
   if (role === 'doctor') {
     return [
@@ -745,7 +804,7 @@ function buildQuickActions(
         label: 'Prescriptions',
         description: 'Review issued prescriptions',
       },
-    ];
+    ].filter((a) => canLink(a.href));
   }
 
   if (role === 'receptionist') {
@@ -802,10 +861,10 @@ function buildQuickActions(
         description: 'Patients ready for billing',
       });
     }
-    return actions;
+    return actions.filter((a) => canLink(a.href));
   }
 
-  return [
+  const adminActions: QuickActionItem[] = [
     {
       key: 'staff',
       href: '/dashboard/staff',
@@ -834,7 +893,22 @@ function buildQuickActions(
       label: 'Clinic Settings',
       description: 'Branding and preferences',
     },
+    {
+      key: 'ai',
+      href: '/dashboard/ai-assistant',
+      icon: <Bot className="w-4 h-4" />,
+      label: 'AI Assistant',
+      description: 'Workflow help and draft communications',
+    },
+    {
+      key: 'social',
+      href: '/dashboard/social',
+      icon: <Share2 className="w-4 h-4" />,
+      label: 'Social posts',
+      description: 'AI-generated clinic social content',
+    },
   ];
+  return adminActions.filter((a) => canLink(a.href));
 }
 
 function SecondaryStat({

@@ -131,7 +131,12 @@ export default function OrganizationRegistryClient({ orgs }: OrganizationRegistr
                   return (
                     <tr key={org.id} className={tableRowClass}>
                       <td className="px-6 py-4">
-                        <span className="font-bold text-on-surface block">{org.name}</span>
+                        <Link
+                          href={`/super-admin/organizations/${org.id}`}
+                          className="font-bold text-on-surface block hover:text-primary hover:underline"
+                        >
+                          {org.name}
+                        </Link>
                         <span className="text-[9px] text-outline block mt-0.5 select-all">
                           {org.id}
                         </span>
@@ -174,16 +179,16 @@ export default function OrganizationRegistryClient({ orgs }: OrganizationRegistr
                         <div className="flex flex-col items-end gap-2">
                           <div className="flex flex-wrap gap-2 justify-end">
                             <Link
+                              href={`/super-admin/organizations/${org.id}`}
+                              className="text-[10px] font-bold text-primary hover:underline"
+                            >
+                              Details
+                            </Link>
+                            <Link
                               href={`/super-admin/audit?org=${org.id}`}
                               className="text-[10px] font-bold text-primary hover:underline"
                             >
                               Audit
-                            </Link>
-                            <Link
-                              href="/super-admin/billing"
-                              className="text-[10px] font-bold text-primary hover:underline"
-                            >
-                              Billing
                             </Link>
                           </div>
                           <TenantOrgActions

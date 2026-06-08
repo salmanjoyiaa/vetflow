@@ -6,6 +6,7 @@ import {
 import DeniedState from '@/components/ui/premium/DeniedState';
 import { createClient } from '@/lib/supabase/server';
 import SettingsForm from '@/components/forms/SettingsForm';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import { isBrandedPdfsEnabled } from '@/lib/auth/features';
 import { Settings } from 'lucide-react';
 
@@ -84,15 +85,11 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-          <Settings className="w-5 h-5 text-primary" />
-          Clinic Settings
-        </h2>
-        <p className="text-xs text-on-surface-variant/70 mt-1">
-          Manage preferences for {session.organizationName || 'your clinic'}.
-        </p>
-      </div>
+      <PageHeader
+        title="Clinic Settings"
+        description={`Manage preferences for ${session.organizationName || 'your clinic'}.`}
+        icon={Settings}
+      />
 
       <SettingsForm defaultValues={defaultValues} brandedPdfsAllowed={brandedPdfsAllowed} />
     </div>

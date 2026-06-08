@@ -7,6 +7,7 @@ import DeniedState from '@/components/ui/premium/DeniedState';
 import { guardFeature } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import ReportsChartsWrapper from '@/components/dashboard/ReportsChartsWrapper';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import { TrendingUp, DollarSign, Activity, Calendar, AlertCircle } from 'lucide-react';
 
 export const metadata = {
@@ -168,15 +169,11 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-primary" />
-          Analytics & Insights
-        </h2>
-        <p className="text-xs text-on-surface-variant/70 mt-1">
-          Review business revenue charts, check-in rates, and operational KPIs.
-        </p>
-      </div>
+      <PageHeader
+        title="Analytics & Insights"
+        description="Review business revenue charts, check-in rates, and operational KPIs."
+        icon={TrendingUp}
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         <div className="glass-panel rounded-2xl border border-outline-variant/40 p-5 shadow-premium">

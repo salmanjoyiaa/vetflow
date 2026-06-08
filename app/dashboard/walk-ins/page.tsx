@@ -55,11 +55,17 @@ export default async function WalkInsPage() {
     .eq('role', 'doctor')
     .eq('is_active', true);
 
-  const doctors = doctorsData?.map((d) => ({
-    id: d.user_id,
-    firstName: (d.user_profiles as any).first_name || '',
-    lastName: (d.user_profiles as any).last_name || '',
-  })) || [];
+  const doctors =
+    doctorsData
+      ?.filter((d) => d.user_profiles)
+      .map((d) => {
+        const profile = d.user_profiles as { first_name: string; last_name: string };
+        return {
+          id: d.user_id,
+          firstName: profile.first_name || '',
+          lastName: profile.last_name || '',
+        };
+      }) || [];
 
   // 3. Fetch current waiting / consulting visits
   const { data: visitsData } = await supabase

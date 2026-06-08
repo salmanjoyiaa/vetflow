@@ -79,7 +79,7 @@ INSERT INTO public.organizations (id, name, slug, clinic_type_id) VALUES
 
 -- 4. SUBSCRIPTION STATUS
 INSERT INTO public.subscription_status (id, organization_id, plan_id, plan_name, status, trial_start, trial_end, features, notes) VALUES
-(gen_random_uuid(), 'a0000000-0000-0000-0000-000000000000', 'pro', 'pro', 'active', now(), now() + interval '30 days', '{"appointments":true,"inventory":true,"sales":true,"reports":true,"multi_branch":true,"ai_assistant":false,"social_automation":false}'::jsonb, 'Paid active subscription'),
+(gen_random_uuid(), 'a0000000-0000-0000-0000-000000000000', 'pro', 'pro', 'active', now(), now() + interval '30 days', '{"appointments":true,"inventory":true,"sales":true,"reports":true,"multi_branch":true,"ai_assistant":true,"social_automation":true}'::jsonb, 'Paid active subscription'),
 (gen_random_uuid(), 'b0000000-0000-0000-0000-000000000000', 'trial', 'trial', 'trial', now(), now() + interval '14 days', '{"appointments":true,"inventory":true,"sales":true,"reports":true,"multi_branch":false,"ai_assistant":false,"social_automation":false}'::jsonb, 'New trial organization');
 
 -- 5. FEATURE FLAGS (org override: enable branded PDFs for VetCare)

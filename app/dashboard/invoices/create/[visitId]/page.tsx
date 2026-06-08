@@ -3,6 +3,7 @@ import { resolveServerAuthContext } from '@/lib/auth/context';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import InvoiceCheckoutClient from '@/components/forms/InvoiceCheckoutClient';
+import PageHeader from '@/components/ui/premium/PageHeader';
 import Link from 'next/link';
 import { ArrowLeft, Receipt } from 'lucide-react';
 
@@ -134,25 +135,18 @@ export default async function CreateInvoicePage({
   return (
     <div className="space-y-8">
       
-      {/* HEADER */}
-      <div className="space-y-2">
-        <Link 
-          href="/dashboard/walk-ins" 
-          className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Walk-in Queue
-        </Link>
-        <div>
-          <h2 className="text-xl font-black text-on-surface tracking-tight flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-primary" />
-            Patient Checkout & Discharge
-          </h2>
-          <p className="text-xs text-on-surface-variant/70 mt-1">
-            Review billing ledger items and finalize transaction payments.
-          </p>
-        </div>
-      </div>
+      <Link
+        href="/dashboard/walk-ins"
+        className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors -mb-4"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Walk-in Queue
+      </Link>
+      <PageHeader
+        title="Patient Checkout & Discharge"
+        description="Review billing ledger items and finalize transaction payments."
+        icon={Receipt}
+      />
 
       {/* CHECKOUT INTERFACE */}
       <InvoiceCheckoutClient
