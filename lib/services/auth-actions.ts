@@ -2,9 +2,9 @@
 
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { LoginSchema, RegisterSchema } from '@/lib/validations/auth';
-import { writeAuditLog } from '@/lib/services/audit';
+import { createClient } from '@/lib/supabase/server';
+import { LoginSchema, RequestAccessSchema } from '@/lib/validations/auth';
+import { sendEmail } from '@/lib/email';
 import {
   resolveServerSession,
   resolveAuthenticatedDestination,
@@ -75,168 +75,36 @@ export async function loginAction(payload: unknown): Promise<ActionResponse> {
 }
 
 /**
- * Handles organization onboarding. Sets up a new organization, subscription status, 
- * initial branch, admin profiles, and default app/tax configurations in a structured transaction.
+ * Public self-serve registration is disabled. Clinics are provisioned by a
+ * platform super admin only. Prospective clinics submit a request for access
+ * which is routed to the ClinixDev team (Resend email + console fallback).
  */
-export async function registerAction(payload: unknown): Promise<ActionResponse> {
+export async function requestAccessAction(payload: unknown): Promise<ActionResponse> {
   try {
-    const parsed = RegisterSchema.parse(payload);
-    const adminClient = await createAdminClient();
+    const parsed = RequestAccessSchema.parse(payload);
 
-    // 1. Check if organization slug is already in use
-    const { data: existingOrg } = await adminClient
-      .from('organizations')
-      .select('id')
-      .eq('slug', parsed.orgSlug)
-      .maybeSingle();
+    const salesInbox = process.env.CLINIXDEV_SALES_EMAIL || 'sales@clinixdev.com';
+    const html = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color:#0b132b;">New ClinixDev access request</h2>
+        <p><strong>Name:</strong> ${parsed.fullName}</p>
+        <p><strong>Email:</strong> ${parsed.email}</p>
+        <p><strong>Clinic:</strong> ${parsed.clinicName}</p>
+        <p><strong>Clinic type:</strong> ${parsed.clinicType || 'Not specified'}</p>
+        <p><strong>Phone:</strong> ${parsed.phone || 'Not provided'}</p>
+        <p><strong>Message:</strong><br/>${(parsed.message || '—').replace(/\n/g, '<br/>')}</p>
+      </div>
+    `;
 
-    if (existingOrg) {
-      return { success: false, error: 'This clinic web address/slug is already in use.' };
-    }
-
-    // 2. Sign up user in Supabase Auth
-    const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
-      email: parsed.email,
-      password: parsed.password,
-      email_confirm: true, // Auto-confirm email to bypass confirmation steps in local tests
-      user_metadata: {
-        first_name: parsed.firstName,
-        last_name: parsed.lastName,
-        phone: parsed.phone,
-        is_super_admin: false,
-      },
+    await sendEmail({
+      to: salesInbox,
+      subject: `Access request: ${parsed.clinicName}`,
+      html,
     });
 
-    if (authError || !authData.user) {
-      return { success: false, error: authError?.message || 'Failed to create user account.' };
-    }
-
-    const userId = authData.user.id;
-
-    // 3. Create the Organization
-    const { data: org, error: orgError } = await adminClient
-      .from('organizations')
-      .insert({
-        name: parsed.orgName,
-        slug: parsed.orgSlug,
-      })
-      .select('id, name')
-      .single();
-
-    if (orgError || !org) {
-      return { success: false, error: orgError?.message || 'Failed to create clinic organization.' };
-    }
-
-    const orgId = org.id;
-
-    // 4. Create Organization Member (Role: clinic_admin)
-    const { error: memberError } = await adminClient
-      .from('organization_members')
-      .insert({
-        organization_id: orgId,
-        user_id: userId,
-        role: 'clinic_admin',
-        is_active: true,
-      });
-
-    if (memberError) {
-      return { success: false, error: memberError.message || 'Failed to bind organization role.' };
-    }
-
-    // 5. Create Subscription (Defaulting to Trial tier)
-    const trialEnd = new Date();
-    trialEnd.setDate(trialEnd.getDate() + 30); // 30 days trial
-
-    const { error: subError } = await adminClient
-      .from('subscription_status')
-      .insert({
-        organization_id: orgId,
-        plan_name: 'trial',
-        status: 'trial',
-        trial_start: new Date().toISOString(),
-        trial_end: trialEnd.toISOString(),
-        notes: 'Initial sandbox registration',
-      });
-
-    if (subError) {
-      return { success: false, error: subError.message || 'Failed to initialize subscription status.' };
-    }
-
-    // 6. Create Initial Branch
-    const { data: branch, error: branchError } = await adminClient
-      .from('branches')
-      .insert({
-        organization_id: orgId,
-        name: parsed.branchName,
-        address: parsed.branchAddress,
-        phone: parsed.branchPhone,
-        email: parsed.email,
-        is_active: true,
-      })
-      .select('id, name')
-      .single();
-
-    if (branchError || !branch) {
-      return { success: false, error: branchError?.message || 'Failed to initialize clinic branch.' };
-    }
-
-    const branchId = branch.id;
-
-    // 7. Bind User to Initial Branch
-    const { error: branchMemberError } = await adminClient
-      .from('branch_members')
-      .insert({
-        branch_id: branchId,
-        user_id: userId,
-      });
-
-    if (branchMemberError) {
-      return { success: false, error: branchMemberError.message || 'Failed to assign user to branch.' };
-    }
-
-    // 8. Create Default Tax Settings
-    await adminClient.from('tax_settings').insert({
-      organization_id: orgId,
-      is_enabled: true,
-      tax_name: 'VAT',
-      tax_percentage: 15.00, // Default 15%
-      applies_to_products: true,
-      applies_to_services: true,
-    });
-
-    // 9. Create Default App Settings
-    await adminClient.from('app_settings').insert({
-      organization_id: orgId,
-      timezone: 'UTC',
-      currency: 'USD',
-    });
-
-    // 10. Audit Logging (actor is the new admin)
-    await writeAuditLog({
-      organizationId: orgId,
-      branchId: branchId,
-      actorUserId: userId,
-      actorRole: 'clinic_admin',
-      action: 'STAFF_CREATED',
-      resourceType: 'USER_PROFILE',
-      resourceId: userId,
-      afterData: { email: parsed.email, firstName: parsed.firstName, lastName: parsed.lastName },
-    });
-
-    await writeAuditLog({
-      organizationId: orgId,
-      branchId: branchId,
-      actorUserId: userId,
-      actorRole: 'clinic_admin',
-      action: 'BRANCH_CREATED',
-      resourceType: 'BRANCH',
-      resourceId: branchId,
-      afterData: { name: parsed.branchName },
-    });
-
-    return { success: true, redirectTo: '/login' };
+    return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred during registration.' };
+    return { success: false, error: err.message || 'Failed to submit your request.' };
   }
 }
 
