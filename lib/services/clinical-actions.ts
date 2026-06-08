@@ -74,7 +74,7 @@ export async function completeConsultationAction(payload: unknown) {
           organization_id: ctx.organizationId,
           branch_id: visit.branch_id,
           visit_id: visit.id,
-          pet_id: visit.pet_id,
+          patient_id: visit.patient_id,
           doctor_id: ctx.userId,
           is_finalized: true,
           revision_number: 1,

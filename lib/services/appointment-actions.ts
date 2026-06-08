@@ -55,12 +55,13 @@ export async function createAppointmentRequestAction(payload: unknown) {
         customer_name: parsed.customerName,
         customer_email: parsed.customerEmail,
         customer_phone: parsed.customerPhone,
-        pet_name: parsed.petName,
-        pet_species: parsed.petSpecies,
+        patient_name: parsed.petName,
+        patient_species: parsed.petSpecies,
         preferred_date: parsed.preferredDate,
         preferred_time: parsed.preferredTime,
         reason: parsed.reason,
         status: 'requested',
+        source: 'public',
       })
       .select()
       .single();
@@ -122,7 +123,7 @@ export async function confirmAppointmentAction(appointmentId: string) {
     const branchObj = appt.branches as { name?: string; address?: string } | null;
     const emailHtml = compileAppointmentConfirmedTemplate(
       ctx.organizationName || 'ClinixDev Center',
-      appt.pet_name,
+      appt.patient_name,
       appt.preferred_date,
       appt.preferred_time,
       branchObj?.address || ''
@@ -185,14 +186,14 @@ export async function createStaffAppointmentAction(payload: unknown) {
     }
 
     const { data: pet, error: petErr } = await supabase
-      .from('pets')
+      .from('patients')
       .select('id, name, species, customer_id')
       .eq('id', parsed.petId)
       .eq('organization_id', ctx.organizationId)
       .single();
 
     if (petErr || !pet || pet.customer_id !== customer.id) {
-      throw new Error('Pet not found or does not belong to the selected customer.');
+      throw new Error('Patient not found or does not belong to the selected customer.');
     }
 
     const doctorId =
@@ -204,12 +205,13 @@ export async function createStaffAppointmentAction(payload: unknown) {
         organization_id: ctx.organizationId,
         branch_id: parsed.branchId,
         customer_id: customer.id,
-        pet_id: pet.id,
+        patient_id: pet.id,
         customer_name: `${customer.first_name} ${customer.last_name}`.trim(),
         customer_email: customer.email || '',
         customer_phone: customer.phone || '',
-        pet_name: pet.name,
-        pet_species: pet.species,
+        patient_name: pet.name,
+        patient_species: pet.species,
+        source: 'staff',
         preferred_date: parsed.preferredDate,
         preferred_time: parsed.preferredTime,
         reason: parsed.reason,
@@ -446,28 +448,29 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
       throw new Error('Failed to resolve or register customer file.');
     }
 
-    // 3. Find or create Pet under customer
-    let petId = appt.pet_id as string | null;
+    // 3. Find or create Patient under customer
+    let petId = appt.patient_id as string | null;
 
     if (!petId) {
     const { data: existingPet } = await supabase
-      .from('pets')
+      .from('patients')
       .select('id')
-      .eq('name', appt.pet_name)
+      .eq('name', appt.patient_name)
       .eq('customer_id', customerId)
       .maybeSingle();
 
     if (existingPet) {
       petId = existingPet.id;
     } else {
-      // Create new pet profile
+      // Create new patient profile
       const { data: newPet } = await supabase
-        .from('pets')
+        .from('patients')
         .insert({
           organization_id: ctx.organizationId,
           customer_id: customerId,
-          name: appt.pet_name,
-          species: appt.pet_species || 'Dog',
+          patient_type: 'pet',
+          name: appt.patient_name,
+          species: appt.patient_species || 'Dog',
           gender: 'Male', // Default standard gender
           is_active: true,
         })
@@ -490,7 +493,7 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
       .insert({
         organization_id: ctx.organizationId,
         branch_id: appt.branch_id,
-        pet_id: petId,
+        patient_id: petId,
         customer_id: customerId,
         appointment_id: appt.id,
         reason: appt.reason,
@@ -514,7 +517,7 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
     // 6. Update appointment status to checked_in
     await supabase
       .from('appointments')
-      .update({ status: 'checked_in', pet_id: petId })
+      .update({ status: 'checked_in', patient_id: petId })
       .eq('id', appt.id);
 
     // 7. Audit Log

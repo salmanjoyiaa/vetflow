@@ -43,6 +43,7 @@ function getMockDataForTable(table: string): any[] {
     case 'customers':
       return mockData.MOCK_CUSTOMERS;
     case 'pets':
+    case 'patients':
       return mockData.MOCK_PETS;
     case 'products':
       return mockData.MOCK_PRODUCTS;
@@ -135,8 +136,42 @@ class MockSupabaseQueryBuilder {
     return this;
   }
 
+  ilike(column: string, pattern: string) {
+    const term = pattern.replace(/^%|%$/g, '').toLowerCase();
+    this.filters.push((item) => {
+      if (item[column] === undefined) return false;
+      return String(item[column]).toLowerCase().includes(term);
+    });
+    return this;
+  }
+
+  or(filterString: string) {
+    const clauses = filterString.split(',').map((c) => c.trim());
+    this.filters.push((item) =>
+      clauses.some((clause) => {
+        const ilikeMatch = clause.match(/^(\w+)\.ilike\.%(.+)%$/);
+        if (ilikeMatch) {
+          const col = ilikeMatch[1];
+          const term = ilikeMatch[2].toLowerCase();
+          if (item[col] === undefined) return false;
+          return String(item[col]).toLowerCase().includes(term);
+        }
+        const eqMatch = clause.match(/^(\w+)\.eq\.(.+)$/);
+        if (eqMatch) {
+          return item[eqMatch[1]] === eqMatch[2];
+        }
+        return false;
+      })
+    );
+    return this;
+  }
+
   order(column: string, options?: any) { return this; }
-  limit(num: number) { return this; }
+  private limitCount: number | null = null;
+  limit(num: number) {
+    this.limitCount = num;
+    return this;
+  }
 
   single() { this.isSingle = true; return this; }
   maybeSingle() { this.isSingle = true; return this; }
@@ -161,6 +196,10 @@ class MockSupabaseQueryBuilder {
     // Apply filters
     for (const filterFn of this.filters) {
       data = data.filter(filterFn);
+    }
+
+    if (this.limitCount != null) {
+      data = data.slice(0, this.limitCount);
     }
 
     if (this.isSingle) {

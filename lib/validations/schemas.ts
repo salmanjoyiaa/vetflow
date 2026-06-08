@@ -23,18 +23,21 @@ export const StockAdjustmentSchema = z.object({
   reason: z.string().min(1, { message: 'Reason is required' }),
 });
 
-// --- PETS ---
+// --- PATIENTS (vet MVP: patient_type = 'pet') ---
 export const PetSchema = z.object({
-  name: z.string().min(1, { message: 'Pet name is required' }),
+  name: z.string().min(1, { message: 'Patient name is required' }),
   species: z.string().min(1, { message: 'Species is required' }), // e.g. Dog, Cat, etc.
   breed: z.string().optional().or(z.literal('')),
+  color: z.string().optional().or(z.literal('')),
   gender: z.string().min(1, { message: 'Gender is required' }), // Male, Female, Spayed, Neutered
   dateOfBirth: z.string().optional().or(z.literal('')),
   weightKg: z.number().nonnegative().optional().or(z.nan()),
+  microchipNumber: z.string().optional().or(z.literal('')),
   allergies: z.string().optional().or(z.literal('')),
   medicalNotes: z.string().optional().or(z.literal('')),
   customerId: z.string().uuid({ message: 'Invalid customer selection' }),
 });
+export const PatientSchema = PetSchema;
 
 // --- CUSTOMERS ---
 export const CustomerSchema = z.object({
@@ -90,9 +93,35 @@ export const SubscriptionSchema = z.object({
 export const CheckoutSchema = z.object({
   visitId: z.string().uuid(),
   discount: z.number().nonnegative(),
+  paymentStatus: z.enum(['paid', 'unpaid']),
   paymentMethod: z.enum(['cash', 'card', 'bank_transfer']),
   paymentReference: z.string().optional().or(z.literal('')),
   notes: z.string().optional().or(z.literal('')),
+  sendEmailReceipt: z.boolean().optional(),
+});
+
+export const StockIntakeLineSchema = z.object({
+  name: z.string().min(1),
+  sku: z.string().optional().or(z.literal('')),
+  quantity: z.number().int().positive(),
+  unitPrice: z.number().nonnegative(),
+  unit: z.string().optional().or(z.literal('')),
+  productId: z.string().uuid().nullable().optional(),
+  createNew: z.boolean().optional(),
+});
+
+export const ConfirmStockIntakeSchema = z.object({
+  branchId: z.string().uuid(),
+  supplierName: z.string().optional().or(z.literal('')),
+  invoiceNumber: z.string().optional().or(z.literal('')),
+  invoiceDate: z.string().optional().or(z.literal('')),
+  lines: z.array(StockIntakeLineSchema).min(1),
+});
+
+export const UpdateInvoicePaymentSchema = z.object({
+  invoiceId: z.string().uuid(),
+  paymentMethod: z.enum(['cash', 'card', 'bank_transfer']),
+  paymentReference: z.string().optional().or(z.literal('')),
 });
 
 // --- CLINICAL WORKSPACE ---
@@ -139,6 +168,44 @@ export const StaffAppointmentSchema = z.object({
   isEmergency: z.boolean().default(false),
   intakeNotes: z.string().optional().or(z.literal('')),
 });
+
+const AppointmentCustomerFieldsSchema = z.object({
+  firstName: z.string().min(1, { message: 'First name is required' }),
+  lastName: z.string().min(1, { message: 'Last name is required' }),
+  phone: z.string().min(5, { message: 'Phone number is required' }),
+  email: z.string().email().optional().or(z.literal('')),
+  address: z.string().optional().or(z.literal('')),
+});
+
+const AppointmentPetFieldsSchema = z.object({
+  name: z.string().min(1, { message: 'Pet name is required' }),
+  species: z.string().min(1, { message: 'Species is required' }),
+  breed: z.string().optional().or(z.literal('')),
+  gender: z.string().optional().or(z.literal('')),
+});
+
+export const AppointmentWithPatientSchema = z
+  .object({
+    branchId: z.string().uuid({ message: 'Invalid branch' }),
+    customerId: z.string().uuid().optional(),
+    customer: AppointmentCustomerFieldsSchema.optional(),
+    petId: z.string().uuid().optional(),
+    pet: AppointmentPetFieldsSchema.optional(),
+    doctorId: z.string().uuid().optional().or(z.literal('')),
+    preferredDate: z.string().min(1, { message: 'Date is required' }),
+    preferredTime: z.string().min(1, { message: 'Time is required' }),
+    reason: z.string().min(1, { message: 'Reason for visit is required' }),
+    isEmergency: z.boolean().default(false),
+    intakeNotes: z.string().optional().or(z.literal('')),
+  })
+  .refine((data) => data.customerId || data.customer, {
+    message: 'Customer details are required',
+    path: ['customer'],
+  })
+  .refine((data) => data.petId || data.pet, {
+    message: 'Pet details are required',
+    path: ['pet'],
+  });
 
 export const MarkEmergencySchema = z.object({
   appointmentId: z.string().uuid(),
@@ -189,6 +256,7 @@ export type CompleteConsultationInput = z.infer<typeof CompleteConsultationSchem
 export type AppointmentRequestInput = z.infer<typeof AppointmentRequestSchema>;
 export type WalkInInput = z.infer<typeof WalkInSchema>;
 export type StaffAppointmentInput = z.infer<typeof StaffAppointmentSchema>;
+export type AppointmentWithPatientInput = z.infer<typeof AppointmentWithPatientSchema>;
 export type MarkEmergencyInput = z.infer<typeof MarkEmergencySchema>;
 export type RescheduleAppointmentInput = z.infer<typeof RescheduleAppointmentSchema>;
 export type OrganizationFeaturesInput = z.infer<typeof OrganizationFeaturesSchema>;

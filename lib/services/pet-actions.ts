@@ -26,18 +26,25 @@ export async function createPetAction(payload: unknown) {
     const supabase = await createClient();
 
     const { data: pet, error } = await supabase
-      .from('pets')
+      .from('patients')
       .insert({
         organization_id: ctx.organizationId,
         customer_id: parsed.customerId,
+        patient_type: 'pet',
         name: parsed.name,
         species: parsed.species,
         breed: parsed.breed || null,
+        color: parsed.color || null,
         gender: parsed.gender,
         date_of_birth: parsed.dateOfBirth || null,
         weight_kg: parsed.weightKg || null,
+        microchip_number: parsed.microchipNumber || null,
         allergies: parsed.allergies || null,
         medical_notes: parsed.medicalNotes || null,
+        metadata: {
+          color: parsed.color || null,
+          microchip_number: parsed.microchipNumber || null,
+        },
         is_active: true,
       })
       .select()
@@ -81,16 +88,22 @@ export async function updatePetAction(petId: string, payload: unknown) {
     const supabase = await createClient();
 
     const { data: pet, error } = await supabase
-      .from('pets')
+      .from('patients')
       .update({
         name: parsed.name,
         species: parsed.species,
         breed: parsed.breed || null,
+        color: parsed.color || null,
         gender: parsed.gender,
         date_of_birth: parsed.dateOfBirth || null,
         weight_kg: parsed.weightKg || null,
+        microchip_number: parsed.microchipNumber || null,
         allergies: parsed.allergies || null,
         medical_notes: parsed.medicalNotes || null,
+        metadata: {
+          color: parsed.color || null,
+          microchip_number: parsed.microchipNumber || null,
+        },
       })
       .eq('id', petId)
       .eq('organization_id', ctx.organizationId)

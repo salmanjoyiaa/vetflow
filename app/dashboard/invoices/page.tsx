@@ -57,7 +57,7 @@ export default async function InvoicesPage({
       payment_status,
       created_at,
       customers ( first_name, last_name, email ),
-      pets ( name )
+      pets:patients ( name )
     `)
     .eq('branch_id', activeBranchId)
     .order('created_at', { ascending: false });

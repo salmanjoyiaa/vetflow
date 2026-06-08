@@ -42,7 +42,7 @@ export async function GET(
           respiratory_rate,
           weight_kg
         ),
-        pets ( name, species ),
+        patients ( name, species ),
         customers ( first_name, last_name ),
         branches ( name, address, phone ),
         doctor:user_profiles!visits_doctor_id_fkey ( first_name, last_name )
@@ -60,7 +60,7 @@ export async function GET(
       return new Response('No clinical notes for this visit', { status: 404 });
     }
 
-    const pet = visit.pets as { name?: string; species?: string } | null;
+    const pet = visit.patients as { name?: string; species?: string } | null;
     const customer = visit.customers as { first_name?: string; last_name?: string } | null;
     const branch = visit.branches as { name?: string; address?: string; phone?: string } | null;
     const doctor = visit.doctor as { first_name?: string; last_name?: string } | null;

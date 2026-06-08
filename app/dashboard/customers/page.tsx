@@ -46,7 +46,7 @@ export default async function CustomersPage({
       email,
       phone,
       address,
-      pets ( id )
+      pets:patients ( id )
     `)
     .eq('branch_id', activeBranchId)
     .order('created_at', { ascending: false });

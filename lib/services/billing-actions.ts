@@ -39,7 +39,7 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
 
     const { data: visit, error: visitErr } = await adminClient
       .from('visits')
-      .select('*, pets(*), customers(*)')
+      .select('*, patients(*), customers(*)')
       .eq('id', parsed.visitId)
       .eq('organization_id', ctx.organizationId)
       .single();
@@ -170,7 +170,7 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
         branch_id: visit.branch_id,
         invoice_number: invoiceNumber,
         customer_id: visit.customer_id,
-        pet_id: visit.pet_id,
+        patient_id: visit.patient_id,
         visit_id: visit.id,
         subtotal,
         discount,

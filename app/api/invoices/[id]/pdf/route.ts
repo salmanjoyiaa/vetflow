@@ -29,7 +29,7 @@ export async function GET(
         *,
         invoice_items ( * ),
         customers ( first_name, last_name, phone ),
-        pets ( name ),
+        patients ( name ),
         branches ( name, address, phone ),
         payments ( payment_method )
       `)
@@ -42,7 +42,7 @@ export async function GET(
     }
 
     const customerObj = invoice.customers as any;
-    const petObj = invoice.pets as any;
+    const petObj = invoice.patients as any;
     const branchObj = invoice.branches as any;
     const paymentsArr = invoice.payments as any[] || [];
     const paymentMethod = paymentsArr[0]?.payment_method || 'cash';

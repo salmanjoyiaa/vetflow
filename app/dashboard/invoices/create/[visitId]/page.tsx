@@ -35,8 +35,8 @@ export default async function CreateInvoicePage({
       reason,
       status,
       branch_id,
-      pet_id,
-      pets ( id, name, species, breed ),
+      pet_id:patient_id,
+      pets:patients ( id, name, species, breed ),
       customers ( first_name, last_name, phone, email )
     `)
     .eq('id', visitId)

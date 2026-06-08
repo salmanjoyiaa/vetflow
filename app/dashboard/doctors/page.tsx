@@ -45,7 +45,7 @@ export default async function DoctorDashboardPage() {
       checked_in_at,
       is_emergency,
       triage_notes,
-      pets ( id, name, species, breed, gender ),
+      pets:patients ( id, name, species, breed, gender ),
       customers ( first_name, last_name, phone ),
       visit_assignments!inner ( doctor_id )
     `)

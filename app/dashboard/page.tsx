@@ -225,7 +225,7 @@ export default async function DashboardOverview() {
     if (canShowWidget(role, 'totalPets')) {
       queries.push(
         supabase
-          .from('pets')
+          .from('patients')
           .select('id', { count: 'exact', head: true })
           .eq('organization_id', session.organizationId || '')
           .then((r) => {
@@ -288,7 +288,7 @@ export default async function DashboardOverview() {
       .select(
         `
         id, reason, status, checked_in_at, is_emergency,
-        pets ( name, species ),
+        pets:patients ( name, species ),
         customers ( first_name, last_name )
         ${role === 'doctor' ? ', visit_assignments!inner ( doctor_id )' : ''}
       `
@@ -329,7 +329,7 @@ export default async function DashboardOverview() {
       queries.push(
         supabase
           .from('appointments')
-          .select('id, pet_name, customer_name, customer_phone, preferred_time, is_emergency')
+          .select('id, patient_name, customer_name, customer_phone, preferred_time, is_emergency')
           .eq('branch_id', activeBranchId)
           .eq('preferred_date', today)
           .in('status', ['confirmed', 'rescheduled', 'requested'])
@@ -339,7 +339,7 @@ export default async function DashboardOverview() {
             receptionistUpcoming =
               r.data?.map((a) => ({
                 id: a.id,
-                petName: a.pet_name,
+                petName: a.patient_name,
                 customerName: a.customer_name,
                 customerPhone: a.customer_phone || '',
                 preferredTime: a.preferred_time?.slice(0, 5) || '',
@@ -350,7 +350,7 @@ export default async function DashboardOverview() {
       queries.push(
         supabase
           .from('visits')
-          .select('id, reason, status, pets(name), customers(first_name, last_name)')
+          .select('id, reason, status, pets:patients(name), customers(first_name, last_name)')
           .eq('branch_id', activeBranchId)
           .eq('status', 'waiting')
           .order('checked_in_at', { ascending: true })
@@ -362,7 +362,7 @@ export default async function DashboardOverview() {
       queries.push(
         supabase
           .from('visits')
-          .select('id, reason, status, pets(name), customers(first_name, last_name)')
+          .select('id, reason, status, pets:patients(name), customers(first_name, last_name)')
           .eq('branch_id', activeBranchId)
           .eq('status', 'ready_for_checkout')
           .order('checked_in_at', { ascending: true })

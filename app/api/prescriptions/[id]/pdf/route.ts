@@ -36,7 +36,7 @@ export async function GET(
       .select(`
         *,
         prescription_items ( * ),
-        pets ( name, species, breed ),
+        patients ( name, species, breed ),
         visits ( 
           reason,
           clinical_notes ( diagnosis, treatment_plan, follow_up_recommendation )
@@ -52,7 +52,7 @@ export async function GET(
       return new Response('Prescription record not found or access denied.', { status: 404 });
     }
 
-    const petObj = prescription.pets as any;
+    const petObj = prescription.patients as any;
     const branchObj = prescription.branches as any;
     const doctorObj = prescription.doctor as any;
     const visitObj = prescription.visits as any;

@@ -55,7 +55,7 @@ export default async function CustomerDetailPage({
 
   // 2. Fetch pets registered for this customer
   const { data: pets, error: petsError } = await supabase
-    .from('pets')
+    .from('patients')
     .select('*')
     .eq('customer_id', customerId)
     .eq('organization_id', session.organizationId)

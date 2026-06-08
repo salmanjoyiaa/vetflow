@@ -48,7 +48,7 @@ export default async function PrescriptionsPage() {
       is_finalized,
       created_at,
       notes,
-      pets ( id, name, species ),
+      pets:patients ( id, name, species ),
       visits ( reason ),
       user_profiles ( first_name, last_name )
     `)

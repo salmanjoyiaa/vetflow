@@ -71,7 +71,7 @@ export default async function WalkInsPage() {
       checked_in_at,
       is_emergency,
       triage_notes,
-      pets ( id, name, species, breed ),
+      pets:patients ( id, name, species, breed ),
       customers ( first_name, last_name, phone ),
       visit_assignments (
         doctor_id,
@@ -88,7 +88,7 @@ export default async function WalkInsPage() {
       id,
       reason,
       checked_in_at,
-      pets ( name ),
+      pets:patients ( name ),
       customers ( first_name, last_name )
     `)
     .eq('branch_id', activeBranchId)

@@ -33,7 +33,7 @@ export async function createWalkInVisitAction(payload: unknown) {
       .insert({
         organization_id: ctx.organizationId,
         branch_id: parsed.branchId,
-        pet_id: parsed.petId,
+        patient_id: parsed.petId,
         customer_id: parsed.customerId,
         reason: parsed.reason,
         status: 'waiting',

@@ -22,7 +22,7 @@ export default async function PetsPage() {
   // Fetch all pets registered in the organization
   const supabase = await createClient();
   const { data: pets, error } = await supabase
-    .from('pets')
+    .from('patients')
     .select(`
       id,
       name,

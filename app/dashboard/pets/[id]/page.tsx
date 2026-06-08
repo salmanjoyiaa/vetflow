@@ -39,7 +39,7 @@ export default async function PetDetailPage({
 
   // 1. Fetch pet details with customer info
   const { data: pet, error: petError } = await supabase
-    .from('pets')
+    .from('patients')
     .select(`
       *,
       customers (
@@ -99,7 +99,7 @@ export default async function PetDetailPage({
         )
       )
     `)
-    .eq('pet_id', petId)
+    .eq('patient_id', petId)
     .order('checked_in_at', { ascending: false });
 
   return (

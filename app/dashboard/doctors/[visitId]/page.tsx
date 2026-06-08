@@ -35,10 +35,10 @@ export default async function ConsultationRoomPage({
       reason,
       status,
       branch_id,
-      pet_id,
+      pet_id:patient_id,
       is_emergency,
       triage_notes,
-      pets (
+      pets:patients (
         id,
         name,
         species,
@@ -83,7 +83,7 @@ export default async function ConsultationRoomPage({
       reason,
       clinical_notes ( diagnosis, treatment_plan )
     `)
-    .eq('pet_id', visit.pet_id)
+    .eq('patient_id', visit.pet_id)
     .eq('status', 'ready_for_checkout') // Or 'completed'
     .order('checked_in_at', { ascending: false });
 

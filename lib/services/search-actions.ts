@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { hasCapability } from '@/lib/auth/capabilities';
+import { looksLikePhone, normalizePhoneInput } from '@/lib/reception/phone';
 import {
   assertActiveBranch,
   assertOrganization,
@@ -19,6 +20,7 @@ export type SearchResultItem = {
   title: string;
   subtitle: string;
   href: string;
+  phoneMatch?: boolean;
 };
 
 function escapeIlike(term: string): string {
@@ -71,7 +73,7 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
     if (canSearchPets) {
       queries.push(
         supabase
-          .from('pets')
+          .from('patients')
           .select('id, name, species, customers ( first_name, last_name )')
           .eq('organization_id', orgId)
           .ilike('name', pattern)
@@ -80,7 +82,7 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
     } else if (canSearchClinical) {
       queries.push(
         supabase
-          .from('pets')
+          .from('patients')
           .select('id, name, species, customers ( first_name, last_name )')
           .eq('organization_id', orgId)
           .ilike('name', pattern)
@@ -111,7 +113,7 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
           .select(
             `
             id, reason, status,
-            pets ( name, species ),
+            patients ( name, species ),
             customers ( first_name, last_name )
           `
           )
@@ -135,14 +137,21 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
 
     const results: SearchResultItem[] = [];
 
+    const queryNorm = normalizePhoneInput(query);
+    const isPhoneQuery = looksLikePhone(query);
+
     if (canSearchCustomers) {
       for (const c of customersRes.data || []) {
+        const phone = (c.phone as string) || '';
+        const phoneMatch =
+          isPhoneQuery && phone && normalizePhoneInput(phone).includes(queryNorm);
         results.push({
           type: 'customer',
           id: c.id as string,
           title: `${c.first_name} ${c.last_name}`.trim(),
-          subtitle: (c.phone as string) || (c.email as string) || 'Customer',
+          subtitle: phone || (c.email as string) || 'Customer',
           href: `/dashboard/customers/${c.id}`,
+          phoneMatch: !!phoneMatch,
         });
       }
     }
@@ -175,7 +184,7 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
 
     if (canSearchClinical) {
       for (const v of visitsRes.data || []) {
-        const pet = v.pets as { name?: string; species?: string } | null;
+        const pet = v.patients as { name?: string; species?: string } | null;
         const customer = v.customers as { first_name?: string; last_name?: string } | null;
         const petName = pet?.name || 'Patient';
         const ownerName = customer

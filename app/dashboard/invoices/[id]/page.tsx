@@ -43,7 +43,7 @@ export default async function InvoiceDetailPage({
       *,
       invoice_items ( * ),
       customers ( id, first_name, last_name, phone, email ),
-      pets ( id, name, species ),
+      pets:patients ( id, name, species ),
       branches ( name, address, phone )
     `)
     .eq('id', id)

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   confirmAppointmentAction,
   checkInAppointmentAction,
@@ -32,8 +33,8 @@ interface Appointment {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
-  pet_name: string;
-  pet_species: string | null;
+  patient_name: string;
+  patient_species: string | null;
   preferred_date: string;
   preferred_time: string;
   reason: string;
@@ -101,6 +102,7 @@ export default function AppointmentsListClient({
   const [rescheduleId, setRescheduleId] = useState<string | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
+  const [checkInNotice, setCheckInNotice] = useState(false);
 
   const filtered = useMemo(() => {
     const list = initialAppointments.filter((appt) => {
@@ -108,7 +110,7 @@ export default function AppointmentsListClient({
       if (dateFilter && appt.preferred_date !== dateFilter) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
-        const hay = `${appt.customer_name} ${appt.pet_name} ${appt.customer_phone} ${appt.reason} ${appt.intake_notes || ''}`.toLowerCase();
+        const hay = `${appt.customer_name} ${appt.patient_name} ${appt.customer_phone} ${appt.reason} ${appt.intake_notes || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -123,11 +125,16 @@ export default function AppointmentsListClient({
     });
   }, [initialAppointments, statusFilter, dateFilter, search]);
 
-  const runAction = async (id: string, fn: () => Promise<{ success: boolean; error?: string }>) => {
+  const runAction = async (
+    id: string,
+    fn: () => Promise<{ success: boolean; error?: string }>,
+    onSuccess?: () => void
+  ) => {
     setUpdatingId(id);
     try {
       const res = await fn();
       if (res.success) {
+        onSuccess?.();
         router.refresh();
       } else {
         alert(res.error || 'Action failed');
@@ -168,6 +175,17 @@ export default function AppointmentsListClient({
 
   return (
     <div className="space-y-4">
+      {checkInNotice && (
+        <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs">
+          <span className="text-emerald-700 font-semibold">Patient checked in and added to the walk-in queue.</span>
+          <Link
+            href="/dashboard/walk-ins"
+            className="shrink-0 font-bold text-primary hover:underline"
+          >
+            View walk-in queue →
+          </Link>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
@@ -223,11 +241,11 @@ export default function AppointmentsListClient({
                 <tr key={appt.id} className="hover:bg-surface-container/10 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                      <span className="font-bold text-on-surface">{appt.pet_name}</span>
+                      <span className="font-bold text-on-surface">{appt.patient_name}</span>
                       {appt.is_emergency && emergencyBadge()}
                     </div>
                     <span className="text-[10px] text-on-surface-variant/50 block capitalize">
-                      Species: {appt.pet_species || 'Dog'}
+                      Species: {appt.patient_species || 'Dog'}
                     </span>
                     {appt.intake_notes && (
                       <span className="text-[10px] text-on-surface-variant block mt-1 line-clamp-2" title={appt.intake_notes}>
@@ -305,14 +323,17 @@ export default function AppointmentsListClient({
                             <button
                               disabled={updatingId !== null}
                               onClick={() =>
-                                runAction(appt.id, () =>
-                                  checkInAppointmentAction(
-                                    appt.id,
-                                    selectedDoctorMap[appt.id] ||
-                                    appt.doctor_id ||
-                                    doctors[0]?.id ||
-                                    ''
-                                  )
+                                runAction(
+                                  appt.id,
+                                  () =>
+                                    checkInAppointmentAction(
+                                      appt.id,
+                                      selectedDoctorMap[appt.id] ||
+                                        appt.doctor_id ||
+                                        doctors[0]?.id ||
+                                        ''
+                                    ),
+                                  () => setCheckInNotice(true)
                                 )
                               }
                               className="bg-primary text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1"
