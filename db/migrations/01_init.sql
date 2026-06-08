@@ -792,6 +792,7 @@ $$ LANGUAGE sql STABLE SECURITY DEFINER;
 -- ====================================================================
 CREATE OR REPLACE FUNCTION public.submit_public_appointment(
     p_clinic_slug TEXT,
+    p_branch_id UUID,
     p_customer_name TEXT,
     p_customer_email TEXT,
     p_customer_phone TEXT,
@@ -820,6 +821,7 @@ BEGIN
         RAISE EXCEPTION 'Preferred date cannot be in the past';
     END IF;
 
+    -- Resolve the org strictly by slug; the client can never inject org_id.
     SELECT * INTO v_org
     FROM public.organizations
     WHERE slug = p_clinic_slug AND deleted_at IS NULL;
@@ -828,11 +830,22 @@ BEGIN
         RAISE EXCEPTION 'Clinic not found or not accepting public bookings';
     END IF;
 
-    SELECT id INTO v_branch_id
-    FROM public.branches
-    WHERE organization_id = v_org.id AND is_active = TRUE
-    ORDER BY created_at ASC
-    LIMIT 1;
+    -- If a branch is supplied, it MUST belong to the resolved org and be active;
+    -- otherwise fall back to the clinic's first active branch. This prevents a
+    -- client from attaching the request to an arbitrary branch/org.
+    IF p_branch_id IS NOT NULL THEN
+        SELECT id INTO v_branch_id
+        FROM public.branches
+        WHERE id = p_branch_id AND organization_id = v_org.id AND is_active = TRUE;
+    END IF;
+
+    IF v_branch_id IS NULL THEN
+        SELECT id INTO v_branch_id
+        FROM public.branches
+        WHERE organization_id = v_org.id AND is_active = TRUE
+        ORDER BY created_at ASC
+        LIMIT 1;
+    END IF;
 
     IF v_branch_id IS NULL THEN
         RAISE EXCEPTION 'Clinic has no active branch';
@@ -853,8 +866,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-REVOKE ALL ON FUNCTION public.submit_public_appointment(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, DATE, TIME, TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.submit_public_appointment(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, DATE, TIME, TEXT) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.submit_public_appointment(TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, DATE, TIME, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.submit_public_appointment(TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, DATE, TIME, TEXT) TO anon, authenticated;
 
 -- ====================================================================
 -- 30. ENABLE ROW LEVEL SECURITY

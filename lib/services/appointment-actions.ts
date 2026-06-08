@@ -1,6 +1,8 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { checkRateLimit } from '@/lib/security/rate-limit';
 import {
   assertBranchAccess,
   assertCapability,
@@ -26,53 +28,65 @@ import {
 
 /**
  * Creates a public appointment request (open access endpoint for booking widget).
- * Dispatches a request confirmation email to the owner.
+ *
+ * Security: the request is rate-limited per client IP and inserted through the
+ * SECURITY DEFINER `submit_public_appointment` RPC, which resolves the org by
+ * slug and validates the branch belongs to that org. The client can never inject
+ * an arbitrary organization_id or branch_id. Dispatches a confirmation email.
  */
 export async function createAppointmentRequestAction(payload: unknown) {
   try {
     const parsed = AppointmentRequestSchema.parse(payload);
-    
-    // Use admin client since guest users have no authenticated session
+
+    // 1. Rate limit by client IP (best-effort; 5 requests / 10 minutes).
+    const headerStore = await headers();
+    const forwarded = headerStore.get('x-forwarded-for') || '';
+    const clientIp =
+      forwarded.split(',')[0]?.trim() ||
+      headerStore.get('x-real-ip') ||
+      'unknown';
+
+    const rate = checkRateLimit(`public-booking:${clientIp}`, 5, 10 * 60 * 1000);
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: `Too many booking attempts. Please try again in ${rate.retryAfterSeconds} seconds.`,
+      };
+    }
+
+    // Use admin client since guest users have no authenticated session. The
+    // privileged RPC performs its own org/branch validation.
     const adminClient = await createAdminClient();
 
-    // 1. Locate organization by slug
-    const { data: org, error: orgErr } = await adminClient
+    const { data: appointmentId, error: rpcErr } = await adminClient.rpc(
+      'submit_public_appointment',
+      {
+        p_clinic_slug: parsed.orgSlug,
+        p_branch_id: parsed.branchId || null,
+        p_customer_name: parsed.customerName,
+        p_customer_email: parsed.customerEmail,
+        p_customer_phone: parsed.customerPhone,
+        p_patient_name: parsed.petName,
+        p_patient_species: parsed.petSpecies,
+        p_preferred_date: parsed.preferredDate,
+        p_preferred_time: parsed.preferredTime,
+        p_reason: parsed.reason,
+      }
+    );
+
+    if (rpcErr || !appointmentId) {
+      throw new Error(rpcErr?.message || 'Failed to submit appointment request.');
+    }
+
+    // Dispatch Email confirmation (org name resolved separately for the template).
+    const { data: org } = await adminClient
       .from('organizations')
-      .select('id, name')
+      .select('name')
       .eq('slug', parsed.orgSlug)
       .single();
 
-    if (orgErr || !org) {
-      throw new Error('Target clinic organization not found.');
-    }
-
-    // 2. Create the Appointment
-    const { data: appt, error: apptErr } = await adminClient
-      .from('appointments')
-      .insert({
-        organization_id: org.id,
-        branch_id: parsed.branchId,
-        customer_name: parsed.customerName,
-        customer_email: parsed.customerEmail,
-        customer_phone: parsed.customerPhone,
-        patient_name: parsed.petName,
-        patient_species: parsed.petSpecies,
-        preferred_date: parsed.preferredDate,
-        preferred_time: parsed.preferredTime,
-        reason: parsed.reason,
-        status: 'requested',
-        source: 'public',
-      })
-      .select()
-      .single();
-
-    if (apptErr || !appt) {
-      throw new Error(apptErr?.message || 'Failed to submit appointment request.');
-    }
-
-    // 3. Dispatch Email confirmation
     const emailHtml = compileAppointmentRequestTemplate(
-      org.name,
+      org?.name || 'ClinixDev Clinic',
       parsed.petName,
       parsed.preferredDate,
       parsed.preferredTime
@@ -80,7 +94,7 @@ export async function createAppointmentRequestAction(payload: unknown) {
 
     await sendEmail({
       to: parsed.customerEmail,
-      subject: `Appointment Request Received - ${org.name}`,
+      subject: `Appointment Request Received - ${org?.name || 'ClinixDev Clinic'}`,
       html: emailHtml,
     });
 

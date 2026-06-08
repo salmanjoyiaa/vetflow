@@ -1,5 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/server';
 
+export type AuditCategory = 'data' | 'access' | 'security' | 'billing';
+export type AuditSeverity = 'info' | 'warning' | 'critical';
+
 export interface AuditLogPayload {
   organizationId: string | null;
   branchId: string | null;
@@ -8,6 +11,8 @@ export interface AuditLogPayload {
   action: string;
   resourceType: string;
   resourceId?: string;
+  category?: AuditCategory;
+  severity?: AuditSeverity;
   beforeData?: any;
   afterData?: any;
   ipAddress?: string;
@@ -29,6 +34,8 @@ export async function writeAuditLog(payload: AuditLogPayload) {
     action: payload.action,
     resource_type: payload.resourceType,
     resource_id: payload.resourceId || null,
+    category: payload.category || 'data',
+    severity: payload.severity || 'info',
     before_data: payload.beforeData || null,
     after_data: payload.afterData || null,
     ip_address: payload.ipAddress || null,

@@ -213,6 +213,29 @@ export const mockSupabaseClient = {
   from(table: string) {
     return new MockSupabaseQueryBuilder(table);
   },
+  // Minimal RPC shim for demo mode. Returns a synthetic id for the public
+  // booking flow so the UI success path works without a live database.
+  async rpc(fn: string, _args?: Record<string, unknown>) {
+    if (fn === 'submit_public_appointment') {
+      return { data: `mock-${Math.random().toString(36).slice(2, 11)}`, error: null };
+    }
+    return { data: null, error: null };
+  },
+  storage: {
+    from(_bucket: string) {
+      return {
+        async upload() {
+          return { data: { path: `mock/${Date.now()}` }, error: null };
+        },
+        async createSignedUrl() {
+          return { data: { signedUrl: 'https://example.com/mock-signed-url' }, error: null };
+        },
+        async remove() {
+          return { data: [], error: null };
+        },
+      };
+    },
+  },
   auth: {
     async getUser() {
       // Get active demo user from cookie isn't available directly in client.ts
