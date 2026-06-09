@@ -1,4 +1,4 @@
-# 🏥 ClinixDev — The Cinematic Clinic Operating System
+# 🏥 ClinixDev
 
 ClinixDev is a high-performance, multi-tenant clinic software-as-a-service (SaaS) platform. The MVP is purpose-built for **veterinary clinics** — owners/patients, appointments, doctor consultations, prescriptions, lab tests, medical documents, inventory, and tax-aware branded invoicing — while the underlying model is **generic (patients + clinic types)** so it scales to dental, general, and specialty clinics over time.
 
