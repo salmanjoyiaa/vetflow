@@ -73,6 +73,8 @@ export interface TreatmentPdfProps {
   heartRateBpm?: number | null;
   respiratoryRate?: number | null;
   weightKg?: number | null;
+  footerText?: string;
+  accentColor?: string;
 }
 
 export default function TreatmentPdfDocument(props: TreatmentPdfProps) {
@@ -174,7 +176,7 @@ export default function TreatmentPdfDocument(props: TreatmentPdfProps) {
         )}
 
         <Text style={styles.footer}>
-          This summary is for your records. Internal clinical notes are not included. — {props.clinicName}
+          {props.footerText || `Thank you for your visit. — ${props.clinicName}`}
         </Text>
       </Page>
     </Document>

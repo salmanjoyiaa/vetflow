@@ -128,9 +128,9 @@ export const BranchSchema = z.object({
 // --- SUPER ADMIN / TENANT SUBSCRIPTION ---
 export const SubscriptionSchema = z.object({
   organizationId: z.string().uuid(),
-  planName: z.enum(['trial', 'starter', 'pro', 'enterprise']),
+  planName: z.string().min(1, { message: 'Plan is required' }),
   status: z.enum(['active', 'trial', 'suspended', 'cancelled']),
-  trialEnd: z.string(),
+  trialEnd: z.string().optional().or(z.literal('')),
   renewalDate: z.string().optional().or(z.literal('')),
   notes: z.string().optional().or(z.literal('')),
 });

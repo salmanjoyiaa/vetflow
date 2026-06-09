@@ -23,7 +23,8 @@ const DEFAULT_ACCENT = '#0F172A';
  *  1. The super-admin flag `branded_pdfs` on the org's subscription features.
  *  2. The clinic-admin toggle `pdf_branding_enabled` in app_settings.
  *
- * When disabled, default ClinixDev branding is returned so PDFs still render.
+ * When the branded_pdfs feature is off, clinic name is still used — only custom
+ * logo/accent/footer from settings are withheld.
  */
 export async function getPdfBranding(
   supabase: SupabaseClient,
@@ -51,15 +52,18 @@ export async function getPdfBranding(
   const clinicEnabled = appSettings?.pdf_branding_enabled === true;
   const enabled = platformAllows && clinicEnabled;
 
+  const clinicName = fallbackClinicName || 'Clinic';
+  const customFooter = appSettings?.pdf_footer_text?.trim();
+
   return {
     enabled,
-    brandName: enabled ? fallbackClinicName : 'ClinixDev',
-    clinicName: fallbackClinicName,
-    address: (enabled && appSettings?.clinic_address) || '',
-    phone: (enabled && appSettings?.clinic_phone) || '',
-    email: (enabled && appSettings?.clinic_email) || '',
+    brandName: clinicName,
+    clinicName,
+    address: appSettings?.clinic_address || '',
+    phone: appSettings?.clinic_phone || '',
+    email: appSettings?.clinic_email || '',
     logoUrl: enabled ? appSettings?.clinic_logo_url || null : null,
     accentColor: (enabled && appSettings?.pdf_accent_color) || DEFAULT_ACCENT,
-    footerText: (enabled && appSettings?.pdf_footer_text) || '',
+    footerText: customFooter || 'Thank you for your visit.',
   };
 }

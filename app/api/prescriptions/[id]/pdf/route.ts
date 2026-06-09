@@ -67,7 +67,7 @@ export async function GET(
       .eq('id', visitObj?.customer_id || '')
       .maybeSingle();
 
-    const clinicName = session.organizationName || 'ClinixDev Center';
+    const clinicName = session.organizationName || 'Clinic';
     const branding = await getPdfBranding(supabase, session.organizationId!, clinicName);
 
     // 3. Render React-pdf component directly to stream
@@ -89,6 +89,7 @@ export async function GET(
         items: prescription.prescription_items || [],
         brandName: branding.brandName,
         accentColor: branding.accentColor,
+        footerText: branding.footerText,
       }) as any
     );
 

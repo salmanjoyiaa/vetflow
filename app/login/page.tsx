@@ -210,14 +210,16 @@ function LoginForm() {
               type={showPassword ? 'text' : 'password'}
               {...register('password')}
               placeholder="Enter password"
-              className={`${inputClass} pr-12`}
+              autoComplete="current-password"
+              className={`${inputClass} password-field pr-11`}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-primary p-1"
             >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
           {errors.password && (

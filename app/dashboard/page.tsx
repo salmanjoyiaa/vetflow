@@ -22,6 +22,7 @@ import EmptyState from '@/components/ui/premium/EmptyState';
 import ReceptionistHomeClient, {
   type ReceptionistAppointmentRow,
   type ReceptionistVisitRow,
+  type VisitRecordRow,
 } from '@/components/dashboard/ReceptionistHomeClient';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -29,6 +30,8 @@ import {
   Calendar,
   ClipboardList,
   Receipt,
+  BadgeCheck,
+  Banknote,
   AlertTriangle,
   ArrowRight,
   Plus,
@@ -120,6 +123,7 @@ export default async function DashboardOverview() {
   let receptionistUpcoming: ReceptionistAppointmentRow[] = [];
   let receptionistWaiting: ReceptionistVisitRow[] = [];
   let receptionistCheckout: ReceptionistVisitRow[] = [];
+  let receptionistVisitRecords: VisitRecordRow[] = [];
   let myAttendance: MyAttendance = {
     checkedIn: false,
     checkedOut: false,
@@ -400,6 +404,35 @@ export default async function DashboardOverview() {
             receptionistCheckout = (r.data || []).map(mapVisit);
           })
       );
+      queries.push(
+        supabase
+          .from('invoices')
+          .select(
+            'id, invoice_number, visit_id, total, payment_status, created_at, customers(first_name, last_name), pets:patients(name)'
+          )
+          .eq('branch_id', activeBranchId)
+          .order('created_at', { ascending: false })
+          .limit(50)
+          .then((r) => {
+            receptionistVisitRecords =
+              r.data?.map((inv) => {
+                const cust = Array.isArray(inv.customers) ? inv.customers[0] : inv.customers;
+                const pet = Array.isArray(inv.pets) ? inv.pets[0] : inv.pets;
+                return {
+                  id: inv.id,
+                  invoiceNumber: inv.invoice_number,
+                  visitId: inv.visit_id,
+                  customerName: cust
+                    ? `${(cust as { first_name: string }).first_name} ${(cust as { last_name: string }).last_name}`
+                    : 'Unknown',
+                  petName: (pet as { name?: string } | null)?.name || '—',
+                  total: Number(inv.total) || 0,
+                  paymentStatus: inv.payment_status,
+                  createdAt: inv.created_at,
+                };
+              }) || [];
+          })
+      );
     }
 
     if (showAttendance && session.organizationId) {
@@ -480,6 +513,7 @@ export default async function DashboardOverview() {
           upcomingAppointments={receptionistUpcoming}
           waitingVisits={receptionistWaiting}
           checkoutVisits={receptionistCheckout}
+          visitRecords={receptionistVisitRecords}
         />
       )}
 
@@ -650,7 +684,7 @@ function buildQuickLinks(
     ];
   } else if (role === 'receptionist') {
     links = [
-      { key: 'walkin', href: '/dashboard/walk-ins', label: 'Walk-in intake' },
+      { key: 'walkin', href: '/dashboard/walk-ins?new=1', label: 'Quick walk-in' },
       { key: 'appt', href: '/dashboard/appointments', label: 'Appointments' },
       {
         key: 'checkout',
@@ -754,7 +788,7 @@ function buildKpis(
       key: 'checkout',
       label: 'Ready for Checkout',
       value: data.readyForCheckout,
-      icon: Receipt,
+      icon: BadgeCheck,
       href: '/dashboard/walk-ins',
     });
   }
@@ -763,7 +797,7 @@ function buildKpis(
       key: 'unpaid',
       label: 'Unpaid Invoices',
       value: data.unpaidInvoices,
-      icon: Receipt,
+      icon: Banknote,
       href: '/dashboard/invoices',
     });
   }

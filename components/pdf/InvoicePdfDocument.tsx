@@ -210,7 +210,7 @@ export default function InvoicePdfDocument({
   taxAmount,
   total,
   paymentMethod,
-  brandName = 'ClinixDev',
+  brandName,
   accentColor = '#0F172A',
   footerText,
 }: InvoicePdfProps) {
@@ -222,7 +222,7 @@ export default function InvoicePdfDocument({
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <View style={[styles.logoPlaceholder, { backgroundColor: accentColor }]} />
-            <Text style={[styles.logoText, { color: accentColor }]}>{brandName}</Text>
+            <Text style={[styles.logoText, { color: accentColor }]}>{brandName || clinicName}</Text>
           </View>
           <View style={styles.clinicDetails}>
             <Text style={{ fontWeight: 'bold', color: '#0F172A' }}>{clinicName}</Text>
@@ -301,7 +301,7 @@ export default function InvoicePdfDocument({
 
         {/* FOOTER */}
         <View style={styles.footer}>
-          <Text>{footerText || `Thank you for trusting ${brandName} with your pet's medical care.`}</Text>
+          <Text>{footerText || `Thank you for trusting ${brandName || clinicName} with your pet's medical care.`}</Text>
           <Text style={{ marginTop: 4 }}>This document is a secure system-generated payment receipt.</Text>
         </View>
 

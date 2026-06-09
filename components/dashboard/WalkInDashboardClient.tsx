@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createWalkInVisitAction } from '@/lib/services/visit-actions';
@@ -48,6 +48,7 @@ interface WalkInDashboardClientProps {
   activeBranchId: string;
   initialVisits: Visit[];
   checkoutVisits: CheckoutVisit[];
+  highlightIntake?: boolean;
 }
 
 export default function WalkInDashboardClient({
@@ -55,8 +56,10 @@ export default function WalkInDashboardClient({
   activeBranchId,
   initialVisits,
   checkoutVisits,
+  highlightIntake = false,
 }: WalkInDashboardClientProps) {
   const router = useRouter();
+  const intakeRef = useRef<HTMLDivElement>(null);
   const [selectedPatient, setSelectedPatient] = useState<SelectedPatient | null>(null);
 
   // Form states
@@ -66,6 +69,12 @@ export default function WalkInDashboardClient({
   const [doctorId, setDoctorId] = useState(doctors.length > 0 ? doctors[0].id : '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (highlightIntake && intakeRef.current) {
+      intakeRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [highlightIntake]);
 
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +119,12 @@ export default function WalkInDashboardClient({
       <div className="md:col-span-4 space-y-6">
         
         {/* PATIENT INTAKE CARD */}
-        <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium">
+        <div
+          ref={intakeRef}
+          className={`glass-panel rounded-2xl border p-6 shadow-premium ${
+            highlightIntake ? 'border-primary/50 ring-2 ring-primary/20' : 'border-outline-variant/40'
+          }`}
+        >
           <span className="text-[10px] font-black text-primary uppercase tracking-wider block mb-1">
             Intake Console
           </span>

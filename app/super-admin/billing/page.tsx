@@ -6,6 +6,7 @@ import BillingTableClient, {
 import PageHeader from '@/components/ui/premium/PageHeader';
 import KpiCard from '@/components/ui/premium/KpiCard';
 import { buildPlanPriceMap, computeArr, computeMrr } from '@/lib/super-admin/mrr';
+import { loadSuperAdminPlans } from '@/lib/super-admin/plans';
 import { CreditCard, DollarSign, Users } from 'lucide-react';
 
 export const metadata = {
@@ -16,7 +17,7 @@ export const metadata = {
 export default async function SuperAdminBillingPage() {
   const adminClient = await createAdminClient();
 
-  const [orgRes, plansRes, paymentsRes] = await Promise.all([
+  const [orgRes, plansRes, paymentsRes, planOptions] = await Promise.all([
     adminClient
       .from('organizations')
       .select(`
@@ -35,6 +36,7 @@ export default async function SuperAdminBillingPage() {
       .order('name', { ascending: true }),
     adminClient.from('plans').select('id, price'),
     adminClient.from('payments').select('amount, organization_id, created_at'),
+    loadSuperAdminPlans(),
   ]);
 
   const { data: orgList, error } = orgRes;
@@ -108,7 +110,7 @@ export default async function SuperAdminBillingPage() {
         <KpiCard label="On trial" value={trialCount} icon={Users} trend={`${rows.length} total tenants`} />
       </div>
 
-      <BillingTableClient rows={rows} priceMap={priceMap} />
+      <BillingTableClient rows={rows} priceMap={priceMap} plans={planOptions} />
     </div>
   );
 }

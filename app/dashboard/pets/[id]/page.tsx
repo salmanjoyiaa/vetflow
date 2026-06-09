@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { resolveServerAuthContext } from '@/lib/auth/context';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
+import { normalizeOneToOne } from '@/lib/supabase/embed';
 import PageHeader from '@/components/ui/premium/PageHeader';
 import Link from 'next/link';
 import { 
@@ -21,6 +22,66 @@ export const metadata = {
   title: 'Patient Medical File',
   description: 'Review patient bios, clinical notes, and prescriptions.',
 };
+
+type ProfileName = { first_name: string | null; last_name: string | null };
+
+function formatDoctorName(profile: ProfileName | null | undefined): string | null {
+  if (!profile?.first_name && !profile?.last_name) return null;
+  return `Dr. ${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+}
+
+type ClinicalNoteEmbed = {
+  temperature_c?: number | null;
+  heart_rate_bpm?: number | null;
+  respiratory_rate?: number | null;
+  weight_kg?: number | null;
+  examination_findings?: string | null;
+  diagnosis?: string | null;
+  treatment_plan?: string | null;
+  follow_up_recommendation?: string | null;
+};
+
+type PrescriptionItemEmbed = {
+  medicine_name?: string;
+  dosage?: string;
+  frequency?: string;
+  duration?: string;
+};
+
+type PrescriptionEmbed = {
+  id?: string;
+  prescription_items?: PrescriptionItemEmbed[];
+};
+
+function resolveAttendingDoctor(visit: {
+  doctor_id?: string | null;
+  visit_assignments?: unknown;
+  prescriptions?: unknown;
+}): string {
+  const assignment = normalizeOneToOne(
+    visit.visit_assignments as
+      | { user_profiles?: ProfileName | ProfileName[] | null }
+      | { user_profiles?: ProfileName | ProfileName[] | null }[]
+      | null
+  );
+  const assignmentProfile = normalizeOneToOne(
+    assignment?.user_profiles as ProfileName | ProfileName[] | null
+  );
+  const fromAssignment = formatDoctorName(assignmentProfile);
+  if (fromAssignment) return fromAssignment;
+
+  const rx = normalizeOneToOne(
+    visit.prescriptions as
+      | { user_profiles?: ProfileName | ProfileName[] | null }
+      | { user_profiles?: ProfileName | ProfileName[] | null }[]
+      | null
+  );
+  const rxProfile = normalizeOneToOne(rx?.user_profiles as ProfileName | ProfileName[] | null);
+  const fromRx = formatDoctorName(rxProfile);
+  if (fromRx) return fromRx;
+
+  return 'Unassigned';
+}
 
 export default async function PetDetailPage({
   params,
@@ -72,6 +133,8 @@ export default async function PetDetailPage({
       status,
       checked_in_at,
       completed_at,
+      doctor_id,
+      is_emergency,
       visit_assignments (
         doctor_id,
         user_profiles ( first_name, last_name )
@@ -91,6 +154,8 @@ export default async function PetDetailPage({
       prescriptions (
         id,
         is_finalized,
+        doctor_id,
+        user_profiles ( first_name, last_name ),
         prescription_items (
           medicine_name,
           dosage,
@@ -209,9 +274,13 @@ export default async function PetDetailPage({
           {visits && visits.length > 0 ? (
             <div className="space-y-6">
               {visits.map((visit) => {
-                const docAssignment = visit.visit_assignments?.[0];
-                const notes = visit.clinical_notes?.[0];
-                const prescription = visit.prescriptions?.[0];
+                const attendingDoctor = resolveAttendingDoctor(visit);
+                const notes = normalizeOneToOne(
+                  visit.clinical_notes as ClinicalNoteEmbed | ClinicalNoteEmbed[] | null
+                );
+                const prescription = normalizeOneToOne(
+                  visit.prescriptions as PrescriptionEmbed | PrescriptionEmbed[] | null
+                );
 
                 return (
                   <div 
@@ -247,10 +316,15 @@ export default async function PetDetailPage({
                         <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider block">
                           Attending Doctor
                         </span>
-                        <span className="font-bold text-on-surface">
-                          {docAssignment 
-                            ? `Dr. ${(docAssignment.user_profiles as any).first_name} ${(docAssignment.user_profiles as any).last_name}`
-                            : 'Unassigned'}
+                        <span className="font-bold text-on-surface flex items-center gap-2 justify-end">
+                          <Stethoscope className="w-3.5 h-3.5 text-primary shrink-0" />
+                          {attendingDoctor}
+                          {visit.is_emergency && (
+                            <span className="text-[9px] font-bold text-destructive flex items-center gap-0.5">
+                              <AlertTriangle className="w-3 h-3" />
+                              EMERGENCY
+                            </span>
+                          )}
                         </span>
                       </div>
                     </div>

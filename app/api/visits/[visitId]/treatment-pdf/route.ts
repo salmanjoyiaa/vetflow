@@ -2,6 +2,7 @@ import { renderToStream } from '@react-pdf/renderer';
 import TreatmentPdfDocument from '@/components/pdf/TreatmentPdfDocument';
 import { createClient } from '@/lib/supabase/server';
 import { assertCapability, resolveServerAuthContext } from '@/lib/auth/context';
+import { getPdfBranding } from '@/lib/services/branding';
 import React from 'react';
 
 export async function GET(
@@ -65,14 +66,18 @@ export async function GET(
     const branch = visit.branches as { name?: string; address?: string; phone?: string } | null;
     const doctor = visit.doctor as { first_name?: string; last_name?: string } | null;
 
+    const clinicName = ctx.organizationName || 'Clinic';
+    const branding = await getPdfBranding(supabase, ctx.organizationId!, clinicName);
     const visitDate = visit.completed_at || visit.checked_in_at;
     const stream = await renderToStream(
       React.createElement(TreatmentPdfDocument, {
         date: visitDate ? new Date(visitDate as string).toLocaleDateString() : new Date().toLocaleDateString(),
-        clinicName: ctx.organizationName || 'ClinixDev Center',
+        clinicName,
         branchName: branch?.name || 'Main Branch',
-        branchAddress: branch?.address || '',
-        branchPhone: branch?.phone || '',
+        branchAddress: branding.address || branch?.address || '',
+        branchPhone: branding.phone || branch?.phone || '',
+        footerText: branding.footerText,
+        accentColor: branding.accentColor,
         doctorName: `Dr. ${doctor?.first_name || 'Attending'} ${doctor?.last_name || 'Doctor'}`,
         customerName: customer
           ? `${customer.first_name} ${customer.last_name}`.trim()

@@ -86,6 +86,18 @@ select option {
   color: var(--color-on-surface);
 }
 
+/* Single app-controlled password reveal (hide browser duplicate toggles) */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none;
+}
+input.password-field::-webkit-credentials-auto-fill-button,
+input.password-field::-webkit-strong-password-auto-fill-button {
+  display: none !important;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 body {
   background-color: var(--color-surface);
   color: var(--color-on-surface);

@@ -12,7 +12,12 @@ export const metadata = {
   description: 'Manage walk-in consultations and active doctor assignments.',
 };
 
-export default async function WalkInsPage() {
+export default async function WalkInsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ new?: string }>;
+}) {
+  const { new: openIntake } = await searchParams;
   const ctx = await resolveServerAuthContext();
   if (!ctx) {
     redirect('/login');
@@ -154,6 +159,7 @@ export default async function WalkInsPage() {
         activeBranchId={activeBranchId}
         initialVisits={visits}
         checkoutVisits={checkoutVisits}
+        highlightIntake={openIntake === '1'}
       />
 
     </div>

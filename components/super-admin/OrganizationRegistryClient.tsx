@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import SubscriptionForm from '@/components/forms/SubscriptionForm';
+import SubscriptionForm, { type PlanOption } from '@/components/forms/SubscriptionForm';
 import TenantOrgActions from '@/components/super-admin/TenantOrgActions';
 import OrganizationFeatureToggles from '@/components/super-admin/OrganizationFeatureToggles';
 import GlassPanel from '@/components/ui/premium/GlassPanel';
@@ -45,9 +45,10 @@ function formatPlanName(planName: string | undefined | null): string {
 
 interface OrganizationRegistryClientProps {
   orgs: OrgRegistryRow[];
+  plans: PlanOption[];
 }
 
-export default function OrganizationRegistryClient({ orgs }: OrganizationRegistryClientProps) {
+export default function OrganizationRegistryClient({ orgs, plans }: OrganizationRegistryClientProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -224,6 +225,7 @@ export default function OrganizationRegistryClient({ orgs }: OrganizationRegistr
                               currentTrialEnd={sub.trial_end || new Date().toISOString()}
                               currentRenewalDate={sub.renewal_date || ''}
                               currentNotes={sub.notes || ''}
+                              plans={plans}
                             />
                           )}
                         </div>

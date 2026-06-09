@@ -21,6 +21,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 
 interface Doctor {
   id: string;
@@ -94,6 +95,7 @@ export default function AppointmentsListClient({
   doctors,
 }: AppointmentsListClientProps) {
   const router = useRouter();
+  useVisibilityPolling(20000, true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [selectedDoctorMap, setSelectedDoctorMap] = useState<Record<string, string>>({});
   const [statusFilter, setStatusFilter] = useState<string>('all');

@@ -6,6 +6,7 @@ import OrganizationRegistryClient, {
 import PageHeader from '@/components/ui/premium/PageHeader';
 import { Building2, Plus } from 'lucide-react';
 import Link from 'next/link';
+import { loadSuperAdminPlans } from '@/lib/super-admin/plans';
 
 export const metadata = {
   title: 'Clinic Administration',
@@ -24,6 +25,7 @@ type SubscriptionRow = {
 
 export default async function SuperAdminOrganizations() {
   const adminClient = await createAdminClient();
+  const plans = await loadSuperAdminPlans();
 
   const { data: orgList, error } = await adminClient
     .from('organizations')
@@ -89,7 +91,7 @@ export default async function SuperAdminOrganizations() {
           </Link>
         }
       />
-      <OrganizationRegistryClient orgs={orgs} />
+      <OrganizationRegistryClient orgs={orgs} plans={plans} />
     </div>
   );
 }

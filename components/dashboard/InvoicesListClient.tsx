@@ -12,6 +12,8 @@ import {
   Mail,
   Loader2,
   DollarSign,
+  FileText,
+  Search,
 } from 'lucide-react';
 import {
   updateInvoicePaymentStatusAction,
@@ -21,6 +23,7 @@ import {
 export type InvoiceRow = {
   id: string;
   invoice_number: string;
+  visit_id: string | null;
   subtotal: number;
   discount: number;
   tax_amount: number;
@@ -44,14 +47,28 @@ export default function InvoicesListClient({
   initialStatus = 'all',
 }: InvoicesListClientProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus);
+  const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [actingId, setActingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
-    if (statusFilter === 'all') return invoices;
-    return invoices.filter((inv) => inv.payment_status === statusFilter);
-  }, [invoices, statusFilter]);
+    const q = search.trim().toLowerCase();
+    return invoices.filter((inv) => {
+      if (statusFilter !== 'all' && inv.payment_status !== statusFilter) return false;
+      const d = inv.created_at.slice(0, 10);
+      if (dateFrom && d < dateFrom) return false;
+      if (dateTo && d > dateTo) return false;
+      if (!q) return true;
+      return (
+        inv.customerName.toLowerCase().includes(q) ||
+        inv.petName.toLowerCase().includes(q) ||
+        inv.invoice_number.toLowerCase().includes(q)
+      );
+    });
+  }, [invoices, statusFilter, search, dateFrom, dateTo]);
 
   const counts = useMemo(
     () => ({
@@ -111,7 +128,7 @@ export default function InvoicesListClient({
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         {(['all', 'unpaid', 'paid'] as const).map((s) => (
           <button
             key={s}
@@ -126,6 +143,33 @@ export default function InvoicesListClient({
             {s} ({counts[s]})
           </button>
         ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-on-surface-variant" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search owner, pet, or invoice #..."
+            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-surface-container border border-outline-variant text-on-surface outline-none focus:border-primary"
+          />
+        </div>
+        <input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          className="px-3 py-2 text-xs rounded-xl bg-surface-container border border-outline-variant text-on-surface outline-none"
+          aria-label="From date"
+        />
+        <input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          className="px-3 py-2 text-xs rounded-xl bg-surface-container border border-outline-variant text-on-surface outline-none"
+          aria-label="To date"
+        />
       </div>
 
       <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden shadow-premium">
@@ -188,17 +232,28 @@ export default function InvoicesListClient({
                       href={`/api/invoices/${inv.id}/pdf`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[10px] font-bold text-on-surface-variant border border-outline-variant px-2 py-1 rounded-lg"
+                      className="inline-flex items-center gap-1 text-[10px] font-bold text-primary border border-primary/10 px-2 py-1 rounded-lg"
                     >
                       <Printer className="w-3 h-3" />
-                      PDF
+                      Invoice
                     </a>
+                    {inv.visit_id && (
+                      <a
+                        href={`/api/visits/${inv.visit_id}/treatment-pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-secondary border border-secondary/20 px-2 py-1 rounded-lg"
+                      >
+                        <FileText className="w-3 h-3" />
+                        Treatment
+                      </a>
+                    )}
                     {inv.payment_status !== 'paid' && (
                       <button
                         type="button"
                         disabled={actingId === inv.id}
                         onClick={() => handleMarkPaid(inv.id)}
-                        className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 border border-emerald-500/30 px-2 py-1 rounded-lg disabled:opacity-50"
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500 border border-emerald-500/20 px-2 py-1 rounded-lg disabled:opacity-50"
                       >
                         {actingId === inv.id ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -208,14 +263,18 @@ export default function InvoicesListClient({
                         Mark paid
                       </button>
                     )}
-                    {inv.customerEmail && (
+                    {inv.customerEmail && inv.payment_status === 'paid' && (
                       <button
                         type="button"
                         disabled={actingId === inv.id}
                         onClick={() => handleResendEmail(inv.id)}
-                        className="inline-flex items-center gap-1 text-[10px] font-bold text-primary border border-primary/20 px-2 py-1 rounded-lg disabled:opacity-50"
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-on-surface-variant border border-outline-variant px-2 py-1 rounded-lg disabled:opacity-50"
                       >
-                        <Mail className="w-3 h-3" />
+                        {actingId === inv.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Mail className="w-3 h-3" />
+                        )}
                         Resend
                       </button>
                     )}
@@ -226,8 +285,8 @@ export default function InvoicesListClient({
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <p className="text-center text-xs text-on-surface-variant py-8">
-            No invoices in this filter.
+          <p className="text-xs text-on-surface-variant text-center py-12">
+            No invoices match your filters.
           </p>
         )}
       </div>

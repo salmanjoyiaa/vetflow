@@ -48,7 +48,7 @@ export async function GET(
     const paymentsArr = invoice.payments as any[] || [];
     const paymentMethod = paymentsArr[0]?.payment_method || 'cash';
 
-    const clinicName = session.organizationName || 'ClinixDev Center';
+    const clinicName = session.organizationName || 'Clinic';
     const branding = await getPdfBranding(supabase, session.organizationId!, clinicName);
 
     // 3. Render React-pdf component directly to stream

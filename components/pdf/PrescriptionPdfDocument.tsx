@@ -201,6 +201,7 @@ interface PrescriptionPdfProps {
   items: PrescriptionItem[];
   brandName?: string;
   accentColor?: string;
+  footerText?: string;
 }
 
 export default function PrescriptionPdfDocument({
@@ -218,7 +219,8 @@ export default function PrescriptionPdfDocument({
   treatmentPlan,
   followUp,
   items,
-  brandName = 'ClinixDev',
+  brandName,
+  footerText,
   accentColor = '#0F172A',
 }: PrescriptionPdfProps) {
   return (
@@ -229,7 +231,7 @@ export default function PrescriptionPdfDocument({
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <View style={[styles.logoPlaceholder, { backgroundColor: accentColor }]} />
-            <Text style={[styles.logoText, { color: accentColor }]}>{brandName} Rx</Text>
+            <Text style={[styles.logoText, { color: accentColor }]}>{brandName || clinicName} Rx</Text>
           </View>
           <View style={styles.clinicDetails}>
             <Text style={{ fontWeight: 'bold', color: '#0F172A' }}>{clinicName}</Text>
@@ -322,7 +324,7 @@ export default function PrescriptionPdfDocument({
         {/* FOOTER */}
         <View style={styles.footer}>
           <Text>This prescription is only valid for veterinary use.</Text>
-          <Text style={{ marginTop: 4 }}>Powered by ClinixDev Clinic Operations</Text>
+          <Text style={{ marginTop: 4 }}>{footerText || `Issued by ${clinicName}`}</Text>
         </View>
 
       </Page>

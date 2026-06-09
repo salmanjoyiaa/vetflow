@@ -9,6 +9,7 @@ import SubscriptionForm from '@/components/forms/SubscriptionForm';
 import TenantOrgActions from '@/components/super-admin/TenantOrgActions';
 import OrganizationFeatureToggles from '@/components/super-admin/OrganizationFeatureToggles';
 import { buildPlanPriceMap, planPrice } from '@/lib/super-admin/mrr';
+import { loadSuperAdminPlans } from '@/lib/super-admin/plans';
 import { badgeActiveClass, badgeDangerClass } from '@/lib/ui/dashboard-classes';
 import {
   Building2,
@@ -51,6 +52,7 @@ export default async function OrganizationDetailPage({
 }) {
   const { id } = await params;
   const adminClient = await createAdminClient();
+  const plans = await loadSuperAdminPlans();
 
   const { data: org, error: orgError } = await adminClient
     .from('organizations')
@@ -239,6 +241,7 @@ export default async function OrganizationDetailPage({
                   currentTrialEnd={sub.trial_end || new Date().toISOString()}
                   currentRenewalDate={sub.renewal_date || ''}
                   currentNotes={sub.notes || ''}
+                  plans={plans}
                 />
               )}
             </div>

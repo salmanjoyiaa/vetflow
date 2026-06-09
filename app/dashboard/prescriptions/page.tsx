@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/premium/PageHeader';
-import { FileText, Download, ExternalLink } from 'lucide-react';
+import { FileText, Download, ExternalLink, AlertTriangle } from 'lucide-react';
 
 export const metadata = {
   title: 'Prescriptions',
@@ -50,7 +50,7 @@ export default async function PrescriptionsPage() {
       created_at,
       notes,
       pets:patients ( id, name, species ),
-      visits ( reason ),
+      visits ( reason, is_emergency ),
       user_profiles ( first_name, last_name )
     `)
     .eq('branch_id', activeBranchId)
@@ -82,11 +82,17 @@ export default async function PrescriptionsPage() {
                 className="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-container/30 transition-colors"
               >
                 <div>
-                  <span className="text-xs font-bold text-on-surface block">
+                  <span className="text-xs font-bold text-on-surface block flex items-center gap-2 flex-wrap">
                     {rx.pets?.name || 'Unknown patient'}{' '}
                     <span className="text-on-surface-variant/40 font-normal">
                       ({rx.pets?.species || 'N/A'})
                     </span>
+                    {rx.visits?.is_emergency && (
+                      <span className="text-[9px] font-bold text-destructive inline-flex items-center gap-0.5 bg-destructive/10 border border-destructive/20 px-1.5 py-0.5 rounded-full">
+                        <AlertTriangle className="w-2.5 h-2.5" />
+                        Emergency
+                      </span>
+                    )}
                   </span>
                   <span className="text-[10px] text-on-surface-variant block mt-0.5">
                     Dr. {rx.user_profiles?.first_name} {rx.user_profiles?.last_name} • Rev{' '}

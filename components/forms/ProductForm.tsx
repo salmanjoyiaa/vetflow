@@ -9,6 +9,7 @@ import { ProductSchema, type ProductInput } from '@/lib/validations/schemas';
 import Modal from '@/components/ui/premium/Modal';
 import Button from '@/components/ui/premium/Button';
 import Select from '@/components/ui/premium/Select';
+import CreatableSelect from '@/components/ui/premium/CreatableSelect';
 import { Plus, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ProductFormProps {
@@ -46,6 +47,7 @@ export default function ProductForm({ categories, branches, activeBranchId }: Pr
 
   const typeWatch = watch('type');
   const branchIdWatch = watch('branchId');
+  const categoryNameWatch = watch('categoryName');
 
   const onSubmit = async (data: ProductInput) => {
     setIsLoading(true);
@@ -135,23 +137,13 @@ export default function ProductForm({ categories, branches, activeBranchId }: Pr
               options={branches.map((b) => ({ value: b.id, label: b.name }))}
             />
 
-            <div>
-              <label className="block text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">
-                Category (optional)
-              </label>
-              <input
-                type="text"
-                {...register('categoryName')}
-                placeholder="e.g. Services, Medicines — creates if new"
-                list="product-category-suggestions"
-                className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary rounded-xl outline-none text-xs text-on-surface"
-              />
-              <datalist id="product-category-suggestions">
-                {categories.map((c) => (
-                  <option key={c.id} value={c.name} />
-                ))}
-              </datalist>
-            </div>
+            <CreatableSelect
+              label="Category (optional)"
+              value={categoryNameWatch || ''}
+              onChange={(v) => setValue('categoryName', v)}
+              options={categories.map((c) => ({ value: c.name, label: c.name }))}
+              placeholder="Select or create category…"
+            />
 
             {typeWatch !== 'service' && (
               <div>

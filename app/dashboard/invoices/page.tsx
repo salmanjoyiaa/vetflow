@@ -51,6 +51,7 @@ export default async function InvoicesPage({
     .select(`
       id,
       invoice_number,
+      visit_id,
       subtotal,
       discount,
       tax_amount,
@@ -77,6 +78,7 @@ export default async function InvoicesPage({
     return {
       id: inv.id,
       invoice_number: inv.invoice_number,
+      visit_id: inv.visit_id,
       subtotal: Number(inv.subtotal),
       discount: Number(inv.discount),
       tax_amount: Number(inv.tax_amount),

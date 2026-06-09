@@ -215,34 +215,65 @@ export async function updateSubscriptionAction(payload: unknown) {
     const parsed = SubscriptionSchema.parse(payload);
     const adminClient = await createAdminClient();
 
-    // Capture the prior state for the audit trail (before/after).
     const { data: beforeSub } = await adminClient
       .from('subscription_status')
       .select()
       .eq('organization_id', parsed.organizationId)
       .maybeSingle();
 
-    // Perform the update. plan_id is kept in sync with plan_name so MRR
-    // (which prices off plans.price by id) stays accurate.
-    const { data: sub, error } = await adminClient
-      .from('subscription_status')
-      .update({
-        plan_id: parsed.planName,
-        plan_name: parsed.planName,
-        status: parsed.status,
-        trial_end: parsed.trialEnd,
-        renewal_date: parsed.renewalDate || null,
-        notes: parsed.notes || null,
-      })
-      .eq('organization_id', parsed.organizationId)
-      .select()
-      .single();
+    const { data: plan } = await adminClient
+      .from('plans')
+      .select('id, name, default_features')
+      .eq('id', parsed.planName)
+      .maybeSingle();
+
+    const features = resolveFeatures(
+      (plan?.default_features as Record<string, unknown> | null) ?? null
+    ).reduce<Record<string, boolean>>((acc, f) => {
+      acc[f] = true;
+      return acc;
+    }, {});
+    for (const f of OPT_IN_FEATURES) {
+      const prior = (beforeSub?.features as Record<string, boolean> | null)?.[f];
+      features[f] = prior === true;
+    }
+
+    const trialEnd = parsed.trialEnd
+      ? new Date(parsed.trialEnd).toISOString()
+      : beforeSub?.trial_end ??
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const subPayload = {
+      plan_id: parsed.planName,
+      plan_name: parsed.planName,
+      status: parsed.status,
+      trial_end: trialEnd,
+      renewal_date: parsed.renewalDate ? new Date(parsed.renewalDate).toISOString() : null,
+      notes: parsed.notes || null,
+      features,
+    };
+
+    const { data: sub, error } = beforeSub
+      ? await adminClient
+          .from('subscription_status')
+          .update(subPayload)
+          .eq('organization_id', parsed.organizationId)
+          .select()
+          .single()
+      : await adminClient
+          .from('subscription_status')
+          .insert({
+            organization_id: parsed.organizationId,
+            trial_start: new Date().toISOString(),
+            ...subPayload,
+          })
+          .select()
+          .single();
 
     if (error || !sub) {
       throw new Error(error?.message || 'Failed to update organization subscription.');
     }
 
-    // Write audit log
     await writeAuditLog({
       organizationId: parsed.organizationId,
       branchId: null,
@@ -258,8 +289,11 @@ export async function updateSubscriptionAction(payload: unknown) {
     });
 
     return { success: true, sub };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'An unexpected error occurred.',
+    };
   }
 }
 

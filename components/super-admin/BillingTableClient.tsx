@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import SubscriptionForm from '@/components/forms/SubscriptionForm';
+import SubscriptionForm, { type PlanOption } from '@/components/forms/SubscriptionForm';
 import GlassPanel from '@/components/ui/premium/GlassPanel';
 import {
   badgeActiveClass,
@@ -30,13 +30,14 @@ export type BillingRow = {
 interface BillingTableClientProps {
   rows: BillingRow[];
   priceMap: PlanPriceMap;
+  plans: PlanOption[];
 }
 
-export default function BillingTableClient({ rows, priceMap }: BillingTableClientProps) {
+export default function BillingTableClient({ rows, priceMap, plans: dbPlans }: BillingTableClientProps) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [planFilter, setPlanFilter] = useState('all');
 
-  const plans = useMemo(() => {
+  const planNames = useMemo(() => {
     const set = new Set(rows.map((r) => r.plan_name).filter(Boolean));
     return Array.from(set).sort();
   }, [rows]);
@@ -73,7 +74,7 @@ export default function BillingTableClient({ rows, priceMap }: BillingTableClien
           className="text-xs px-3 py-2 rounded-xl bg-surface-container border border-outline-variant text-on-surface"
         >
           <option value="all">All plans</option>
-          {plans.map((p) => (
+          {planNames.map((p) => (
             <option key={p} value={p}>
               {p}
             </option>
@@ -168,6 +169,7 @@ export default function BillingTableClient({ rows, priceMap }: BillingTableClien
                         currentTrialEnd={row.trial_end || new Date().toISOString()}
                         currentRenewalDate={row.renewal_date || ''}
                         currentNotes={row.notes || ''}
+                        plans={dbPlans}
                       />
                     </td>
                   </tr>
