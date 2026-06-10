@@ -9,9 +9,111 @@ import {
 import { writeAuditLog } from '@/lib/services/audit';
 import { CompleteConsultationSchema } from '@/lib/validations/schemas';
 
+function addDays(base: Date, days: number): Date {
+  const d = new Date(base);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function formatDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function formatTime(d: Date): string {
+  return d.toTimeString().slice(0, 8);
+}
+
+async function createFollowUpAppointments(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ctx: NonNullable<Awaited<ReturnType<typeof resolveServerAuthContext>>>,
+  visit: {
+    id: string;
+    branch_id: string;
+    patient_id: string;
+    customer_id: string;
+    doctor_id: string | null;
+    checked_in_at: string;
+    appointment_id: string | null;
+  },
+  followUpDays: number[],
+  followUpNote: string | null,
+  diagnosis: string
+) {
+  if (!followUpDays.length) return;
+
+  const { data: patient } = await supabase
+    .from('patients')
+    .select('name, species')
+    .eq('id', visit.patient_id)
+    .single();
+
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('first_name, last_name, email, phone')
+    .eq('id', visit.customer_id)
+    .single();
+
+  if (!patient || !customer) return;
+
+  let doctorId = visit.doctor_id;
+  if (!doctorId) {
+    const { data: assignment } = await supabase
+      .from('visit_assignments')
+      .select('doctor_id')
+      .eq('visit_id', visit.id)
+      .maybeSingle();
+    doctorId = assignment?.doctor_id ?? null;
+  }
+
+  const baseTime = new Date(visit.checked_in_at);
+  const customerName = `${customer.first_name} ${customer.last_name}`.trim();
+
+  for (const days of followUpDays) {
+    const followDate = addDays(new Date(), days);
+    const reason = followUpNote?.trim()
+      ? `Follow-up (${days}d): ${followUpNote}`
+      : `Follow-up check (${days} days) — ${diagnosis}`;
+
+    const { data: appt, error } = await supabase.from('appointments').insert({
+      organization_id: ctx.organizationId,
+      branch_id: visit.branch_id,
+      patient_id: visit.patient_id,
+      customer_id: visit.customer_id,
+      customer_name: customerName,
+      customer_email: customer.email || '',
+      customer_phone: customer.phone || '',
+      patient_name: patient.name,
+      patient_species: patient.species,
+      preferred_date: formatDate(followDate),
+      preferred_time: formatTime(baseTime),
+      reason,
+      status: 'requested',
+      doctor_id: doctorId,
+      is_emergency: false,
+      source: 'staff',
+      created_by: ctx.userId,
+      created_by_role: ctx.role || 'doctor',
+      follow_up_of_visit_id: visit.id,
+    }).select('id').single();
+
+    if (!error && appt) {
+      await writeAuditLog({
+        organizationId: ctx.organizationId,
+        branchId: visit.branch_id,
+        actorUserId: ctx.userId,
+        actorRole: ctx.role || 'doctor',
+        action: 'APPOINTMENT_CREATED',
+        resourceType: 'APPOINTMENT',
+        resourceId: appt.id,
+        afterData: { status: 'requested', follow_up_of_visit_id: visit.id, days },
+      });
+    }
+  }
+}
+
 /**
- * Saves clinical notes, creates and finalizes the prescription, and sets the visit 
- * state to 'ready_for_checkout' (or 'completed' if no items are billed).
+ * Saves clinical notes, services, prescriptions, follow-up appointments,
+ * and sets visit to ready_for_checkout.
  */
 export async function completeConsultationAction(payload: unknown) {
   try {
@@ -25,7 +127,6 @@ export async function completeConsultationAction(payload: unknown) {
     const parsed = CompleteConsultationSchema.parse(payload);
     const supabase = await createClient();
 
-    // 1. Retrieve the Visit details to locate pet/branch/org IDs
     const { data: visit, error: visitError } = await supabase
       .from('visits')
       .select('*')
@@ -40,7 +141,6 @@ export async function completeConsultationAction(payload: unknown) {
     const numOrNull = (v: number | undefined) =>
       v !== undefined && !Number.isNaN(v) ? v : null;
 
-    // 2. Create or update clinical notes (idempotent if doctor retries)
     const notePayload = {
       chief_complaint: parsed.chiefComplaint,
       history: parsed.history || null,
@@ -49,6 +149,7 @@ export async function completeConsultationAction(payload: unknown) {
       treatment_plan: parsed.treatmentPlan || null,
       internal_notes: parsed.internalNotes || null,
       follow_up_recommendation: parsed.followUpRecommendation || null,
+      follow_up_days: parsed.followUpDays?.length ? parsed.followUpDays : null,
       temperature_c: numOrNull(parsed.temperatureC),
       heart_rate_bpm: numOrNull(parsed.heartRateBpm),
       respiratory_rate: numOrNull(parsed.respiratoryRate),
@@ -61,6 +162,7 @@ export async function completeConsultationAction(payload: unknown) {
       .eq('visit_id', parsed.visitId)
       .maybeSingle();
 
+    const isUpdate = Boolean(existingNotes);
     const notesResult = existingNotes
       ? await supabase
           .from('clinical_notes')
@@ -78,7 +180,36 @@ export async function completeConsultationAction(payload: unknown) {
       throw new Error(notesResult.error.message || 'Failed to save clinical notes.');
     }
 
-    // 3. Create Prescription if items are specified
+    await writeAuditLog({
+      organizationId: ctx.organizationId,
+      branchId: visit.branch_id,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'doctor',
+      action: isUpdate ? 'CLINICAL_NOTE_UPDATED' : 'CLINICAL_NOTE_CREATED',
+      resourceType: 'CLINICAL_NOTE',
+      resourceId: notesResult.data?.id,
+      afterData: { visit_id: parsed.visitId, diagnosis: parsed.diagnosis },
+    });
+
+    // Persist visit services
+    if (parsed.serviceItems && parsed.serviceItems.length > 0) {
+      await supabase.from('visit_services').delete().eq('visit_id', visit.id);
+
+      const serviceInserts = parsed.serviceItems.map((item) => ({
+        visit_id: visit.id,
+        service_id: item.serviceId || null,
+        name: item.name,
+        unit_price: item.unitPrice,
+        quantity: item.quantity,
+        added_by: ctx.userId,
+      }));
+
+      const { error: svcError } = await supabase.from('visit_services').insert(serviceInserts);
+      if (svcError) {
+        throw new Error(svcError.message || 'Failed to save services performed.');
+      }
+    }
+
     let prescriptionId: string | null = null;
     if (parsed.prescriptionItems.length > 0) {
       const { data: prescription, error: presError } = await supabase
@@ -101,7 +232,6 @@ export async function completeConsultationAction(payload: unknown) {
 
       prescriptionId = prescription.id;
 
-      // Create prescription items
       const itemInserts = parsed.prescriptionItems.map((item) => ({
         prescription_id: prescriptionId,
         product_id: item.productId || null,
@@ -118,12 +248,10 @@ export async function completeConsultationAction(payload: unknown) {
         .insert(itemInserts);
 
       if (itemsError) {
-        // Clean up prescription shell on failure
         await supabase.from('prescriptions').delete().eq('id', prescriptionId);
         throw new Error(itemsError.message || 'Failed to add prescription items.');
       }
 
-      // Record prescription creation in audit logs
       await writeAuditLog({
         organizationId: ctx.organizationId,
         branchId: visit.branch_id,
@@ -136,8 +264,18 @@ export async function completeConsultationAction(payload: unknown) {
       });
     }
 
-    // 4. Update Visit status (defaulting to checkout if billing is needed)
-    // In V1, we route all complete consultations to 'ready_for_checkout' for billing reviews
+    // Auto-create follow-up appointments
+    if (parsed.followUpDays && parsed.followUpDays.length > 0) {
+      await createFollowUpAppointments(
+        supabase,
+        ctx,
+        visit,
+        parsed.followUpDays,
+        parsed.followUpRecommendation || null,
+        parsed.diagnosis
+      );
+    }
+
     const { data: updatedVisit, error: visitUpdateError } = await supabase
       .from('visits')
       .update({
@@ -152,20 +290,20 @@ export async function completeConsultationAction(payload: unknown) {
       throw new Error(visitUpdateError?.message || 'Failed to transition visit to checkout.');
     }
 
-    // Record audit trail
     await writeAuditLog({
       organizationId: ctx.organizationId,
       branchId: visit.branch_id,
       actorUserId: ctx.userId,
       actorRole: ctx.role || 'doctor',
-      action: 'VISIT_CREATED', // Marks the visit phase transition
+      action: 'VISIT_READY_FOR_CHECKOUT',
       resourceType: 'VISIT',
       resourceId: visit.id,
       afterData: { status: 'ready_for_checkout' },
     });
 
     return { success: true, visitId: visit.id, prescriptionId };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+    return { success: false, error: message };
   }
 }

@@ -45,12 +45,42 @@ export default async function AppointmentsPage() {
   const supabase = await createClient();
 
   // 2. Fetch appointments in active branch
-  const { data: appointments, error } = await supabase
+  const { data: appointmentsRaw, error } = await supabase
     .from('appointments')
     .select('*')
     .eq('branch_id', activeBranchId)
     .order('preferred_date', { ascending: true })
     .order('preferred_time', { ascending: true });
+
+  const creatorIds = [
+    ...new Set(
+      (appointmentsRaw || [])
+        .map((a) => a.created_by as string | null)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+
+  const creatorMap = new Map<string, { firstName: string; lastName: string }>();
+  if (creatorIds.length > 0) {
+    const { data: creators } = await supabase
+      .from('user_profiles')
+      .select('id, first_name, last_name')
+      .in('id', creatorIds);
+    for (const c of creators || []) {
+      creatorMap.set(c.id, {
+        firstName: c.first_name || '',
+        lastName: c.last_name || '',
+      });
+    }
+  }
+
+  const appointments = (appointmentsRaw || []).map((a) => {
+    const creator = a.created_by ? creatorMap.get(a.created_by as string) : null;
+    return {
+      ...a,
+      creatorName: creator ? `${creator.firstName} ${creator.lastName}`.trim() : null,
+    };
+  });
 
   if (error) {
     return (

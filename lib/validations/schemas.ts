@@ -181,6 +181,13 @@ export const PrescriptionItemSchema = z.object({
   quantityRequested: z.number().int().positive(),
 });
 
+export const VisitServiceItemSchema = z.object({
+  serviceId: z.string().uuid().nullable().optional(),
+  name: z.string().min(1, { message: 'Service name is required' }),
+  unitPrice: z.number().nonnegative(),
+  quantity: z.number().int().positive(),
+});
+
 export const CompleteConsultationSchema = z.object({
   visitId: EntityIdSchema,
   chiefComplaint: z.string().min(1, { message: 'Chief complaint is required' }),
@@ -190,11 +197,13 @@ export const CompleteConsultationSchema = z.object({
   treatmentPlan: z.string().optional().or(z.literal('')),
   internalNotes: z.string().optional().or(z.literal('')),
   followUpRecommendation: z.string().optional().or(z.literal('')),
+  followUpDays: z.array(z.number().int().positive()),
   temperatureC: z.number().nonnegative().optional().or(z.nan()),
   heartRateBpm: z.number().int().nonnegative().optional().or(z.nan()),
   respiratoryRate: z.number().int().nonnegative().optional().or(z.nan()),
   weightKg: z.number().nonnegative().optional().or(z.nan()),
   prescriptionItems: z.array(PrescriptionItemSchema),
+  serviceItems: z.array(VisitServiceItemSchema),
 });
 
 export const RescheduleAppointmentSchema = z.object({

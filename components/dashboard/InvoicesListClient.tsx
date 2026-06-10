@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Calendar,
   User,
@@ -50,6 +51,7 @@ export default function InvoicesListClient({
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const router = useRouter();
   const [actingId, setActingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -90,7 +92,7 @@ export default function InvoicesListClient({
       });
       if (res.success) {
         setMessage('Invoice marked as paid.');
-        window.location.reload();
+        router.refresh();
       } else {
         setMessage(res.error || 'Failed to mark paid');
       }

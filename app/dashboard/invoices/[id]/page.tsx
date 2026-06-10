@@ -161,10 +161,16 @@ export default async function InvoiceDetailPage({
               </div>
               <div className="flex justify-between text-on-surface-variant/70">
                 <span className="font-semibold text-on-surface">Status</span>
-                <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                  <CheckCircle2 className="w-3 h-3" />
-                  Paid
-                </span>
+                {invoice.payment_status === 'paid' ? (
+                  <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Paid
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                    Unpaid
+                  </span>
+                )}
               </div>
             </div>
           </div>

@@ -70,9 +70,12 @@ export default async function ConsultationRoomPage({
   if (visit.status === 'waiting') {
     await supabase
       .from('visits')
-      .update({ status: 'consulting' })
+      .update({
+        status: 'consulting',
+        consult_started_at: new Date().toISOString(),
+      })
       .eq('id', visitId);
-    visit.status = 'consulting'; // Sync local value
+    visit.status = 'consulting';
   }
 
   // 3. Fetch pet visit history
@@ -115,6 +118,20 @@ export default async function ConsultationRoomPage({
     type: p.type,
     sellingPrice: Number(p.selling_price),
   })) || [];
+
+  const { data: servicesData } = await supabase
+    .from('services')
+    .select('id, name, description, price')
+    .eq('organization_id', session.organizationId)
+    .eq('is_active', true)
+    .order('name');
+
+  const catalogServices = (servicesData || []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    description: s.description as string | null,
+    price: Number(s.price),
+  }));
 
   // 5. Lab test catalog (org-scoped), existing lab orders, and documents for this visit
   const [{ data: labCatalogData }, { data: labOrdersData }, { data: documentsData }] =
@@ -167,7 +184,7 @@ export default async function ConsultationRoomPage({
         className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Attending Queue
+        Back to Consultations
       </Link>
 
       <PageHeader
@@ -195,6 +212,7 @@ export default async function ConsultationRoomPage({
         }}
         history={history}
         products={products}
+        catalogServices={catalogServices}
         visitReason={visit.reason}
         isEmergency={visit.is_emergency ?? false}
         triageNotes={visit.triage_notes as string | null}

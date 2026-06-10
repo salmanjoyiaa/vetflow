@@ -17,6 +17,9 @@ import {
   FileText,
   FileCheck2
 } from 'lucide-react';
+import MedicalRecordActivityPanel, {
+  type MedicalActivityRow,
+} from '@/components/dashboard/MedicalRecordActivityPanel';
 
 export const metadata = {
   title: 'Patient Medical File',
@@ -124,6 +127,8 @@ export default async function PetDetailPage({
     );
   }
 
+  const visitIdsForPet: string[] = [];
+
   // 2. Fetch all medical visits (consultations) with clinical notes and prescriptions
   const { data: visits, error: visitsError } = await supabase
     .from('visits')
@@ -168,6 +173,59 @@ export default async function PetDetailPage({
     .eq('patient_id', petId)
     .order('checked_in_at', { ascending: false });
 
+  for (const v of visits || []) {
+    visitIdsForPet.push(v.id);
+  }
+
+  let petMedicalActivity: MedicalActivityRow[] = [];
+  if (visitIdsForPet.length > 0) {
+    const { data: logs } = await supabase
+      .from('audit_logs')
+      .select('id, action, resource_type, created_at, actor_user_id, actor_role, after_data, resource_id')
+      .eq('organization_id', session.organizationId)
+      .in('action', [
+        'CLINICAL_NOTE_CREATED',
+        'CLINICAL_NOTE_UPDATED',
+        'PRESCRIPTION_CREATED',
+        'DOCUMENT_UPLOADED',
+        'LAB_ORDER_CREATED',
+        'LAB_ORDER_UPDATED',
+      ])
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    const relevant = (logs || []).filter(
+      (l) => l.resource_id && visitIdsForPet.includes(l.resource_id)
+    );
+
+    const actorIds = [...new Set(relevant.map((l) => l.actor_user_id).filter(Boolean))] as string[];
+    const actorMap = new Map<string, string>();
+    if (actorIds.length > 0) {
+      const { data: actors } = await supabase
+        .from('user_profiles')
+        .select('id, first_name, last_name')
+        .in('id', actorIds);
+      for (const a of actors || []) {
+        actorMap.set(a.id, `${a.first_name} ${a.last_name}`.trim());
+      }
+    }
+
+    petMedicalActivity = relevant.slice(0, 10).map((log) => {
+      const after = log.after_data as Record<string, unknown> | null;
+      let summary = log.resource_type;
+      if (after?.diagnosis) summary = String(after.diagnosis);
+      return {
+        id: log.id,
+        action: log.action,
+        actorName: actorMap.get(log.actor_user_id) || 'Staff',
+        actorRole: log.actor_role || 'staff',
+        resourceType: log.resource_type,
+        createdAt: log.created_at,
+        summary,
+      };
+    });
+  }
+
   return (
     <div className="space-y-8">
       
@@ -184,6 +242,10 @@ export default async function PetDetailPage({
         description="Clinical charting history and diagnostics for this patient."
         icon={Heart}
       />
+
+      {petMedicalActivity.length > 0 && (
+        <MedicalRecordActivityPanel activities={petMedicalActivity} />
+      )}
 
       <div className="grid md:grid-cols-3 gap-8">
         

@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase/server';
 import InvoiceCheckoutClient from '@/components/forms/InvoiceCheckoutClient';
 import PageHeader from '@/components/ui/premium/PageHeader';
 import Link from 'next/link';
-import { ArrowLeft, Receipt } from 'lucide-react';
+import { ArrowLeft, Receipt, Stethoscope, Clock, CheckCircle2 } from 'lucide-react';
+import { compileVisitBillingItems } from '@/lib/billing/compile-visit-billing';
 
 export const metadata = {
   title: 'Patient Checkout',
@@ -25,10 +26,8 @@ export default async function CreateInvoicePage({
   if (denied) return denied;
 
   const session = ctx;
-
   const supabase = await createClient();
 
-  // 1. Fetch visit details
   const { data: visit, error: visitError } = await supabase
     .from('visits')
     .select(`
@@ -52,15 +51,72 @@ export default async function CreateInvoicePage({
     );
   }
 
+  if (visit.status === 'completed') {
+    const { data: existingInvoice } = await supabase
+      .from('invoices')
+      .select('id')
+      .eq('visit_id', visitId)
+      .maybeSingle();
+    if (existingInvoice) {
+      redirect(`/dashboard/invoices/${existingInvoice.id}`);
+    }
+  }
+
   if (visit.status !== 'ready_for_checkout') {
+    const { data: assignment } = await supabase
+      .from('visit_assignments')
+      .select('doctor_id')
+      .eq('visit_id', visitId)
+      .maybeSingle();
+
+    let doctorName = 'the attending veterinarian';
+    if (assignment?.doctor_id) {
+      const { data: doc } = await supabase
+        .from('user_profiles')
+        .select('first_name, last_name')
+        .eq('id', assignment.doctor_id)
+        .maybeSingle();
+      if (doc) {
+        doctorName = `Dr. ${doc.first_name} ${doc.last_name}`;
+      }
+    }
+
+    if (visit.status === 'consulting' || visit.status === 'waiting') {
+      return (
+        <div className="space-y-6">
+          <Link
+            href="/dashboard/walk-ins"
+            className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Walk-in Queue
+          </Link>
+          <div className="glass-panel rounded-2xl border border-blue-500/30 p-8 text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center mx-auto">
+              <Stethoscope className="w-7 h-7 text-blue-400" />
+            </div>
+            <h3 className="text-lg font-bold text-on-surface">Consultation in Progress</h3>
+            <p className="text-sm text-on-surface-variant max-w-md mx-auto">
+              {visit.status === 'consulting'
+                ? `${doctorName} is currently consulting this patient. Checkout will be available once the doctor completes the visit.`
+                : `Patient is waiting in queue for ${doctorName}. Checkout opens after consultation is complete.`}
+            </p>
+            <div className="flex items-center justify-center gap-2 text-xs text-on-surface-variant">
+              <Clock className="w-4 h-4" />
+              This page refreshes automatically when the visit is ready for checkout.
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs p-6 rounded-2xl">
-        Patient visit state is not ready for billing. Attend the consultation room first.
+        Patient visit is in &quot;{visit.status}&quot; status and not ready for billing yet.
       </div>
     );
   }
 
-  // 2. Load linked Prescription and items
   const { data: prescription } = await supabase
     .from('prescriptions')
     .select('id, prescription_items(*)')
@@ -68,73 +124,37 @@ export default async function CreateInvoicePage({
     .eq('is_finalized', true)
     .maybeSingle();
 
-  const presItems = prescription?.prescription_items as any[] || [];
+  const presItems = (prescription?.prescription_items as Array<{
+    product_id: string | null;
+    medicine_name: string;
+    quantity_requested: number;
+  }>) || [];
 
-  // 3. Compile base billing items (General Consultation)
-  // Look up consultation service price in catalog or fallback to $50.00
-  const { data: consultProduct } = await supabase
-    .from('products')
-    .select('id, name, selling_price, type')
-    .eq('organization_id', session.organizationId)
-    .eq('branch_id', visit.branch_id)
-    .eq('sku', 'SVC-CONSULT')
-    .maybeSingle();
+  const billingItemsRaw = await compileVisitBillingItems(supabase, {
+    organizationId: session.organizationId!,
+    branchId: visit.branch_id,
+    visitId: visit.id,
+    prescriptionItems: presItems,
+  });
 
-  const billingItems: {
-    name: string;
-    quantity: number;
-    unitPrice: number;
-    type: string;
-  }[] = [
-    {
-      name: consultProduct?.name || 'General Consultation Service',
-      quantity: 1,
-      unitPrice: consultProduct ? Number(consultProduct.selling_price) : 50.00,
-      type: 'service',
-    },
-  ];
+  const billingItems = billingItemsRaw.map(({ productId: _pid, ...rest }) => rest);
 
-  // 4. Join prescription items (catalog lookup pricing)
-  for (const item of presItems) {
-    if (item.product_id) {
-      const { data: prod } = await supabase
-        .from('products')
-        .select('name, selling_price, type')
-        .eq('id', item.product_id)
-        .single();
-      
-      if (prod) {
-        billingItems.push({
-          name: prod.name,
-          quantity: item.quantity_requested,
-          unitPrice: Number(prod.selling_price),
-          type: prod.type,
-        });
-      }
-    } else {
-      // Free text item
-      billingItems.push({
-        name: item.medicine_name,
-        quantity: item.quantity_requested,
-        unitPrice: 10.00, // custom items default flat fee
-        type: 'medicine',
-      });
-    }
-  }
-
-  // 5. Retrieve active branch/org tax configurations
   const { data: taxSetting } = await supabase
     .from('tax_settings')
     .select('is_enabled, tax_name, tax_percentage, applies_to_products, applies_to_services')
     .eq('organization_id', session.organizationId)
     .maybeSingle();
 
-  const petDetails = visit.pets as any;
-  const customerDetails = visit.customers as any;
+  const petDetails = visit.pets as { name: string; species: string; breed: string | null } | null;
+  const customerDetails = visit.customers as {
+    first_name: string;
+    last_name: string;
+    phone: string;
+    email: string;
+  } | null;
 
   return (
     <div className="space-y-8">
-      
       <Link
         href="/dashboard/walk-ins"
         className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant/60 hover:text-primary font-semibold transition-colors -mb-4"
@@ -142,25 +162,32 @@ export default async function CreateInvoicePage({
         <ArrowLeft className="w-4 h-4" />
         Back to Walk-in Queue
       </Link>
+
+      <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+        <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+        <p className="text-xs text-emerald-700 font-semibold">
+          Consultation complete — patient is ready for checkout and discharge.
+        </p>
+      </div>
+
       <PageHeader
         title="Patient Checkout & Discharge"
         description="Review billing ledger items and finalize transaction payments."
         icon={Receipt}
       />
 
-      {/* CHECKOUT INTERFACE */}
       <InvoiceCheckoutClient
         visitId={visit.id}
         pet={{
-          name: petDetails.name,
-          species: petDetails.species,
-          breed: petDetails.breed,
+          name: petDetails?.name || 'Unknown',
+          species: petDetails?.species || 'N/A',
+          breed: petDetails?.breed || null,
         }}
         customer={{
-          firstName: customerDetails.first_name,
-          lastName: customerDetails.last_name,
-          phone: customerDetails.phone,
-          email: customerDetails.email,
+          firstName: customerDetails?.first_name || '',
+          lastName: customerDetails?.last_name || '',
+          phone: customerDetails?.phone || '',
+          email: customerDetails?.email || '',
         }}
         items={billingItems}
         taxPercentage={taxSetting?.is_enabled ? Number(taxSetting.tax_percentage) : 0}
@@ -169,7 +196,6 @@ export default async function CreateInvoicePage({
         appliesToServices={taxSetting?.applies_to_services || false}
         prescriptionId={prescription?.id || null}
       />
-
     </div>
   );
 }
