@@ -47,7 +47,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { name: 'Walk-ins', href: '/dashboard/walk-ins', icon: ClipboardList },
   { name: 'Customers', href: '/dashboard/customers', icon: Users },
   { name: 'Pets', href: '/dashboard/pets', icon: Heart },
-  { name: 'Doctors', href: '/dashboard/doctors', icon: BriefcaseMedical },
+  { name: 'Consultations', href: '/dashboard/doctors', icon: BriefcaseMedical },
   { name: 'Prescriptions', href: '/dashboard/prescriptions', icon: FileText },
   { name: 'Invoices', href: '/dashboard/invoices', icon: Receipt },
   { name: 'Inventory', href: '/dashboard/inventory', icon: Layers },

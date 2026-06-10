@@ -34,6 +34,7 @@ export type ReceptionistVisitRow = {
   customerName: string;
   reason: string;
   status: string;
+  doctorName?: string;
 };
 
 export type VisitRecordRow = {
@@ -54,6 +55,7 @@ export interface ReceptionistHomeClientProps {
   unpaidInvoices: number;
   upcomingAppointments: ReceptionistAppointmentRow[];
   waitingVisits: ReceptionistVisitRow[];
+  consultingVisits?: ReceptionistVisitRow[];
   checkoutVisits: ReceptionistVisitRow[];
   visitRecords: VisitRecordRow[];
 }
@@ -72,10 +74,11 @@ export default function ReceptionistHomeClient({
   unpaidInvoices,
   upcomingAppointments,
   waitingVisits,
+  consultingVisits = [],
   checkoutVisits,
   visitRecords,
 }: ReceptionistHomeClientProps) {
-  useVisibilityPolling(20000, true);
+  useVisibilityPolling(15000, true);
 
   const [recordSearch, setRecordSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -97,6 +100,45 @@ export default function ReceptionistHomeClient({
 
   return (
     <div className="space-y-6">
+      {readyForCheckout > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+          <div>
+            <p className="text-sm font-bold text-emerald-700">
+              {readyForCheckout} patient{readyForCheckout > 1 ? 's' : ''} ready for checkout
+            </p>
+            <p className="text-xs text-emerald-600/80">
+              Doctor completed consultation — proceed to billing.
+            </p>
+          </div>
+          {checkoutVisits[0] && (
+            <Link
+              href={`/dashboard/invoices/create/${checkoutVisits[0].id}`}
+              className="shrink-0 bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold"
+            >
+              Start checkout →
+            </Link>
+          )}
+        </div>
+      )}
+
+      {consultingVisits.length > 0 && (
+        <div className="glass-panel rounded-2xl border border-blue-500/30 p-4 space-y-2">
+          <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+            Consultations in progress
+          </h3>
+          {consultingVisits.map((v) => (
+            <div key={v.id} className="flex items-center justify-between text-xs">
+              <span className="font-bold text-on-surface">
+                {v.petName} — {v.customerName}
+              </span>
+              <span className="text-blue-400 font-semibold">
+                {v.doctorName || 'Doctor'} consulting
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <Link
         href="/dashboard/walk-ins?new=1"
         className="flex items-center justify-center gap-3 w-full py-4 px-6 rounded-2xl bg-primary text-on-primary font-bold text-sm shadow-premium hover:opacity-90 transition-all"

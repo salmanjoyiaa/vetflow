@@ -32,6 +32,15 @@ interface Product {
   sellingPrice: number;
 }
 
+interface CatalogService {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+}
+
+const FOLLOW_UP_PRESETS = [3, 5, 7, 14] as const;
+
 interface LabCatalogItem {
   id: string;
   name: string;
@@ -78,6 +87,7 @@ interface ConsultationWorkspaceClientProps {
   };
   history: VisitHistory[];
   products: Product[];
+  catalogServices?: CatalogService[];
   visitReason: string;
   isEmergency?: boolean;
   triageNotes?: string | null;
@@ -93,6 +103,7 @@ export default function ConsultationWorkspaceClient({
   customer,
   history,
   products,
+  catalogServices = [],
   visitReason,
   isEmergency = false,
   triageNotes,
@@ -105,6 +116,8 @@ export default function ConsultationWorkspaceClient({
   const [activeTab, setActiveTab] = useState<'consult' | 'history' | 'labs'>('consult');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [followUpDays, setFollowUpDays] = useState<number[]>([]);
+  const [customFollowUpDay, setCustomFollowUpDay] = useState('');
 
   const {
     register,
@@ -124,11 +137,20 @@ export default function ConsultationWorkspaceClient({
       treatmentPlan: '',
       internalNotes: '',
       followUpRecommendation: '',
+      followUpDays: [],
       temperatureC: undefined,
       heartRateBpm: undefined,
       respiratoryRate: undefined,
       weightKg: pet.weightKg ?? undefined,
       prescriptionItems: [],
+      serviceItems: catalogServices.length > 0
+        ? [{
+            serviceId: catalogServices.find((s) => s.name.toLowerCase().includes('consult'))?.id || catalogServices[0].id,
+            name: catalogServices.find((s) => s.name.toLowerCase().includes('consult'))?.name || catalogServices[0].name,
+            unitPrice: catalogServices.find((s) => s.name.toLowerCase().includes('consult'))?.price || catalogServices[0].price,
+            quantity: 1,
+          }]
+        : [],
     },
   });
 
@@ -137,7 +159,44 @@ export default function ConsultationWorkspaceClient({
     name: 'prescriptionItems',
   });
 
+  const {
+    fields: serviceFields,
+    append: appendService,
+    remove: removeService,
+  } = useFieldArray({
+    control,
+    name: 'serviceItems',
+  });
+
   const prescriptionItemsWatch = watch('prescriptionItems');
+
+  const toggleFollowUpDay = (day: number) => {
+    setFollowUpDays((prev) => {
+      const next = prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b);
+      setValue('followUpDays', next);
+      return next;
+    });
+  };
+
+  const addCustomFollowUpDay = () => {
+    const day = parseInt(customFollowUpDay, 10);
+    if (!day || day < 1) return;
+    if (!followUpDays.includes(day)) {
+      const next = [...followUpDays, day].sort((a, b) => a - b);
+      setFollowUpDays(next);
+      setValue('followUpDays', next);
+    }
+    setCustomFollowUpDay('');
+  };
+
+  const handleSelectService = (index: number, serviceId: string) => {
+    const selected = catalogServices.find((s) => s.id === serviceId);
+    if (selected) {
+      setValue(`serviceItems.${index}.serviceId`, selected.id, { shouldValidate: true });
+      setValue(`serviceItems.${index}.name`, selected.name, { shouldValidate: true });
+      setValue(`serviceItems.${index}.unitPrice`, selected.price, { shouldValidate: true });
+    }
+  };
 
   const handleSelectProduct = (index: number, productId: string) => {
     const selected = products.find((p) => p.id === productId);
@@ -154,6 +213,7 @@ export default function ConsultationWorkspaceClient({
       const res = await completeConsultationAction(data);
       if (res.success) {
         router.push('/dashboard/doctors');
+        // Receptionist dashboards poll every 20s for ready_for_checkout
         router.refresh();
       } else {
         setError(res.error || 'Failed to complete consultation');
@@ -460,30 +520,158 @@ export default function ConsultationWorkspaceClient({
               />
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                  Internal Notes (Doctor Only)
-                </label>
-                <input
-                  type="text"
-                  {...register('internalNotes')}
-                  placeholder="Private findings not visible on client receipts"
-                  className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                  Follow-up Recommendation
-                </label>
-                <input
-                  type="text"
-                  {...register('followUpRecommendation')}
-                  placeholder="e.g. Return in 7 days for ear recheck"
-                  className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
-                />
-              </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+                Internal Notes (Doctor Only)
+              </label>
+              <input
+                type="text"
+                {...register('internalNotes')}
+                placeholder="Private findings not visible on client receipts"
+                className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
+              />
             </div>
+
+            <div className="p-4 bg-surface-container/20 border border-outline-variant/40 rounded-xl space-y-3">
+              <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider">
+                Follow-up Schedule
+              </label>
+              <p className="text-[10px] text-on-surface-variant/60">
+                Select days to auto-create follow-up appointment requests for receptionist confirmation.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {FOLLOW_UP_PRESETS.map((day) => (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => toggleFollowUpDay(day)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                      followUpDays.includes(day)
+                        ? 'bg-primary text-white border-primary'
+                        : 'border-outline-variant text-on-surface-variant hover:border-primary/40'
+                    }`}
+                  >
+                    {day} days
+                  </button>
+                ))}
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min={1}
+                    value={customFollowUpDay}
+                    onChange={(e) => setCustomFollowUpDay(e.target.value)}
+                    placeholder="Custom"
+                    className="w-16 px-2 py-1.5 bg-surface border border-outline-variant rounded-lg text-[10px]"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomFollowUpDay}
+                    className="text-[10px] font-bold text-primary hover:underline"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+              {followUpDays.length > 0 && (
+                <p className="text-[10px] text-primary font-semibold">
+                  Will create {followUpDays.length} follow-up request{followUpDays.length > 1 ? 's' : ''} on:{' '}
+                  {followUpDays.map((d) => `${d}d`).join(', ')}
+                </p>
+              )}
+              <input
+                type="text"
+                {...register('followUpRecommendation')}
+                placeholder="Follow-up notes (e.g. ear recheck, wound inspection)"
+                className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
+              />
+            </div>
+          </div>
+
+          {/* SERVICES PERFORMED */}
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-5">
+            <div className="flex items-center justify-between border-b border-outline-variant/30 pb-4">
+              <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5">
+                <Stethoscope className="w-4 h-4 text-primary" />
+                Services Performed
+              </h3>
+              <button
+                type="button"
+                onClick={() => appendService({ serviceId: null, name: '', unitPrice: 0, quantity: 1 })}
+                className="inline-flex items-center gap-1 text-[10px] font-bold text-primary border border-primary/30 px-2.5 py-1.5 rounded-lg hover:bg-primary/10 transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Service
+              </button>
+            </div>
+
+            {serviceFields.length > 0 ? (
+              <div className="space-y-3">
+                {serviceFields.map((field, idx) => (
+                  <div
+                    key={field.id}
+                    className="p-4 bg-surface-container/20 border border-outline-variant/40 rounded-xl grid grid-cols-12 gap-3 items-end"
+                  >
+                    <div className="col-span-12 sm:col-span-5">
+                      <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
+                        Service
+                      </label>
+                      <select
+                        onChange={(e) => handleSelectService(idx, e.target.value)}
+                        className="w-full px-2 py-1.5 glass-panel border border-outline-variant rounded-lg text-[10px] font-bold text-on-surface outline-none"
+                        defaultValue={
+                          catalogServices.find((s) => s.id === watch(`serviceItems.${idx}.serviceId`))?.id || ''
+                        }
+                      >
+                        <option value="">-- Select service --</option>
+                        {catalogServices.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name} (${s.price})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-span-6 sm:col-span-3">
+                      <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
+                        Price
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        {...register(`serviceItems.${idx}.unitPrice`, { valueAsNumber: true })}
+                        className="w-full px-2.5 py-1.5 glass-panel border border-outline-variant rounded-lg text-[10px] text-on-surface outline-none"
+                      />
+                    </div>
+                    <div className="col-span-4 sm:col-span-2">
+                      <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
+                        Qty
+                      </label>
+                      <input
+                        type="number"
+                        {...register(`serviceItems.${idx}.quantity`, { valueAsNumber: true })}
+                        min={1}
+                        className="w-full px-2.5 py-1.5 glass-panel border border-outline-variant rounded-lg text-[10px] text-on-surface outline-none font-bold"
+                      />
+                    </div>
+                    <div className="col-span-2 sm:col-span-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => removeService(idx)}
+                        className="text-destructive hover:bg-destructive/5 p-1 rounded transition-all"
+                        title="Remove service"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <input type="hidden" {...register(`serviceItems.${idx}.name`)} />
+                    <input type="hidden" {...register(`serviceItems.${idx}.serviceId`)} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-on-surface-variant/50 italic text-center py-4 bg-surface-container/10 rounded-xl border border-outline-variant/20">
+                No services added. Consultation fee is auto-suggested when catalog is available.
+              </p>
+            )}
           </div>
 
           {/* PRESCRIPTION BUILDER PANEL */}

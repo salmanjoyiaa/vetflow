@@ -6,7 +6,8 @@ export type Feature =
   | 'multi_branch'
   | 'ai_assistant'
   | 'social_automation'
-  | 'branded_pdfs';
+  | 'branded_pdfs'
+  | 'consult_tracking';
 
 export const ALL_FEATURES: Feature[] = [
   'appointments',
@@ -23,7 +24,7 @@ export const ALL_FEATURES: Feature[] = [
  * (opt-in). These are NOT route-gated and are excluded from the default-on
  * resolution used by `resolveFeatures`.
  */
-export const OPT_IN_FEATURES: Feature[] = ['branded_pdfs'];
+export const OPT_IN_FEATURES: Feature[] = ['branded_pdfs', 'consult_tracking'];
 
 /** Full set a super admin can toggle per organization. */
 export const SUPERADMIN_TOGGLEABLE_FEATURES: Feature[] = [
@@ -40,6 +41,7 @@ export const FEATURE_LABELS: Record<Feature, string> = {
   ai_assistant: 'AI assistant',
   social_automation: 'Social media automation',
   branded_pdfs: 'Branded PDF documents',
+  consult_tracking: 'Consultation time tracking',
 };
 
 /**
@@ -50,6 +52,13 @@ export function isBrandedPdfsEnabled(
   featuresJson: Record<string, unknown> | null | undefined
 ): boolean {
   return featuresJson?.branded_pdfs === true;
+}
+
+/** Consultation duration tracking — opt-in, super-admin gated. */
+export function isConsultTrackingEnabled(
+  featuresJson: Record<string, unknown> | null | undefined
+): boolean {
+  return featuresJson?.consult_tracking === true;
 }
 
 /** Nav route → required feature (undefined = no feature gate) */

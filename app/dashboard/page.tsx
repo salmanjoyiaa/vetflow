@@ -24,6 +24,13 @@ import ReceptionistHomeClient, {
   type ReceptionistVisitRow,
   type VisitRecordRow,
 } from '@/components/dashboard/ReceptionistHomeClient';
+import LiveOperationsPanel, {
+  type LiveConsultRow,
+} from '@/components/dashboard/LiveOperationsPanel';
+import MedicalRecordActivityPanel, {
+  type MedicalActivityRow,
+} from '@/components/dashboard/MedicalRecordActivityPanel';
+import { isConsultTrackingEnabled } from '@/lib/auth/features';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -122,6 +129,7 @@ export default async function DashboardOverview() {
   let openPrescriptions = 0;
   let receptionistUpcoming: ReceptionistAppointmentRow[] = [];
   let receptionistWaiting: ReceptionistVisitRow[] = [];
+  let receptionistConsulting: ReceptionistVisitRow[] = [];
   let receptionistCheckout: ReceptionistVisitRow[] = [];
   let receptionistVisitRecords: VisitRecordRow[] = [];
   let myAttendance: MyAttendance = {
@@ -131,6 +139,10 @@ export default async function DashboardOverview() {
     checkInAt: null,
     checkOutAt: null,
   };
+  let liveActiveConsults: LiveConsultRow[] = [];
+  let liveCheckoutQueue: LiveConsultRow[] = [];
+  let medicalActivities: MedicalActivityRow[] = [];
+  let showConsultTimer = false;
   const showAttendance = hasCapability(role, 'mark_attendance');
 
   if (isDemoMode()) {
@@ -395,6 +407,30 @@ export default async function DashboardOverview() {
       queries.push(
         supabase
           .from('visits')
+          .select(`
+            id, reason, status,
+            pets:patients(name),
+            customers(first_name, last_name),
+            visit_assignments(user_profiles(first_name, last_name))
+          `)
+          .eq('branch_id', activeBranchId)
+          .eq('status', 'consulting')
+          .order('consult_started_at', { ascending: false })
+          .limit(5)
+          .then((r) => {
+            receptionistConsulting = (r.data || []).map((v) => {
+              const base = mapVisit(v);
+              const doc = (v.visit_assignments as Array<{ user_profiles: { first_name: string; last_name: string } | null }> | null)?.[0]?.user_profiles;
+              return {
+                ...base,
+                doctorName: doc ? `Dr. ${doc.first_name} ${doc.last_name}` : undefined,
+              };
+            });
+          })
+      );
+      queries.push(
+        supabase
+          .from('visits')
           .select('id, reason, status, pets:patients(name), customers(first_name, last_name)')
           .eq('branch_id', activeBranchId)
           .eq('status', 'ready_for_checkout')
@@ -431,6 +467,129 @@ export default async function DashboardOverview() {
                   createdAt: inv.created_at,
                 };
               }) || [];
+          })
+      );
+    }
+
+    if (role === 'clinic_admin' || role === 'receptionist') {
+      const { data: subRow } = await supabase
+        .from('subscription_status')
+        .select('features')
+        .eq('organization_id', session.organizationId || '')
+        .maybeSingle();
+      showConsultTimer = isConsultTrackingEnabled(
+        (subRow?.features as Record<string, unknown>) || null
+      );
+    }
+
+    if (role === 'clinic_admin') {
+      const mapLiveVisit = (v: {
+        id: string;
+        status: string;
+        reason: string;
+        consult_started_at: string | null;
+        checked_in_at: string;
+        is_emergency: boolean;
+        pets: { name: string; species: string } | { name: string; species: string }[] | null;
+        customers: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null;
+        visit_assignments: Array<{ user_profiles: { first_name: string; last_name: string } | null }> | null;
+      }): LiveConsultRow => {
+        const pet = Array.isArray(v.pets) ? v.pets[0] : v.pets;
+        const cust = Array.isArray(v.customers) ? v.customers[0] : v.customers;
+        const doc = v.visit_assignments?.[0]?.user_profiles;
+        return {
+          id: v.id,
+          status: v.status,
+          reason: v.reason,
+          consultStartedAt: v.consult_started_at,
+          checkedInAt: v.checked_in_at,
+          petName: pet?.name || 'Unknown',
+          petSpecies: pet?.species || 'N/A',
+          customerName: cust ? `${cust.first_name} ${cust.last_name}` : 'Unknown',
+          doctorName: doc ? `Dr. ${doc.first_name} ${doc.last_name}` : 'Unassigned',
+          isEmergency: v.is_emergency ?? false,
+        };
+      };
+
+      queries.push(
+        supabase
+          .from('visits')
+          .select(`
+            id, reason, status, consult_started_at, checked_in_at, is_emergency,
+            pets:patients ( name, species ),
+            customers ( first_name, last_name ),
+            visit_assignments ( user_profiles ( first_name, last_name ) )
+          `)
+          .eq('branch_id', activeBranchId)
+          .in('status', ['waiting', 'consulting'])
+          .order('checked_in_at', { ascending: true })
+          .then((r) => {
+            liveActiveConsults = (r.data || []).map(mapLiveVisit);
+          })
+      );
+
+      queries.push(
+        supabase
+          .from('visits')
+          .select(`
+            id, reason, status, consult_started_at, checked_in_at, is_emergency,
+            pets:patients ( name, species ),
+            customers ( first_name, last_name ),
+            visit_assignments ( user_profiles ( first_name, last_name ) )
+          `)
+          .eq('branch_id', activeBranchId)
+          .eq('status', 'ready_for_checkout')
+          .order('completed_at', { ascending: true })
+          .then((r) => {
+            liveCheckoutQueue = (r.data || []).map(mapLiveVisit);
+          })
+      );
+
+      queries.push(
+        supabase
+          .from('audit_logs')
+          .select('id, action, resource_type, created_at, actor_user_id, actor_role, after_data')
+          .eq('organization_id', session.organizationId || '')
+          .eq('branch_id', activeBranchId)
+          .in('action', [
+            'CLINICAL_NOTE_CREATED',
+            'CLINICAL_NOTE_UPDATED',
+            'PRESCRIPTION_CREATED',
+            'DOCUMENT_UPLOADED',
+            'DOCUMENT_DELETED',
+            'LAB_ORDER_CREATED',
+            'LAB_ORDER_UPDATED',
+          ])
+          .order('created_at', { ascending: false })
+          .limit(12)
+          .then(async (r) => {
+            const logs = r.data || [];
+            const actorIds = [...new Set(logs.map((l) => l.actor_user_id).filter(Boolean))] as string[];
+            const actorMap = new Map<string, string>();
+            if (actorIds.length > 0) {
+              const { data: actors } = await supabase
+                .from('user_profiles')
+                .select('id, first_name, last_name')
+                .in('id', actorIds);
+              for (const a of actors || []) {
+                actorMap.set(a.id, `${a.first_name} ${a.last_name}`.trim());
+              }
+            }
+            medicalActivities = logs.map((log) => {
+              const after = log.after_data as Record<string, unknown> | null;
+              let summary = log.resource_type;
+              if (after?.diagnosis) summary = String(after.diagnosis);
+              else if (after?.status) summary = `${log.resource_type}: ${after.status}`;
+              return {
+                id: log.id,
+                action: log.action,
+                actorName: actorMap.get(log.actor_user_id) || 'Staff',
+                actorRole: log.actor_role || 'staff',
+                resourceType: log.resource_type,
+                createdAt: log.created_at,
+                summary,
+              };
+            });
           })
       );
     }
@@ -504,6 +663,17 @@ export default async function DashboardOverview() {
 
       {kpis.length > 0 && <DashboardWidgetGrid kpis={kpis} />}
 
+      {role === 'clinic_admin' && (
+        <div className="grid lg:grid-cols-2 gap-6">
+          <LiveOperationsPanel
+            activeConsults={liveActiveConsults}
+            readyForCheckout={liveCheckoutQueue}
+            showConsultTimer={showConsultTimer}
+          />
+          <MedicalRecordActivityPanel activities={medicalActivities} />
+        </div>
+      )}
+
       {role === 'receptionist' && (
         <ReceptionistHomeClient
           todayAppointments={todayAppointments}
@@ -512,6 +682,7 @@ export default async function DashboardOverview() {
           unpaidInvoices={unpaidInvoices}
           upcomingAppointments={receptionistUpcoming}
           waitingVisits={receptionistWaiting}
+          consultingVisits={receptionistConsulting}
           checkoutVisits={receptionistCheckout}
           visitRecords={receptionistVisitRecords}
         />
@@ -678,7 +849,7 @@ function buildQuickLinks(
   let links: QuickLink[] = [];
   if (role === 'doctor') {
     links = [
-      { key: 'queue', href: '/dashboard/doctors', label: 'Clinical queue' },
+      { key: 'queue', href: '/dashboard/doctors', label: 'Consultations' },
       { key: 'rx', href: '/dashboard/prescriptions', label: 'Prescriptions' },
       { key: 'appt', href: '/dashboard/appointments', label: 'Appointments' },
     ];
@@ -833,7 +1004,7 @@ function buildQuickActions(
         key: 'queue',
         href: '/dashboard/doctors',
         icon: <BriefcaseMedical className="w-4 h-4" />,
-        label: 'Clinical queue',
+        label: 'Consultations',
         description: 'View assigned patients',
       },
       {

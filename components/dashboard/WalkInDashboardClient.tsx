@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 import { createWalkInVisitAction } from '@/lib/services/visit-actions';
 import PatientLookupPanel, {
   type SelectedPatient,
@@ -59,6 +60,7 @@ export default function WalkInDashboardClient({
   highlightIntake = false,
 }: WalkInDashboardClientProps) {
   const router = useRouter();
+  useVisibilityPolling(15000, true);
   const intakeRef = useRef<HTMLDivElement>(null);
   const [selectedPatient, setSelectedPatient] = useState<SelectedPatient | null>(null);
 
@@ -113,6 +115,26 @@ export default function WalkInDashboardClient({
   const consultingVisits = initialVisits.filter((v) => v.status === 'consulting');
 
   return (
+    <div className="space-y-6">
+    {checkoutVisits.length > 0 && (
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 animate-pulse-once">
+        <div>
+          <p className="text-sm font-bold text-emerald-700">
+            {checkoutVisits.length} patient{checkoutVisits.length > 1 ? 's' : ''} ready for checkout
+          </p>
+          <p className="text-xs text-emerald-600/80">
+            Doctor completed consultation — proceed to billing and discharge.
+          </p>
+        </div>
+        <Link
+          href={`/dashboard/invoices/create/${checkoutVisits[0].id}`}
+          className="shrink-0 bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
+        >
+          <Receipt className="w-4 h-4" />
+          Start checkout
+        </Link>
+      </div>
+    )}
     <div className="grid md:grid-cols-12 gap-8 items-start">
       
       {/* LEFT: INTAKE & PATIENT SELECTOR */}
@@ -402,6 +424,7 @@ export default function WalkInDashboardClient({
 
       </div>
 
+    </div>
     </div>
   );
 }

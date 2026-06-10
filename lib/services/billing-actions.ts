@@ -20,6 +20,7 @@ import {
   compileInvoiceDeliveryTemplate,
   compileThankYouTemplate,
 } from '@/lib/email';
+import { compileVisitBillingItems } from '@/lib/billing/compile-visit-billing';
 
 /**
  * Executes checkout transaction on the server.
@@ -62,63 +63,18 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
       .eq('is_finalized', true)
       .maybeSingle();
 
-    const presItems = prescription?.prescription_items as any[] || [];
+    const presItems = (prescription?.prescription_items as Array<{
+      product_id: string | null;
+      medicine_name: string;
+      quantity_requested: number;
+    }>) || [];
 
-    // 3. Compile Billing items list
-    // A. Add Consultation Service base fee by looking up SVC-CONSULT or defaulting to $50.00 base fee
-    const { data: consultProduct } = await adminClient
-      .from('products')
-      .select('id, name, selling_price, type')
-      .eq('organization_id', ctx.organizationId)
-      .eq('branch_id', visit.branch_id)
-      .eq('sku', 'SVC-CONSULT')
-      .maybeSingle();
-
-    const billingItems: {
-      productId: string | null;
-      name: string;
-      quantity: number;
-      unitPrice: number;
-      type: string;
-    }[] = [
-      {
-        productId: consultProduct?.id || null,
-        name: consultProduct?.name || 'General Consultation Service',
-        quantity: 1,
-        unitPrice: consultProduct ? Number(consultProduct.selling_price) : 50.00,
-        type: 'service',
-      },
-    ];
-
-    // B. Add Medicine products from prescription (must look up catalog pricing to prevent client tempering)
-    for (const item of presItems) {
-      if (item.product_id) {
-        const { data: prod } = await adminClient
-          .from('products')
-          .select('id, name, selling_price, type')
-          .eq('id', item.product_id)
-          .single();
-        
-        if (prod) {
-          billingItems.push({
-            productId: prod.id,
-            name: prod.name,
-            quantity: item.quantity_requested,
-            unitPrice: Number(prod.selling_price),
-            type: prod.type,
-          });
-        }
-      } else {
-        // Free-text medicine item (no product ID link, default unit price to 0 or manual check - let's default to $10.00 for custom items)
-        billingItems.push({
-          productId: null,
-          name: item.medicine_name,
-          quantity: item.quantity_requested,
-          unitPrice: 10.00,
-          type: 'medicine',
-        });
-      }
-    }
+    const billingItems = await compileVisitBillingItems(adminClient, {
+      organizationId: ctx.organizationId,
+      branchId: visit.branch_id,
+      visitId: visit.id,
+      prescriptionItems: presItems,
+    });
 
     // 4. Retrieve Organization Tax settings
     const { data: taxSetting } = await adminClient

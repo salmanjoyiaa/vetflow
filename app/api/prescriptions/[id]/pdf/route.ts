@@ -40,6 +40,7 @@ export async function GET(
         patients ( name, species, breed ),
         visits ( 
           reason,
+          customer_id,
           clinical_notes ( diagnosis, treatment_plan, follow_up_recommendation )
         ),
         branches ( name, address, phone ),

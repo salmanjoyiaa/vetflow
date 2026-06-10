@@ -233,6 +233,8 @@ export async function createStaffAppointmentAction(payload: unknown) {
         is_emergency: parsed.isEmergency,
         intake_notes: parsed.intakeNotes?.trim() || null,
         status: 'confirmed',
+        created_by: ctx.userId,
+        created_by_role: ctx.role || 'receptionist',
       })
       .select()
       .single();
