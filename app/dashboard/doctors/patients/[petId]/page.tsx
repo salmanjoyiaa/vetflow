@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { resolveServerAuthContext } from '@/lib/auth/context';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
+import { normalizeOneToOne } from '@/lib/supabase/embed';
 import DoctorPatientHistoryClient, {
   type DoctorVisitRow,
 } from '@/components/doctors/DoctorPatientHistoryClient';
@@ -11,6 +12,11 @@ import { Heart } from 'lucide-react';
 export const metadata = {
   title: 'Patient Medical History',
   description: 'Full clinical history and medical files for an assigned patient.',
+};
+
+type VisitAssignmentEmbed = {
+  doctor_id?: string;
+  user_profiles?: { first_name: string; last_name: string } | null;
 };
 
 export default async function DoctorPatientHistoryPage({
@@ -48,7 +54,7 @@ export default async function DoctorPatientHistoryPage({
   const { data: visitRows } = await supabase
     .from('visits')
     .select(`
-      id, reason, status, checked_in_at,
+      id, reason, status, checked_in_at, doctor_id,
       visit_assignments ( doctor_id, user_profiles ( first_name, last_name ) ),
       clinical_notes ( chief_complaint, diagnosis, treatment_plan ),
       documents ( id, file_name, category, created_at )
@@ -57,12 +63,29 @@ export default async function DoctorPatientHistoryPage({
     .eq('organization_id', ctx.organizationId)
     .order('checked_in_at', { ascending: false });
 
+  const doctorAssignedViaVisits = (visitRows ?? []).some((v) => {
+    const assignment = normalizeOneToOne(
+      v.visit_assignments as VisitAssignmentEmbed | VisitAssignmentEmbed[] | null
+    );
+    return assignment?.doctor_id === ctx.userId || v.doctor_id === ctx.userId;
+  });
+
+  let doctorAssignedViaRx = false;
+  if (ctx.role === 'doctor' && !doctorAssignedViaVisits) {
+    const { data: rxAccess } = await supabase
+      .from('prescriptions')
+      .select('id')
+      .eq('patient_id', petId)
+      .eq('doctor_id', ctx.userId)
+      .eq('organization_id', ctx.organizationId)
+      .limit(1)
+      .maybeSingle();
+    doctorAssignedViaRx = !!rxAccess;
+  }
+
   const hasAccess =
     ctx.role === 'clinic_admin' ||
-    (visitRows ?? []).some((v) => {
-      const assignment = (v.visit_assignments as { doctor_id?: string }[] | null)?.[0];
-      return assignment?.doctor_id === ctx.userId;
-    });
+    (ctx.role === 'doctor' && (doctorAssignedViaVisits || doctorAssignedViaRx));
 
   if (!hasAccess && ctx.role === 'doctor') {
     return (
@@ -73,11 +96,13 @@ export default async function DoctorPatientHistoryPage({
   }
 
   const visits: DoctorVisitRow[] = (visitRows ?? []).map((v) => {
-    const assignment = (v.visit_assignments as Array<{
-      user_profiles: { first_name: string; last_name: string } | null;
-    }> | null)?.[0];
-    const prof = assignment?.user_profiles;
-    const notes = (v.clinical_notes as DoctorVisitRow['notes'][] | null)?.[0] ?? null;
+    const assignment = normalizeOneToOne(
+      v.visit_assignments as VisitAssignmentEmbed | VisitAssignmentEmbed[] | null
+    );
+    const prof = assignment?.user_profiles ?? null;
+    const notes = normalizeOneToOne(
+      v.clinical_notes as DoctorVisitRow['notes'] | DoctorVisitRow['notes'][] | null
+    );
     return {
       id: v.id,
       reason: v.reason,
