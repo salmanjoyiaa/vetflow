@@ -303,11 +303,89 @@ Local dev missing (optional until feature used): `GEMINI_API_KEY`, `SOCIAL_TOKEN
 - Recommended version: **0.2.0**
 - Tag: `v0.2.0` — Pet clinic role dashboards MVP (requires migrations 11–13)
 
+### v0.2.0 Production deployment (2026-06-15)
+
+| Item | Status |
+|------|--------|
+| **URL** | https://vetflow-psi.vercel.app |
+| **Deployment** | `vetflow-zgpspm9wf` (vetflow-psi project) |
+| **Vercel env vars** | 7 required production vars configured |
+| **Alias fix** | `vetflow-psi.vercel.app` repointed from stale `vetflow` project deploy |
+
+**Post-deploy browser QA (spot-check):**
+
+| Test | Result |
+|------|--------|
+| Login (admin/reception/doctor) | Pass |
+| Admin 14 QABs | Pass |
+| Reception 6 QABs | Pass |
+| Doctor 6 QABs | Pass |
+| Benchmarking page | Pass (branch metrics visible) |
+| Camera QAB visible (admin/reception) | Pass |
+| Doctor queue page | Pass |
+| Full clinical/billing flow matrix | Not automated — manual follow-up recommended |
+
 ### Remaining non-blocking
 
 - ESLint `no-explicit-any` in legacy PDF routes (16 errors in 3 routes)
 - Manual browser QA on staging after deploy
 - Deferred features per Section 7 (RTSP/HLS, custom RBAC, etc.)
+
+---
+
+## 9. Post-deploy QA (full matrix) — 2026-06-15
+
+**Environment:** https://vetflow-psi.vercel.app (v0.2.0)  
+**Org:** VetCare Center (`a0000000-0000-0000-0000-000000000000`)  
+**QA visits created:** Bella standard (`ac4dd39a…`), Max lab (`b4434333…`), Bella surgery (`20d6f9df…`)
+
+### Matrix results
+
+| # | Area | Result | Notes |
+|---|------|--------|-------|
+| 1 | Login (admin / reception / doctor) | **Pass** | Correct greetings; dashboard loads per role |
+| 2 | QAB visibility + negative checks | **Pass** | Admin 14, reception 6, doctor 6; doctor blocked on `/dashboard/invoices`, `/dashboard/walk-ins` (reception-only) |
+| 3 | Walk-in + queue status flow | **Pass** | `waiting` → `consulting` → `ready_for_checkout` → `completed` verified on Bella visit |
+| 3b | Appointment creation (reception) | **Skipped** | Not exercised in this pass; walk-in intake verified |
+| 4 | Standard consultation | **Pass** | Diagnosis saved; visit → `ready_for_checkout` |
+| 4 | Lab consultation + guard | **Pass** | Complete without lab order blocked (switches to Labs tab, status stays `consulting`); after custom CBC order, complete → `ready_for_checkout`, `visit_type=lab` |
+| 4 | Surgery consultation | **Pass** | `procedure_notes`, `post_op_medication`, `visit_type=surgery` persisted in `clinical_notes` |
+| 5 | Treatment PDF | **Pass** | `GET /api/visits/{id}/treatment-pdf` → 200 `application/pdf` |
+| 5 | Prescription PDF | **Pass** | Doctor: `GET /api/prescriptions/fb100000…/pdf` → 200; reception 403 (expected RBAC) |
+| 5 | Lab report export | **Pass** | `GET /api/lab-orders/{id}/pdf` → 200 `text/plain` (acceptable per audit) |
+| 6 | Partial checkout | **Pass** | Bella visit: $30 of $57.50; invoice `partially_paid`; remaining balance + ledger UI |
+| 6 | Record remaining payment | **Pass** | Invoice `d995ca28…` → `paid` after “Pay remaining balance” |
+| 6 | Full paid checkout | **Pass** | Max lab visit: `paid`, visit `completed` |
+| 7 | Inventory product types | **Pass** | Tabs: medicine, food, treats, accessories, service; created `QA Dental Chews 0615` (treats), `QA Leash 0615` (accessory) |
+| 7 | Stock deduction on checkout | **Code-verified** | `billing-actions.ts` deducts stock for physical line items; not re-measured with before/after counts in this pass |
+| 7 | OCR supplier invoice intake | **Pass (UI)** | `/dashboard/inventory?tab=intake` loads upload + GROQ copy; full image extraction not run |
+| 8 | Camera QAB (`camera_feed`) | **Pass** | Reception modal opens; “No cameras configured” placeholder |
+| 8 | AI Assistant slide-over | **Pass** | GROQ response to walk-in prompt |
+| 8 | Benchmarking page (admin) | **Pass** | `/dashboard/benchmarking` — branch MTD metrics visible |
+| 8 | Benchmarking (reception) | **Pass (negative)** | Access restricted as expected |
+| 9 | Email (Resend) | **Skipped** | `RESEND_API_KEY` on Vercel; checkout “Email receipt” checkbox present; no live send tested |
+
+### Bugs found
+
+| ID | Severity | Summary | Status |
+|----|----------|---------|--------|
+| QA-001 | **P2** | Lab catalog dropdown IDs (`1a000000-…`) fail Zod `uuid()` in `LabOrderSchema`; ordering from catalog shows validation error. **Workaround:** use “Custom” test name (sets `lab_test_id` null). | Open — defer to v0.2.1 polish |
+| QA-002 | **P3** | Lab PDF is plain text, not PDF | Deferred (audit expectation) |
+| QA-003 | **P3** | RHF forms sometimes need native `input` events for `browser_fill` in automation | N/A production |
+
+**Bugs fixed this pass:** none (no P0/P1 found).
+
+### Demo readiness
+
+| Verdict | **Yes — demo ready on v0.2.0** |
+|---------|----------------------------------|
+| Caveats | Use custom lab order (not catalog pick) until QA-001 fixed; configure camera devices for live feed demo; appointment booking not re-tested this pass |
+
+### Hotfix v0.2.1 needed?
+
+| Verdict | **No** |
+|---------|--------|
+| Rationale | All P0/P1 flows pass. QA-001 is P2 with workaround. Recommend v0.2.1 only if catalog lab ordering is demo-critical. |
 
 ---
 
