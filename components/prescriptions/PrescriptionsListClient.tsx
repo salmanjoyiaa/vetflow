@@ -2,11 +2,11 @@
 
 import { useCallback, useState } from 'react';
 import Link from 'next/link';
-import SlideOverPanel from '@/components/ui/premium/SlideOverPanel';
-import DoctorPatientHistoryClient from '@/components/doctors/DoctorPatientHistoryClient';
-import { getDoctorPatientMedicalHistoryAction } from '@/lib/services/patient-medical-actions';
-import type { PatientMedicalHistoryData } from '@/lib/services/patient-medical-actions';
-import { FileText, Download, ExternalLink, AlertTriangle, Loader2 } from 'lucide-react';
+import FullScreenOverlay from '@/components/ui/premium/FullScreenOverlay';
+import PetMedicalProfileClient from '@/components/pets/PetMedicalProfileClient';
+import { getPatientMedicalProfileAction } from '@/lib/services/patient-medical-actions';
+import type { PatientMedicalProfileData } from '@/lib/types/patient-medical';
+import { FileText, Download, ExternalLink, AlertTriangle, Loader2, ChevronRight } from 'lucide-react';
 
 export type PrescriptionListRow = {
   id: string;
@@ -27,39 +27,51 @@ interface PrescriptionsListClientProps {
   userRole: string | null;
 }
 
+function canUploadPhoto(role: string | null): boolean {
+  return role === 'doctor' || role === 'receptionist' || role === 'clinic_admin';
+}
+
+function canEditClinical(role: string | null): boolean {
+  return role === 'doctor' || role === 'clinic_admin';
+}
+
+function canEditCare(role: string | null): boolean {
+  return role === 'doctor' || role === 'receptionist' || role === 'clinic_admin';
+}
+
 export default function PrescriptionsListClient({
   prescriptions,
   userRole,
 }: PrescriptionsListClientProps) {
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [overlayOpen, setOverlayOpen] = useState(false);
   const [activePetId, setActivePetId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<PatientMedicalHistoryData | null>(null);
+  const [profile, setProfile] = useState<PatientMedicalProfileData | null>(null);
 
-  const loadHistory = useCallback(async (petId: string) => {
+  const loadProfile = useCallback(async (petId: string) => {
     setLoading(true);
     setError(null);
-    const res = await getDoctorPatientMedicalHistoryAction(petId);
+    const res = await getPatientMedicalProfileAction(petId);
     setLoading(false);
     if (res.success && res.data) {
-      setHistory(res.data);
+      setProfile(res.data);
     } else {
-      setHistory(null);
-      setError(res.error || 'Failed to load medical history');
+      setProfile(null);
+      setError(res.error || 'Failed to load medical profile');
     }
   }, []);
 
   const openMedicalFile = (petId: string) => {
     setActivePetId(petId);
-    setPanelOpen(true);
-    void loadHistory(petId);
+    setOverlayOpen(true);
+    void loadProfile(petId);
   };
 
-  const closePanel = () => {
-    setPanelOpen(false);
+  const closeOverlay = () => {
+    setOverlayOpen(false);
     setActivePetId(null);
-    setHistory(null);
+    setProfile(null);
     setError(null);
   };
 
@@ -119,23 +131,15 @@ export default function PrescriptionsListClient({
               >
                 {rx.isFinalized ? 'Finalized' : 'Draft'}
               </span>
-              {rx.petId &&
-                (userRole === 'doctor' ? (
-                  <button
-                    type="button"
-                    onClick={() => openMedicalFile(rx.petId!)}
-                    className="text-[10px] font-semibold text-primary flex items-center gap-1 hover:underline"
-                  >
-                    Medical file <ExternalLink className="w-3 h-3" />
-                  </button>
-                ) : (
-                  <Link
-                    href={`/dashboard/pets/${rx.petId}`}
-                    className="text-[10px] font-semibold text-primary flex items-center gap-1 hover:underline"
-                  >
-                    Medical file <ExternalLink className="w-3 h-3" />
-                  </Link>
-                ))}
+              {rx.petId && (
+                <button
+                  type="button"
+                  onClick={() => openMedicalFile(rx.petId!)}
+                  className="text-[10px] font-semibold text-primary flex items-center gap-1 hover:underline"
+                >
+                  Medical file <ExternalLink className="w-3 h-3" />
+                </button>
+              )}
               <a
                 href={`/api/prescriptions/${rx.id}/pdf`}
                 target="_blank"
@@ -150,16 +154,26 @@ export default function PrescriptionsListClient({
         ))}
       </div>
 
-      <SlideOverPanel
-        open={panelOpen}
-        onClose={closePanel}
-        title={history ? `Medical history: ${history.petName}` : 'Medical history'}
-        description="Review all visits, clinical notes, and medical files. Upload or remove documents."
-        width="xl"
+      <FullScreenOverlay
+        open={overlayOpen}
+        onClose={closeOverlay}
+        breadcrumb={
+          profile ? (
+            <span className="flex items-center gap-1">
+              Patients <ChevronRight className="w-3 h-3" />
+              <span className="text-primary-container">
+                {profile.petName}
+                {profile.patientNumber ? ` (ID: ${profile.patientNumber})` : ''}
+              </span>
+            </span>
+          ) : (
+            'Patient medical profile'
+          )
+        }
       >
         {loading && (
-          <div className="flex items-center justify-center py-16 text-on-surface-variant">
-            <Loader2 className="w-6 h-6 animate-spin" />
+          <div className="flex items-center justify-center py-24 text-on-surface-variant">
+            <Loader2 className="w-8 h-8 animate-spin" />
           </div>
         )}
         {!loading && error && (
@@ -167,21 +181,18 @@ export default function PrescriptionsListClient({
             {error}
           </div>
         )}
-        {!loading && !error && history && (
-          <DoctorPatientHistoryClient
-            petId={history.petId}
-            petName={history.petName}
-            species={history.species}
-            breed={history.breed}
-            allergies={history.allergies}
-            ownerName={history.ownerName}
-            visits={history.visits}
-            variant="panel"
-            editable
-            onRefresh={() => activePetId && loadHistory(activePetId)}
+        {!loading && !error && profile && (
+          <PetMedicalProfileClient
+            profile={profile}
+            variant="overlay"
+            editable={canEditClinical(userRole)}
+            canUploadPhoto={canUploadPhoto(userRole)}
+            canEditCareNotes={canEditCare(userRole)}
+            userRole={userRole}
+            onRefresh={() => activePetId && loadProfile(activePetId)}
           />
         )}
-      </SlideOverPanel>
+      </FullScreenOverlay>
     </>
   );
 }

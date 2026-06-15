@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { resolveServerAuthContext } from '@/lib/auth/context';
 import { guardRoute } from '@/lib/auth/page-guards';
-import { getDoctorPatientMedicalHistoryAction } from '@/lib/services/patient-medical-actions';
-import DoctorPatientHistoryClient from '@/components/doctors/DoctorPatientHistoryClient';
+import { getPatientMedicalProfileAction } from '@/lib/services/patient-medical-actions';
+import PetMedicalProfileClient from '@/components/pets/PetMedicalProfileClient';
 import PageHeader from '@/components/ui/premium/PageHeader';
 import { Heart } from 'lucide-react';
 
@@ -23,7 +23,7 @@ export default async function DoctorPatientHistoryPage({
   const denied = guardRoute(ctx, '/dashboard/doctors/patients');
   if (denied) return denied;
 
-  const result = await getDoctorPatientMedicalHistoryAction(petId);
+  const result = await getPatientMedicalProfileAction(petId);
 
   if (!result.success) {
     const isAccessDenied = result.error?.includes('assigned to you');
@@ -41,6 +41,9 @@ export default async function DoctorPatientHistoryPage({
   }
 
   const { data } = result;
+  const canEdit = ctx.role === 'doctor' || ctx.role === 'clinic_admin';
+  const canPhoto =
+    ctx.role === 'doctor' || ctx.role === 'receptionist' || ctx.role === 'clinic_admin';
 
   return (
     <div className="space-y-6">
@@ -49,16 +52,13 @@ export default async function DoctorPatientHistoryPage({
         description="Review all visits, clinical notes, and medical files. Upload or remove documents."
         icon={Heart}
       />
-      <DoctorPatientHistoryClient
-        petId={data.petId}
-        petName={data.petName}
-        species={data.species}
-        breed={data.breed}
-        allergies={data.allergies}
-        ownerName={data.ownerName}
-        visits={data.visits}
+      <PetMedicalProfileClient
+        profile={data}
         variant="page"
-        editable={ctx.role === 'doctor' || ctx.role === 'clinic_admin'}
+        editable={canEdit}
+        canUploadPhoto={canPhoto}
+        canEditCareNotes={canPhoto}
+        userRole={ctx.role}
       />
     </div>
   );

@@ -343,9 +343,28 @@ export const WalkInSchema = z.object({
 
 export const UpdateClinicalNoteSchema = z.object({
   visitId: EntityIdSchema,
+  visitType: z.enum(['standard', 'lab', 'surgery']).optional(),
   chiefComplaint: z.string().min(1, { message: 'Chief complaint is required' }),
+  history: z.string().optional().or(z.literal('')),
+  examinationFindings: z.string().optional().or(z.literal('')),
   diagnosis: z.string().min(1, { message: 'Diagnosis is required' }),
   treatmentPlan: z.string().optional().or(z.literal('')),
+  procedureNotes: z.string().optional().or(z.literal('')),
+  postOpMedication: z.string().optional().or(z.literal('')),
+  internalNotes: z.string().optional().or(z.literal('')),
+  followUpRecommendation: z.string().optional().or(z.literal('')),
+  followUpDays: z.array(z.number().int().positive()).optional(),
+  temperatureC: z.number().nonnegative().optional().or(z.nan()),
+  heartRateBpm: z.number().int().nonnegative().optional().or(z.nan()),
+  respiratoryRate: z.number().int().nonnegative().optional().or(z.nan()),
+  weightKg: z.number().nonnegative().optional().or(z.nan()),
+});
+
+export const UpdatePatientCareNotesSchema = z.object({
+  patientId: EntityIdSchema,
+  allergies: z.string().optional().or(z.literal('')),
+  medicalNotes: z.string().optional().or(z.literal('')),
+  weightKg: z.number().nonnegative().optional().or(z.nan()),
 });
 
 // --- TYPE INFERENCES ---
@@ -361,6 +380,7 @@ export type SubscriptionInput = z.infer<typeof SubscriptionSchema>;
 export type CheckoutInput = z.infer<typeof CheckoutSchema>;
 export type CompleteConsultationInput = z.infer<typeof CompleteConsultationSchema>;
 export type UpdateClinicalNoteInput = z.infer<typeof UpdateClinicalNoteSchema>;
+export type UpdatePatientCareNotesInput = z.infer<typeof UpdatePatientCareNotesSchema>;
 export type AppointmentRequestInput = z.infer<typeof AppointmentRequestSchema>;
 export type WalkInInput = z.infer<typeof WalkInSchema>;
 export type StaffAppointmentInput = z.infer<typeof StaffAppointmentSchema>;
