@@ -257,4 +257,58 @@ Enable opt-in features in `subscription_status.features`:
 
 ---
 
+## 8. Production launch (2026-06-15)
+
+### Completed deploy prep
+
+| Step | Status |
+|------|--------|
+| Migrations 11–13 applied (clinixdev `gicbhmkmyoumcyhzxvte`) | Done |
+| Verification SQL (3 columns, `products_type_check`, 3 tables) | Pass |
+| Opt-in flags (`consult_tracking`, `camera_feed`, `clinic_benchmarking`) | Enabled on all 5 orgs |
+| `npm run typecheck` | Pass |
+| `npm run build` | Pass (37 routes) |
+| Local `.env.local` core vars | Supabase URL/keys, `GROQ_API_KEY`, `RESEND_API_KEY`, `NEXT_PUBLIC_APP_URL` |
+
+### Production host environment checklist
+
+Set on hosting platform (Vercel/similar) before go-live:
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | clinixdev project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Public anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only; never expose client-side |
+| `NEXT_PUBLIC_APP_URL` | Yes | Production domain (not localhost) |
+| `NEXT_PUBLIC_DEMO_MODE` | Yes | `false` for production |
+| `GROQ_API_KEY` or `GEMINI_API_KEY` | For AI | OCR, assistant, analytics |
+| `RESEND_API_KEY` | For email | Outbound notifications |
+| `SOCIAL_TOKEN_ENCRYPTION_KEY` | If social | Min 16 chars; Meta OAuth |
+| `META_APP_ID`, `META_APP_SECRET` | If social | Facebook/Instagram publishing |
+| Stripe vars | Optional | Subscription billing only |
+
+Local dev missing (optional until feature used): `GEMINI_API_KEY`, `SOCIAL_TOKEN_ENCRYPTION_KEY`, Meta/Stripe keys.
+
+### Post-migration schema smoke (remote)
+
+- `clinical_notes`: `visit_type`, `procedure_notes`, `post_op_medication` present
+- `products_type_check`: includes `treats`
+- Tables: `services`, `visit_services`, `camera_devices` present
+- Default services seeded per organization
+- `visits.consult_started_at` for consult tracking
+- Partial payments: `payments` ledger unchanged; app sums for balance
+
+### Release
+
+- Recommended version: **0.2.0**
+- Tag: `v0.2.0` — Pet clinic role dashboards MVP (requires migrations 11–13)
+
+### Remaining non-blocking
+
+- ESLint `no-explicit-any` in legacy PDF routes (16 errors in 3 routes)
+- Manual browser QA on staging after deploy
+- Deferred features per Section 7 (RTSP/HLS, custom RBAC, etc.)
+
+---
+
 *Generated as part of the Pet Clinic Role-Based Dashboards implementation.*
