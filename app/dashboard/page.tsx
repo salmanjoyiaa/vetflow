@@ -1,7 +1,7 @@
 import { resolveServerAuthContext } from '@/lib/auth/context';
 import { canAccessRoute, canShowWidget, hasCapability, getCapabilitiesForRole } from '@/lib/auth/capabilities';
 import { canAccessRouteByFeature } from '@/lib/auth/features';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { isDemoMode } from '@/lib/demo/credentials';
 import {
   MOCK_DASHBOARD_KPIS,
@@ -58,6 +58,13 @@ import {
 import type { UserSessionDetails } from '@/lib/services/auth';
 import { getTimeGreeting } from '@/lib/utils/greeting';
 import DashboardQabShell from '@/components/dashboard/DashboardQabShell';
+import StaffDashboardGate from '@/components/dashboard/StaffDashboardGate';
+import StaffAttendanceOverviewPanel, {
+  type StaffAttendanceOverviewRow,
+} from '@/components/dashboard/StaffAttendanceOverviewPanel';
+import DoctorQueuePanel, {
+  type DoctorQueueVisit,
+} from '@/components/dashboard/DoctorQueuePanel';
 
 export const metadata = {
   title: 'Dashboard — Overview',
@@ -146,6 +153,9 @@ export default async function DashboardOverview() {
   let showConsultTimer = false;
   let featuresJson: Record<string, unknown> | null = null;
   let doctors: { id: string; firstName: string; lastName: string }[] = [];
+  let staffAttendanceRows: StaffAttendanceOverviewRow[] = [];
+  let doctorQueueWaiting: DoctorQueueVisit[] = [];
+  let doctorQueueConsulting: DoctorQueueVisit[] = [];
   const showAttendance = hasCapability(role, 'mark_attendance');
 
   if (isDemoMode()) {
@@ -286,12 +296,40 @@ export default async function DashboardOverview() {
       queries.push(
         supabase
           .from('visits')
-          .select('id, visit_assignments!inner(doctor_id)', { count: 'exact', head: true })
-          .eq('branch_id', activeBranchId)
+          .select(`
+            id, reason, status, checked_in_at, consult_started_at, is_emergency, triage_notes,
+            pets:patients ( id, name, species, breed ),
+            customers ( first_name, last_name ),
+            visit_assignments!inner ( doctor_id )
+          `)
           .eq('visit_assignments.doctor_id', session.userId)
           .in('status', ['waiting', 'consulting'])
+          .order('is_emergency', { ascending: false })
+          .order('checked_in_at', { ascending: true })
           .then((r) => {
-            myQueueCount = r.count || 0;
+            const mapped =
+              r.data?.map((v) => ({
+                id: v.id,
+                reason: v.reason,
+                status: v.status,
+                checkedInAt: v.checked_in_at as string,
+                consultStartedAt: v.consult_started_at as string | null,
+                isEmergency: v.is_emergency ?? false,
+                triageNotes: v.triage_notes as string | null,
+                pet: {
+                  id: (v.pets as { id: string; name: string; species: string; breed: string | null }).id,
+                  name: (v.pets as { name: string }).name,
+                  species: (v.pets as { species: string }).species,
+                  breed: (v.pets as { breed: string | null }).breed,
+                },
+                customer: {
+                  firstName: (v.customers as { first_name: string }).first_name,
+                  lastName: (v.customers as { last_name: string }).last_name,
+                },
+              })) || [];
+            doctorQueueWaiting = mapped.filter((x) => x.status === 'waiting');
+            doctorQueueConsulting = mapped.filter((x) => x.status === 'consulting');
+            myQueueCount = mapped.length;
           })
       );
       queries.push(
@@ -611,6 +649,69 @@ export default async function DashboardOverview() {
       );
     }
 
+    if (role === 'clinic_admin' && session.organizationId) {
+      const todayDate = new Date().toISOString().slice(0, 10);
+      queries.push(
+        (async () => {
+          const admin = await createAdminClient();
+          const { data: members } = await admin
+            .from('organization_members')
+            .select('user_id, role, is_active')
+            .eq('organization_id', session.organizationId!)
+            .eq('is_active', true)
+            .neq('role', 'clinic_admin');
+
+          const userIds = (members || []).map((m) => m.user_id);
+          if (userIds.length === 0) return;
+
+          const [{ data: profiles }, { data: attendanceData }] = await Promise.all([
+            admin
+              .from('user_profiles')
+              .select('id, first_name, last_name')
+              .in('id', userIds),
+            admin
+              .from('attendance_records')
+              .select('user_id, status, check_in_at, check_out_at')
+              .eq('organization_id', session.organizationId!)
+              .eq('work_date', todayDate),
+          ]);
+
+          const nameById = new Map(
+            (profiles || []).map((p) => [p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim()])
+          );
+          const attendanceByUser = new Map<
+            string,
+            {
+              user_id: string;
+              status: string;
+              check_in_at: string | null;
+              check_out_at: string | null;
+            }
+          >((attendanceData || []).map((a) => [a.user_id, a]));
+
+          staffAttendanceRows = (members || []).map((m) => {
+            const rec = attendanceByUser.get(m.user_id);
+            let rosterStatus: StaffAttendanceOverviewRow['rosterStatus'] = 'not_scheduled';
+            if (rec?.check_in_at && !rec.check_out_at) {
+              rosterStatus = rec.status === 'late' ? 'late' : 'on_shift';
+            } else if (rec?.check_in_at && rec.check_out_at) {
+              rosterStatus = rec.status === 'late' ? 'late' : 'present';
+            } else if (rec?.status === 'absent') {
+              rosterStatus = 'absent';
+            }
+            return {
+              userId: m.user_id,
+              staffName: nameById.get(m.user_id) || 'Unknown',
+              role: m.role,
+              checkInAt: rec?.check_in_at ?? null,
+              checkOutAt: rec?.check_out_at ?? null,
+              rosterStatus,
+            };
+          });
+        })()
+      );
+    }
+
     if (showAttendance && session.organizationId) {
       const todayDate = new Date().toISOString().slice(0, 10);
       queries.push(
@@ -669,6 +770,9 @@ export default async function DashboardOverview() {
     canShowWidget(role, 'totalPets') ||
     role === 'clinic_admin';
 
+  const staffGateLocked =
+    role !== 'clinic_admin' && showAttendance && !myAttendance.checkedIn;
+
   return (
     <div className="space-y-8">
       <RoleDashboardHero
@@ -676,11 +780,12 @@ export default async function DashboardOverview() {
         greeting={greeting}
         organizationName={session.organizationName}
         role={role}
-        quickLinks={quickLinks}
+        quickLinks={staffGateLocked ? [] : quickLinks}
       />
 
       {showAttendance && <AttendanceWidgetClient initial={myAttendance} />}
 
+      <StaffDashboardGate locked={staffGateLocked}>
       <DashboardQabShell
         role={role}
         capabilities={getCapabilitiesForRole(role)}
@@ -695,6 +800,15 @@ export default async function DashboardOverview() {
         showConsultTimer={showConsultTimer}
       />
 
+      {role === 'doctor' && !staffGateLocked && (
+        <DoctorQueuePanel
+          waitingVisits={doctorQueueWaiting}
+          consultingVisits={doctorQueueConsulting}
+          showConsultTimer={showConsultTimer}
+          compact
+        />
+      )}
+
       {kpis.length > 0 && <DashboardWidgetGrid kpis={kpis} />}
 
       {role === 'clinic_admin' && (
@@ -706,6 +820,13 @@ export default async function DashboardOverview() {
           />
           <MedicalRecordActivityPanel activities={medicalActivities} />
         </div>
+      )}
+
+      {role === 'clinic_admin' && (
+        <StaffAttendanceOverviewPanel
+          rows={staffAttendanceRows}
+          attendanceDate={new Date().toISOString().slice(0, 10)}
+        />
       )}
 
       {role === 'receptionist' && (
@@ -871,6 +992,7 @@ export default async function DashboardOverview() {
           </Link>
         </div>
       )}
+      </StaffDashboardGate>
     </div>
   );
 }

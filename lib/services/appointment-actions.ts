@@ -23,6 +23,7 @@ import {
   AppointmentWithPatientSchema,
   MarkEmergencySchema,
   RescheduleAppointmentSchema,
+  UpdateAppointmentDetailsSchema,
   StaffAppointmentSchema,
 } from '@/lib/validations/schemas';
 
@@ -684,6 +685,46 @@ export async function rescheduleAppointmentAction(payload: unknown) {
         preferred_time: parsed.preferredTime,
         status: 'rescheduled',
       },
+    });
+
+    return { success: true };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+    return { success: false, error: message };
+  }
+}
+
+export async function updateAppointmentDetailsAction(payload: unknown) {
+  try {
+    const parsed = UpdateAppointmentDetailsSchema.parse(payload);
+    const { ctx, supabase, appt } = await loadAppointmentForAction(parsed.appointmentId);
+
+    if (!['requested', 'confirmed', 'rescheduled'].includes(appt.status)) {
+      throw new Error('This appointment cannot be edited.');
+    }
+
+    const patch: Record<string, string> = {};
+    if (parsed.reason !== undefined) patch.reason = parsed.reason;
+    if (parsed.preferredDate !== undefined) patch.preferred_date = parsed.preferredDate;
+    if (parsed.preferredTime !== undefined) patch.preferred_time = parsed.preferredTime;
+
+    if (Object.keys(patch).length === 0) {
+      throw new Error('No changes to save.');
+    }
+
+    const { error } = await supabase.from('appointments').update(patch).eq('id', parsed.appointmentId);
+
+    if (error) throw new Error(error.message);
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId!,
+      branchId: appt.branch_id,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
+      action: 'APPOINTMENT_UPDATED',
+      resourceType: 'APPOINTMENT',
+      resourceId: parsed.appointmentId,
+      afterData: patch,
     });
 
     return { success: true };

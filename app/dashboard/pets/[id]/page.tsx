@@ -20,6 +20,7 @@ import {
 import MedicalRecordActivityPanel, {
   type MedicalActivityRow,
 } from '@/components/dashboard/MedicalRecordActivityPanel';
+import PatientDocumentsClient from '@/components/pets/PatientDocumentsClient';
 
 export const metadata = {
   title: 'Patient Medical File',
@@ -226,6 +227,14 @@ export default async function PetDetailPage({
     });
   }
 
+  const { data: patientDocuments } = await supabase
+    .from('documents')
+    .select('id, file_name, category, created_at, mime_type, storage_path')
+    .eq('patient_id', petId)
+    .eq('organization_id', session.organizationId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
+
   return (
     <div className="space-y-8">
       
@@ -245,6 +254,13 @@ export default async function PetDetailPage({
 
       {petMedicalActivity.length > 0 && (
         <MedicalRecordActivityPanel activities={petMedicalActivity} />
+      )}
+
+      {patientDocuments && patientDocuments.length > 0 && (
+        <PatientDocumentsClient
+          documents={patientDocuments}
+          canDelete={session.role === 'clinic_admin'}
+        />
       )}
 
       <div className="grid md:grid-cols-3 gap-8">

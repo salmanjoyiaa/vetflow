@@ -14,9 +14,19 @@ import {
   ProductSchema,
   StockAdjustmentSchema,
   ConfirmStockIntakeSchema,
+  UpdateProductSchema,
   type ProductInput,
   type StockAdjustmentInput,
 } from '@/lib/validations/schemas';
+
+function canManageProduct(
+  ctx: { role?: string | null; userId: string },
+  product: { created_by: string | null }
+): boolean {
+  if (ctx.role === 'clinic_admin') return true;
+  if (ctx.role === 'receptionist') return product.created_by === ctx.userId;
+  return false;
+}
 
 async function findOrCreateCategory(organizationId: string, name: string): Promise<string> {
   const admin = await createAdminClient();
@@ -73,6 +83,7 @@ export async function createProductAction(payload: unknown) {
         stock_quantity: parsed.type === 'service' ? 9999 : parsed.stockQuantity,
         reorder_level: parsed.reorderLevel,
         is_active: true,
+        created_by: ctx.userId,
       })
       .select()
       .single();
@@ -250,6 +261,7 @@ export async function confirmStockIntakeAction(payload: unknown) {
             stock_quantity: line.quantity,
             reorder_level: 5,
             is_active: true,
+            created_by: ctx.userId,
           })
           .select()
           .single();
@@ -318,7 +330,132 @@ export async function toggleProductStatusAction(productId: string, isActive: boo
       throw new Error(error?.message || 'Failed to update product status.');
     }
 
-    assertBranchAccess(ctx, product.branch_id);
+    return { success: true };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'An unexpected error occurred.',
+    };
+  }
+}
+
+export async function updateProductAction(payload: unknown) {
+  try {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) throw new Error('Unauthorized: Session is invalid.');
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_inventory');
+    assertFeature(ctx, 'inventory');
+
+    const parsed = UpdateProductSchema.parse(payload);
+    assertBranchAccess(ctx, parsed.branchId);
+
+    const admin = await createAdminClient();
+    const { data: existing, error: fetchErr } = await admin
+      .from('products')
+      .select('id, branch_id, created_by, deleted_at')
+      .eq('id', parsed.productId)
+      .eq('organization_id', ctx.organizationId)
+      .single();
+
+    if (fetchErr || !existing || existing.deleted_at) {
+      throw new Error('Product not found or access denied.');
+    }
+
+    if (!canManageProduct(ctx, { created_by: existing.created_by })) {
+      throw new Error('You can only edit products you created.');
+    }
+
+    let categoryId = parsed.categoryId || null;
+    if (!categoryId && parsed.categoryName?.trim()) {
+      categoryId = await findOrCreateCategory(ctx.organizationId!, parsed.categoryName.trim());
+    }
+
+    const { data: product, error } = await admin
+      .from('products')
+      .update({
+        branch_id: parsed.branchId,
+        category_id: categoryId,
+        name: parsed.name,
+        brand: parsed.brand || null,
+        sku: parsed.sku || null,
+        unit: parsed.unit,
+        type: parsed.type,
+        purchase_price: parsed.purchasePrice,
+        selling_price: parsed.sellingPrice,
+        reorder_level: parsed.reorderLevel,
+      })
+      .eq('id', parsed.productId)
+      .select()
+      .single();
+
+    if (error || !product) {
+      throw new Error(error?.message || 'Failed to update product.');
+    }
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId,
+      branchId: existing.branch_id,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'clinic_admin',
+      action: 'PRODUCT_UPDATED',
+      resourceType: 'PRODUCT',
+      resourceId: product.id,
+      afterData: product,
+    });
+
+    return { success: true, product };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'An unexpected error occurred.',
+    };
+  }
+}
+
+export async function deleteProductAction(productId: string) {
+  try {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) throw new Error('Unauthorized: Session is invalid.');
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_inventory');
+    assertFeature(ctx, 'inventory');
+
+    const admin = await createAdminClient();
+    const { data: existing, error: fetchErr } = await admin
+      .from('products')
+      .select('id, branch_id, name, created_by, deleted_at')
+      .eq('id', productId)
+      .eq('organization_id', ctx.organizationId)
+      .single();
+
+    if (fetchErr || !existing || existing.deleted_at) {
+      throw new Error('Product not found or access denied.');
+    }
+
+    if (!canManageProduct(ctx, { created_by: existing.created_by })) {
+      throw new Error('You can only delete products you created.');
+    }
+
+    assertBranchAccess(ctx, existing.branch_id);
+
+    const { error } = await admin
+      .from('products')
+      .update({ is_active: false, deleted_at: new Date().toISOString() })
+      .eq('id', productId);
+
+    if (error) throw new Error(error.message || 'Failed to delete product.');
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId,
+      branchId: existing.branch_id,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'clinic_admin',
+      action: 'PRODUCT_DELETED',
+      resourceType: 'PRODUCT',
+      resourceId: productId,
+      beforeData: { name: existing.name },
+    });
 
     return { success: true };
   } catch (err: unknown) {

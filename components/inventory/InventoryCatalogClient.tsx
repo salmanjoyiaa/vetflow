@@ -1,8 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import StockAdjustmentForm from '@/components/forms/StockAdjustmentForm';
-import { ShieldAlert } from 'lucide-react';
+import ProductEditModal from '@/components/inventory/ProductEditModal';
+import { deleteProductAction } from '@/lib/services/inventory-actions';
+import { ShieldAlert, Trash2, Loader2 } from 'lucide-react';
+import type { UserSessionDetails } from '@/lib/services/auth';
 
 const TYPE_TABS = [
   { id: 'all', label: 'All' },
@@ -26,24 +30,57 @@ interface ProductRow {
   selling_price: number;
   stock_quantity: number;
   reorder_level: number;
+  created_by: string | null;
   product_categories: { name: string } | null;
 }
 
 interface InventoryCatalogClientProps {
   products: ProductRow[];
   activeBranchId: string;
+  role: UserSessionDetails['role'];
+  userId: string;
+  categories: { id: string; name: string }[];
+  branches: { id: string; name: string }[];
+}
+
+function canManageRow(
+  role: UserSessionDetails['role'],
+  userId: string,
+  createdBy: string | null
+): boolean {
+  if (role === 'clinic_admin') return true;
+  if (role === 'receptionist') return createdBy === userId;
+  return false;
 }
 
 export default function InventoryCatalogClient({
   products,
   activeBranchId,
+  role,
+  userId,
+  categories,
+  branches,
 }: InventoryCatalogClientProps) {
   const [typeTab, setTypeTab] = useState<TypeTab>('all');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const router = useRouter();
 
   const filtered = useMemo(() => {
     if (typeTab === 'all') return products;
     return products.filter((p) => p.type === typeTab);
   }, [products, typeTab]);
+
+  const handleDelete = async (productId: string, name: string) => {
+    if (!confirm(`Remove "${name}" from the catalog?`)) return;
+    setDeletingId(productId);
+    try {
+      const res = await deleteProductAction(productId);
+      if (res.success) router.refresh();
+      else alert(res.error || 'Delete failed');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (products.length === 0) return null;
 
@@ -81,6 +118,8 @@ export default function InventoryCatalogClient({
             {filtered.map((prod) => {
               const isLowStock =
                 prod.type !== 'service' && prod.stock_quantity <= prod.reorder_level;
+              const manageable = canManageRow(role, userId, prod.created_by);
+
               return (
                 <tr key={prod.id} className="hover:bg-surface-container/10 transition-colors">
                   <td className="px-6 py-4">
@@ -125,18 +164,43 @@ export default function InventoryCatalogClient({
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    {prod.type !== 'service' ? (
-                      <StockAdjustmentForm
-                        productId={prod.id}
-                        productName={prod.name}
-                        branchId={activeBranchId}
-                        currentStock={prod.stock_quantity}
-                      />
-                    ) : (
-                      <span className="text-[10px] text-on-surface-variant/40 italic">
-                        Billed Service
-                      </span>
-                    )}
+                    <div className="inline-flex flex-col items-end gap-2">
+                      {manageable && (
+                        <div className="flex items-center gap-2">
+                          <ProductEditModal
+                            product={prod}
+                            categories={categories}
+                            branches={branches}
+                            activeBranchId={activeBranchId}
+                          />
+                          <button
+                            type="button"
+                            disabled={deletingId !== null}
+                            onClick={() => handleDelete(prod.id, prod.name)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold border border-destructive/30 text-destructive hover:bg-destructive/5 transition-colors disabled:opacity-50"
+                          >
+                            {deletingId === prod.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3 h-3" />
+                            )}
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                      {prod.type !== 'service' ? (
+                        <StockAdjustmentForm
+                          productId={prod.id}
+                          productName={prod.name}
+                          branchId={activeBranchId}
+                          currentStock={prod.stock_quantity}
+                        />
+                      ) : (
+                        <span className="text-[10px] text-on-surface-variant/40 italic">
+                          Billed Service
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

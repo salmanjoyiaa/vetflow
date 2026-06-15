@@ -68,9 +68,11 @@ export default async function InventoryPage({
       stock_quantity,
       reorder_level,
       category_id,
+      created_by,
       product_categories ( name )
     `)
     .eq('branch_id', activeBranchId)
+    .is('deleted_at', null)
     .order('name', { ascending: true });
 
   if (error) {
@@ -141,7 +143,14 @@ export default async function InventoryPage({
 
       {/* PRODUCT LIST TABLE */}
       {products && products.length > 0 ? (
-        <InventoryCatalogClient products={products || []} activeBranchId={activeBranchId} />
+        <InventoryCatalogClient
+          products={products || []}
+          activeBranchId={activeBranchId}
+          role={session.role}
+          userId={session.userId}
+          categories={categories || []}
+          branches={session.branches}
+        />
       ) : (
         <div className="glass-panel rounded-2xl border border-outline-variant/40 p-12 text-center">
           <ShoppingBag className="w-12 h-12 text-on-surface-variant/30 mx-auto mb-4" />

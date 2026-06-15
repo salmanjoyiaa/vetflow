@@ -21,6 +21,10 @@ export const ProductSchema = z.object({
   branchId: EntityIdSchema,
 });
 
+export const UpdateProductSchema = ProductSchema.extend({
+  productId: EntityIdSchema,
+});
+
 export const StockAdjustmentSchema = z.object({
   productId: EntityIdSchema,
   branchId: EntityIdSchema,
@@ -227,6 +231,13 @@ export const RescheduleAppointmentSchema = z.object({
   preferredTime: z.string().min(1, { message: 'Time is required' }),
 });
 
+export const UpdateAppointmentDetailsSchema = z.object({
+  appointmentId: z.string().uuid(),
+  reason: z.string().min(1).optional(),
+  preferredDate: z.string().min(1).optional(),
+  preferredTime: z.string().min(1).optional(),
+});
+
 export const StaffAppointmentSchema = z.object({
   customerId: z.string().uuid({ message: 'Select a valid customer' }),
   petId: z.string().uuid({ message: 'Select a valid pet' }),
@@ -314,6 +325,7 @@ export const WalkInSchema = z.object({
 
 // --- TYPE INFERENCES ---
 export type ProductInput = z.infer<typeof ProductSchema>;
+export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
 export type StockAdjustmentInput = z.infer<typeof StockAdjustmentSchema>;
 export type PetInput = z.infer<typeof PetSchema>;
 export type CustomerInput = z.infer<typeof CustomerSchema>;

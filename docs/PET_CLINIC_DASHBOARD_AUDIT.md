@@ -389,4 +389,111 @@ Local dev missing (optional until feature used): `GEMINI_API_KEY`, `SOCIAL_TOKEN
 
 ---
 
-*Generated as part of the Pet Clinic Role-Based Dashboards implementation.*
+## 10. Isolated E2E QA — QA Vet Clinic 20260615-2307 (2026-06-15)
+
+**Environment:** https://vetflow-psi.vercel.app (deploy `6c7vVi9KkgrAWu6Buv1u59mS4DxQ`, post UX workstream)  
+**Org:** `QA Vet Clinic E2E 20260615-2307` (`0faa414a-9faf-4882-ba97-3e5ad7ad68a2`)  
+**Timestamp:** `20260615-2307`
+
+### Accounts
+
+| Role | Email | Password |
+|------|-------|----------|
+| Clinic Admin | `qa.admin.20260615-2307@example.com` | `password123` |
+| Reception | `qa.reception.20260615-2307@example.com` | `password123` |
+| Doctor | `qa.doctor.20260615-2307@example.com` | `password123` |
+
+### Data summary (after phases 1–3)
+
+| Item | Value |
+|------|-------|
+| Staff | Reception + doctor (doctor form required Main Branch checkbox toggle) |
+| Inventory | 3 products (incl. QA Amoxicillin) |
+| Appointments | Bella / Max / Rocky booked; Luna walk-in |
+| Waiting visits | 5 (`waiting`) — includes duplicate Rocky from automation retry |
+| Visit IDs | Bella `249d86ea-…`, Max `c2d4d427-…`, Rocky `947cad7d-…` + `83795531-…`, Luna `c45d1f7d-…` |
+
+### New UX features shipped (this effort)
+
+| Feature | Implementation | Deploy verify |
+|---------|----------------|---------------|
+| Staff check-in gate | `StaffDashboardGate.tsx` — doctor/reception see attendance + gate message until check-in; admin always full dashboard | Code + build pass; doctor already on-shift in QA session |
+| Admin staff attendance panel | `StaffAttendanceOverviewPanel.tsx` on admin `/dashboard` | Code complete; admin spot-check pending |
+| Doctor home queue | `DoctorQueuePanel.tsx` embedded on `/dashboard` post check-in | KPI “My Queue 5” on doctor dashboard; full table a11y not captured in automation snapshot |
+| Inventory CRUD | `updateProductAction` / `deleteProductAction`, `ProductEditModal`, `created_by` migration `14_product_created_by.sql` | Code + build pass; **migration must be applied on Supabase** before prod CRUD |
+| Admin appointment edit | `updateAppointmentDetailsAction` + admin inline edit/reschedule on `requested` | Code complete |
+| Admin document delete | `PatientDocumentsClient` on pet detail; `deleteDocumentAction` allows admin | Code complete |
+| Loading UX | `PageLoadingSkeleton` variants; `loading.tsx` for staff/inventory/settings/benchmarking; QAB `useTransition` spinners | Code complete |
+
+### Matrix (phases 4–7)
+
+| # | Area | Result | Notes |
+|---|------|--------|-------|
+| **Phase 4 — Doctor** |
+| 4a | Bella standard consult | **Pass** | `249d86ea-…` → `ready_for_checkout` |
+| 4b | Max lab + guard + custom CBC | **Pass** | `c2d4d427-…`; custom **QA CBC 20260615-2307** |
+| 4c | Rocky surgery | **Pass** | `947cad7d-…`; surgery notes + Surgery - Minor $150 |
+| 4d | Luna walk-in | **Pass** | `c45d1f7d-…` |
+| 4e | Doctor RBAC negatives | **Pass** | Blocked: walk-ins, benchmarking, inventory, staff, invoice create |
+| **Phase 5 — Reception billing** |
+| 5a | Bella partial checkout | **Pass** | $30 of $57.50; INV-1781549876169; $27.50 remaining |
+| 5b | Max / Rocky / Luna full checkout | **Pass** | All visits completed + paid |
+| 5c | Treatment + invoice PDFs | **Pass** | All 4 visits/invoices → 200 PDF |
+| 5d | Lab / prescription PDFs | **Skipped** | Lab UUID not captured; no Rx this pass |
+| 5e | Bella “Pay remaining” | **Not run** | Partial UI verified only |
+| **Phase 6 — Admin** |
+| 6a | 14 QABs + KPIs + benchmarking | **Pass** | Post-billing counts coherent |
+| 6b | Staff attendance panel on dashboard | **Fail** | Panel missing in DOM; staff page OK (3 members) — fix: admin client fetch |
+| **Phase 7 — SQL** |
+| 7 | Supabase read-only queries | **Skipped** | MCP unavailable |
+
+### Visit statuses (end of pass)
+
+| Pet | Visit ID | Status | Billing |
+|-----|----------|--------|---------|
+| Bella | `249d86ea-6e42-4049-be25-efb925d0a521` | Checkout | **partially_paid** ($27.50 remaining) |
+| Max | `c2d4d427-000c-4651-bcde-c7de0bdbb0f1` | **completed** | **paid** (lab) |
+| Rocky | `947cad7d-7f23-4207-a880-a95a0b34da7c` | **completed** | **paid** ($172.50 surgery) |
+| Luna | `c45d1f7d-83ba-4575-872f-b019315af032` | **completed** | **paid** |
+| Rocky dup | `83795531-cddb-4223-924e-b4d83a02da0f` | **waiting** | Unused |
+
+### Bugs found
+
+| ID | Severity | Summary | Status |
+|----|----------|---------|--------|
+| QA-001 | P2 | Catalog lab IDs fail Zod `uuid()` | Open — use Custom lab |
+| QA-002 | P3 | Lab export plain text not PDF | Deferred |
+| QA-003 | P3 | RHF automation needs React `onChange` hack | N/A |
+| QA-004 | P3 | Consult/checkout submit sticks on “Finalizing…” / “Processing…”; backend often succeeds | Open |
+| QA-005 | P3 | Admin `StaffAttendanceOverviewPanel` not on dashboard | **Fixed** — admin client fetch + always render |
+| QA-006 | P3 | Duplicate Rocky visit in queue | Documented |
+| QA-007 | P2 | Migration `14_product_created_by.sql` not applied on prod | **Action required** |
+
+**Plan note:** “doctor cannot cancel appointment when start consult clicked” — not reproduced.
+
+### Integrity queries (phase 7 — template)
+
+```sql
+-- Org filter: 0faa414a-9faf-4882-ba97-3e5ad7ad68a2
+SELECT status, count(*) FROM visits WHERE organization_id = '0faa414a-9faf-4882-ba97-3e5ad7ad68a2' GROUP BY status;
+SELECT visit_type, procedure_notes, post_op_medication FROM clinical_notes cn JOIN visits v ON v.id = cn.visit_id WHERE v.organization_id = '0faa414a-9faf-4882-ba97-3e5ad7ad68a2';
+SELECT * FROM lab_orders WHERE organization_id = '0faa414a-9faf-4882-ba97-3e5ad7ad68a2';
+SELECT status, count(*) FROM invoices WHERE organization_id = '0faa414a-9faf-4882-ba97-3e5ad7ad68a2' GROUP BY status;
+SELECT id, name, created_by FROM products WHERE organization_id = '0faa414a-9faf-4882-ba97-3e5ad7ad68a2';
+```
+
+### Demo readiness
+
+| Verdict | **Yes — demo ready with caveats** |
+|---------|-----------------------------------|
+| Caveats | Custom lab orders; refresh after slow submit spinner (QA-004); apply migration 14 for inventory CRUD; duplicate Rocky in queue |
+
+### Hotfix needed?
+
+| Verdict | **No for P0/P1** |
+|---------|-------------------|
+| Rationale | Core clinical + billing flows pass. QA-004/005 are P3 polish. |
+
+---
+
+*Section 10 appended after Isolated E2E QA + Dashboard UX plan implementation (2026-06-15).*

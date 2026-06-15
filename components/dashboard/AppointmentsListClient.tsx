@@ -8,6 +8,7 @@ import {
   cancelAppointmentAction,
   markNoShowAppointmentAction,
   rescheduleAppointmentAction,
+  updateAppointmentDetailsAction,
   markAppointmentEmergencyAction,
 } from '@/lib/services/appointment-actions';
 import {
@@ -71,6 +72,7 @@ const STATUS_OPTIONS = [
 interface AppointmentsListClientProps {
   initialAppointments: Appointment[];
   doctors: Doctor[];
+  userRole?: string | null;
 }
 
 function emergencyBadge() {
@@ -152,6 +154,15 @@ interface AppointmentRowProps {
     onSuccess?: () => void
   ) => Promise<void>;
   onCheckIn: () => void;
+  userRole?: string | null;
+  editId: string | null;
+  setEditId: (id: string | null) => void;
+  editReason: string;
+  setEditReason: (v: string) => void;
+  editDate: string;
+  setEditDate: (v: string) => void;
+  editTime: string;
+  setEditTime: (v: string) => void;
 }
 
 function AppointmentRow({
@@ -168,8 +179,21 @@ function AppointmentRow({
   setRescheduleTime,
   runAction,
   onCheckIn,
+  userRole,
+  editId,
+  setEditId,
+  editReason,
+  setEditReason,
+  editDate,
+  setEditDate,
+  editTime,
+  setEditTime,
 }: AppointmentRowProps) {
   const isClosed = CLOSED_STATUSES.includes(appt.status);
+  const isAdmin = userRole === 'clinic_admin';
+  const canManageOpen =
+    ['confirmed', 'rescheduled'].includes(appt.status) ||
+    (isAdmin && appt.status === 'requested');
 
   const handleRescheduleSubmit = async () => {
     if (!rescheduleDate || !rescheduleTime) {
@@ -186,6 +210,22 @@ function AppointmentRow({
     setRescheduleId(null);
     setRescheduleDate('');
     setRescheduleTime('');
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editReason.trim()) {
+      alert('Reason is required');
+      return;
+    }
+    await runAction(appt.id, () =>
+      updateAppointmentDetailsAction({
+        appointmentId: appt.id,
+        reason: editReason.trim(),
+        preferredDate: editDate || undefined,
+        preferredTime: editTime || undefined,
+      })
+    );
+    setEditId(null);
   };
 
   return (
@@ -256,16 +296,32 @@ function AppointmentRow({
             )}
 
             {appt.status === 'requested' && (
-              <button
-                disabled={updatingId !== null}
-                onClick={() => runAction(appt.id, () => confirmAppointmentAction(appt.id))}
-                className="bg-primary text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold"
-              >
-                {updatingId === appt.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Approve'}
-              </button>
+              <>
+                <button
+                  disabled={updatingId !== null}
+                  onClick={() => runAction(appt.id, () => confirmAppointmentAction(appt.id))}
+                  className="bg-primary text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold"
+                >
+                  {updatingId === appt.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Approve'}
+                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditId(appt.id);
+                      setEditReason(appt.reason);
+                      setEditDate(appt.preferred_date);
+                      setEditTime(appt.preferred_time);
+                    }}
+                    className="text-[10px] text-primary font-bold hover:underline"
+                  >
+                    Edit details
+                  </button>
+                )}
+              </>
             )}
 
-            {['confirmed', 'rescheduled'].includes(appt.status) && (
+            {canManageOpen && (
               <>
                 <div className="flex items-center gap-2">
                   <select
@@ -312,6 +368,20 @@ function AppointmentRow({
                   >
                     Reschedule
                   </button>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditId(appt.id);
+                        setEditReason(appt.reason);
+                        setEditDate(appt.preferred_date);
+                        setEditTime(appt.preferred_time);
+                      }}
+                      className="text-[10px] text-primary font-bold hover:underline"
+                    >
+                      Edit details
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => {
@@ -357,6 +427,35 @@ function AppointmentRow({
                 </button>
               </div>
             )}
+
+            {editId === appt.id && (
+              <div className="flex flex-col gap-2 p-2 bg-surface-container/30 rounded-lg min-w-[200px]">
+                <input
+                  type="text"
+                  value={editReason}
+                  onChange={(e) => setEditReason(e.target.value)}
+                  placeholder="Reason"
+                  className="text-[10px] px-2 py-1 border rounded w-full"
+                />
+                <div className="flex gap-1">
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="text-[10px] px-1 py-0.5 border rounded flex-1"
+                  />
+                  <input
+                    type="time"
+                    value={editTime}
+                    onChange={(e) => setEditTime(e.target.value)}
+                    className="text-[10px] px-1 py-0.5 border rounded flex-1"
+                  />
+                </div>
+                <button type="button" onClick={handleEditSubmit} className="text-[10px] font-bold text-primary text-left">
+                  Save details
+                </button>
+              </div>
+            )}
           </div>
         )}
       </td>
@@ -367,6 +466,7 @@ function AppointmentRow({
 export default function AppointmentsListClient({
   initialAppointments,
   doctors,
+  userRole,
 }: AppointmentsListClientProps) {
   const router = useRouter();
   useVisibilityPolling(20000, true);
@@ -379,6 +479,10 @@ export default function AppointmentsListClient({
   const [rescheduleId, setRescheduleId] = useState<string | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editReason, setEditReason] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editTime, setEditTime] = useState('');
   const [checkInNotice, setCheckInNotice] = useState(false);
 
   const tabCounts = useMemo(() => ({
@@ -572,6 +676,15 @@ export default function AppointmentsListClient({
                       setRescheduleTime={setRescheduleTime}
                       runAction={runAction}
                       onCheckIn={() => setCheckInNotice(true)}
+                      userRole={userRole}
+                      editId={editId}
+                      setEditId={setEditId}
+                      editReason={editReason}
+                      setEditReason={setEditReason}
+                      editDate={editDate}
+                      setEditDate={setEditDate}
+                      editTime={editTime}
+                      setEditTime={setEditTime}
                     />
                   ))}
                 </tbody>
