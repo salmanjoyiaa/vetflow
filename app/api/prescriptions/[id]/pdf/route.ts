@@ -5,6 +5,7 @@ import {
   assertCapability,
   resolveServerAuthContext,
 } from '@/lib/auth/context';
+import { formatDoctorNamePlain } from '@/lib/utils/doctor-display';
 import { getPdfBranding } from '@/lib/services/branding';
 import React from 'react';
 
@@ -79,7 +80,7 @@ export async function GET(
         branchName: branchObj?.name || 'Main Branch',
         branchAddress: branding.address || branchObj?.address || '',
         branchPhone: branding.phone || branchObj?.phone || '',
-        doctorName: `${doctorObj?.first_name || 'Attending'} ${doctorObj?.last_name || 'Doctor'}`,
+        doctorName: formatDoctorNamePlain(doctorObj),
         customerName: customer ? `${customer.first_name} ${customer.last_name}` : 'Pet Parent',
         petName: petObj?.name || 'Patient',
         petSpecies: petObj?.species || 'Canine',

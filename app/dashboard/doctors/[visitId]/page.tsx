@@ -133,27 +133,40 @@ export default async function ConsultationRoomPage({
     price: Number(s.price),
   }));
 
-  // 5. Lab test catalog (org-scoped), existing lab orders, and documents for this visit
-  const [{ data: labCatalogData }, { data: labOrdersData }, { data: documentsData }] =
-    await Promise.all([
-      supabase
-        .from('lab_tests')
-        .select('id, name')
-        .eq('organization_id', session.organizationId)
-        .eq('is_active', true)
-        .order('name'),
-      supabase
-        .from('lab_orders')
-        .select('id, test_name, status, result_text, result_document_id, created_at')
-        .eq('visit_id', visitId)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('documents')
-        .select('id, file_name, category, mime_type, size_bytes, created_at')
-        .eq('visit_id', visitId)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false }),
-    ]);
+  // 5. Lab test catalog, lab orders, current visit docs, and patient history docs
+  const patientIdForDocs = visit.pet_id as string;
+  const [
+    { data: labCatalogData },
+    { data: labOrdersData },
+    { data: documentsData },
+    { data: previousDocsData },
+  ] = await Promise.all([
+    supabase
+      .from('lab_tests')
+      .select('id, name')
+      .eq('organization_id', session.organizationId)
+      .eq('is_active', true)
+      .order('name'),
+    supabase
+      .from('lab_orders')
+      .select('id, test_name, status, result_text, result_document_id, created_at')
+      .eq('visit_id', visitId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('documents')
+      .select('id, file_name, category, mime_type, size_bytes, created_at, description')
+      .eq('visit_id', visitId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('documents')
+      .select('id, file_name, category, mime_type, size_bytes, created_at, description, visit_id')
+      .eq('patient_id', patientIdForDocs)
+      .neq('visit_id', visitId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(20),
+  ]);
 
   const labCatalog = (labCatalogData || []).map((t) => ({ id: t.id, name: t.name }));
   const labOrders = (labOrdersData || []).map((o) => ({
@@ -164,14 +177,26 @@ export default async function ConsultationRoomPage({
     resultDocumentId: o.result_document_id as string | null,
     createdAt: o.created_at as string,
   }));
-  const documents = (documentsData || []).map((d) => ({
+  const mapDoc = (d: {
+    id: string;
+    file_name: string;
+    category: string;
+    mime_type: string | null;
+    size_bytes: number | null;
+    created_at: string;
+    description?: string | null;
+  }) => ({
     id: d.id,
     fileName: d.file_name,
     category: d.category as string,
     mimeType: d.mime_type as string | null,
     sizeBytes: d.size_bytes as number | null,
     createdAt: d.created_at as string,
-  }));
+    description: (d.description as string | null) ?? null,
+  });
+
+  const documents = (documentsData || []).map(mapDoc);
+  const previousDocuments = (previousDocsData || []).map(mapDoc);
 
   const petDetails = visit.pets as any;
   const customerDetails = visit.customers as any;
@@ -220,6 +245,7 @@ export default async function ConsultationRoomPage({
         labCatalog={labCatalog}
         labOrders={labOrders}
         documents={documents}
+        previousDocuments={previousDocuments}
       />
 
     </div>

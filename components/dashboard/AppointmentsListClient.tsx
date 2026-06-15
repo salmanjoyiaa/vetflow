@@ -350,10 +350,14 @@ function AppointmentRow({
                         onCheckIn
                       )
                     }
-                    className="bg-primary text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1"
+                    className="bg-primary text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 disabled:opacity-60"
                   >
-                    <UserCheck className="w-3 h-3" />
-                    Check-in
+                    {updatingId === appt.id ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <UserCheck className="w-3 h-3" />
+                    )}
+                    {updatingId === appt.id ? 'Checking in…' : 'Check-in'}
                   </button>
                 </div>
                 <div className="flex gap-2">
@@ -484,6 +488,7 @@ export default function AppointmentsListClient({
   const [editDate, setEditDate] = useState('');
   const [editTime, setEditTime] = useState('');
   const [checkInNotice, setCheckInNotice] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const tabCounts = useMemo(() => ({
     upcoming: initialAppointments.filter((a) => UPCOMING_STATUSES.includes(a.status)).length,
@@ -537,16 +542,17 @@ export default function AppointmentsListClient({
     onSuccess?: () => void
   ) => {
     setUpdatingId(id);
+    setActionError(null);
     try {
       const res = await fn();
       if (res.success) {
         onSuccess?.();
         router.refresh();
       } else {
-        alert(res.error || 'Action failed');
+        setActionError(res.error || 'Action failed');
       }
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'An error occurred');
+      setActionError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setUpdatingId(null);
     }
@@ -570,6 +576,11 @@ export default function AppointmentsListClient({
 
   return (
     <div className="space-y-4">
+      {actionError && (
+        <div className="p-3 rounded-xl bg-destructive/5 border border-destructive/20 text-destructive text-xs">
+          {actionError}
+        </div>
+      )}
       {checkInNotice && (
         <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs">
           <span className="text-emerald-700 font-semibold">Patient checked in and added to the walk-in queue.</span>

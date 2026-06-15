@@ -411,7 +411,25 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
       .eq('organization_id', ctx.organizationId)
       .single();
 
-    if (apptErr || !appt || !['confirmed', 'rescheduled'].includes(appt.status)) {
+    if (apptErr || !appt) {
+      throw new Error('Appointment not found.');
+    }
+
+    // Idempotent: already checked in — return existing visit
+    if (appt.status === 'checked_in') {
+      const { data: existingVisit } = await supabase
+        .from('visits')
+        .select('id')
+        .eq('appointment_id', appointmentId)
+        .eq('organization_id', ctx.organizationId)
+        .maybeSingle();
+      if (existingVisit) {
+        return { success: true, visitId: existingVisit.id, alreadyCheckedIn: true };
+      }
+      throw new Error('Appointment is checked in but no visit was found.');
+    }
+
+    if (!['confirmed', 'rescheduled'].includes(appt.status)) {
       throw new Error('Appointment is not confirmed or not found.');
     }
 
@@ -420,6 +438,22 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
     const assignedDoctorId = doctorId || appt.doctor_id;
     if (!assignedDoctorId) {
       throw new Error('Select an attending veterinarian before check-in.');
+    }
+
+    // Guard against duplicate visit if appointment_id already linked
+    const { data: preExistingVisit } = await supabase
+      .from('visits')
+      .select('id')
+      .eq('appointment_id', appointmentId)
+      .eq('organization_id', ctx.organizationId)
+      .maybeSingle();
+
+    if (preExistingVisit) {
+      await supabase
+        .from('appointments')
+        .update({ status: 'checked_in' })
+        .eq('id', appt.id);
+      return { success: true, visitId: preExistingVisit.id, alreadyCheckedIn: true };
     }
 
     // 2. Find or create Customer in the branch scope
@@ -522,6 +556,16 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
       .single();
 
     if (visitErr || !visit) {
+      // Race: another request may have created the visit
+      const { data: raceVisit } = await supabase
+        .from('visits')
+        .select('id')
+        .eq('appointment_id', appt.id)
+        .eq('organization_id', ctx.organizationId)
+        .maybeSingle();
+      if (raceVisit) {
+        return { success: true, visitId: raceVisit.id, alreadyCheckedIn: true };
+      }
       throw new Error('Failed to check in patient visit queue.');
     }
 
@@ -549,9 +593,9 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
       afterData: { status: 'waiting' },
     });
 
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+    return { success: true, visitId: visit.id };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'An unexpected error occurred.' };
   }
 }
 

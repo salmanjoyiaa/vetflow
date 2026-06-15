@@ -399,9 +399,9 @@ Local dev missing (optional until feature used): `GEMINI_API_KEY`, `SOCIAL_TOKEN
 
 | Role | Email | Password |
 |------|-------|----------|
-| Clinic Admin | `qa.admin.20260615-2307@example.com` | `password123` |
-| Reception | `qa.reception.20260615-2307@example.com` | `password123` |
-| Doctor | `qa.doctor.20260615-2307@example.com` | `password123` |
+| Clinic Admin | `qa.admin.20260615-2307@example.com` | *(redacted — rotate/disable before external share)* |
+| Reception | `qa.reception.20260615-2307@example.com` | *(redacted — rotate/disable before external share)* |
+| Doctor | `qa.doctor.20260615-2307@example.com` | *(redacted — rotate/disable before external share)* |
 
 ### Data summary (after phases 1–3)
 
@@ -497,3 +497,104 @@ SELECT id, name, created_by FROM products WHERE organization_id = '0faa414a-9faf
 ---
 
 *Section 10 appended after Isolated E2E QA + Dashboard UX plan implementation (2026-06-15).*
+
+---
+
+## 11. v0.2.1 QA Hardening Report (2026-06-15)
+
+**Environment:** https://vetflow-psi.vercel.app (deploy `Fn9pdz2LeXXnqcSvX74VnV8rZmYP`)  
+**Org:** `QA Vet Clinic E2E 20260615-2307` (`0faa414a-9faf-4882-ba97-3e5ad7ad68a2`)  
+**Constraint honored:** All operational test data from prior E2E was UI-created; this pass used UI only for Bella remaining-balance verification. No direct Supabase inserts/seeds during v0.2.1 work.
+
+### Files changed
+
+| Area | Files |
+|------|-------|
+| Migrations | `db/migrations/15_default_lab_tests.sql`, `db/migrations/16_visits_appointment_unique.sql` |
+| Validation | `lib/validations/schemas.ts` — `EntityIdSchema` for lab/docs; expanded document categories; `UpdateDocumentSchema` |
+| Lab / provision | `lib/services/lab-actions.ts`, `lib/services/super-admin-actions.ts` |
+| Documents | `lib/services/document-actions.ts`, `components/forms/ConsultationLabsDocsPanel.tsx`, `app/dashboard/doctors/[visitId]/page.tsx` |
+| Follow-up | `components/forms/ConsultationWorkspaceClient.tsx`, `lib/services/clinical-actions.ts` |
+| Check-in | `lib/services/appointment-actions.ts`, `components/dashboard/AppointmentsListClient.tsx` |
+| Loading UX | `ConsultationWorkspaceClient.tsx`, `InvoiceCheckoutClient.tsx`, `InvoicePaymentActions.tsx` |
+| PDF | `lib/utils/doctor-display.ts`, `treatment-pdf/route.ts`, `TreatmentPdfDocument.tsx`, `PrescriptionPdfDocument.tsx`, `prescriptions/[id]/pdf/route.ts` |
+| Hooks | `lib/hooks/useAsyncAction.ts` |
+
+### Migration status
+
+| Migration | Status | Notes |
+|-----------|--------|-------|
+| `14_product_created_by.sql` | **Pending apply on prod** | Supabase MCP unavailable this session; run in SQL editor before inventory CRUD verification |
+| `15_default_lab_tests.sql` | **Pending apply on prod** | Backfills default lab catalog for orgs without tests |
+| `16_visits_appointment_unique.sql` | **Pending apply on prod** | Unique index on `visits.appointment_id` |
+
+**Apply order:** 14 → 15 → 16 via Supabase SQL editor.
+
+### Bug fix status
+
+| ID | Status | Result |
+|----|--------|--------|
+| **QA-001** Lab catalog UUID | **Fixed (code)** | `LabOrderSchema` uses `EntityIdSchema`; migration 15 + provision hook seeds catalog |
+| **Medical file upload** | **Fixed (code)** | MIME/extension tolerance; optimistic list refresh; inline success |
+| **Doctor file view/edit** | **Fixed (code)** | Current vs previous docs; `updateDocumentAction`; inline edit title/category/notes |
+| **Follow-up custom day** | **Fixed (code)** | Removable chips, clear all; server duplicate/stale follow-up guard |
+| **QA-004** Stuck submit | **Fixed (code)** | `router.replace` on consult/checkout success; inline errors; Processing… states |
+| **QA-006** Duplicate visit | **Fixed (code)** | Idempotent `checkInAppointmentAction`; check-in spinner; migration 16 index |
+| **Treatment PDF Rx label** | **Fixed** | Section “List Prescribed Medicines” + empty state |
+| **Attending doctor PDF** | **Fixed** | `formatAttendingDoctor()`; assignment fallback; “Not assigned” when missing |
+| **QA-005** Admin attendance | **Fixed (deployed)** | Panel visible on admin dashboard in prod spot-check |
+
+### v0.2.1 E2E retest (UI)
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| Bella pay remaining balance | **Pass** | INV-1781549876169 → `paid`; ledger $30.00 + $27.50 |
+| Treatment PDF (Bella) | **Pass** | `/api/visits/249d86ea-…/treatment-pdf` loads after deploy |
+| Catalog lab order | **Pending** | Requires migration 15 on prod + doctor retest |
+| Medical file upload/edit | **Pending** | Code deployed; doctor-session retest recommended |
+| Follow-up undo | **Pending** | Code deployed; doctor-session retest recommended |
+| Prescription / lab PDF labels | **Pass (code)** | Label renames in PDF components |
+| Email receipt | **Skipped** | `example.com` addresses — no live email test |
+
+### Read-only integrity verification
+
+**Status:** Skipped — Supabase MCP unavailable. Use Section 10 SQL templates with org filter `0faa414a-9faf-4882-ba97-3e5ad7ad68a2` after migrations applied.
+
+**Confirmed:** No direct Supabase insert/update/seed was used during v0.2.1 implementation or Bella payment retest.
+
+### Security cleanup
+
+- Section 10 credentials **redacted** in this document.
+- **Action required:** Deactivate QA prod accounts (`organization_members.is_active = false`) or rotate passwords via Supabase Auth admin before external demo handoff.
+
+### Build / lint
+
+| Check | Result |
+|-------|--------|
+| `npm run typecheck` | **Pass** |
+| `npm run build` | **Pass** |
+| `npm run lint` | **Fails** — legacy `@typescript-eslint/no-explicit-any` across PDF routes and pages (unchanged pattern) |
+
+### Remaining bugs
+
+| ID | Severity | Notes |
+|----|----------|-------|
+| QA-002 | P3 | Lab export plain text not PDF — deferred |
+| QA-003 | N/A | RHF automation hack — N/A |
+| Migrations 14–16 | P1 ops | Must be applied on production Supabase |
+
+### Deploy recommendation
+
+| Deploy v0.2.1? | **Yes — after migrations 14–16 applied** |
+|----------------|------------------------------------------|
+| Rationale | All targeted code fixes built and deployed; DB backfill/index required for full QA-001 and inventory CRUD |
+
+### Demo readiness
+
+| Verdict | **Yes — with caveats** |
+|---------|------------------------|
+| Caveats | Apply migrations 14–16; run doctor retest for catalog lab + medical files; deactivate/rotate QA prod credentials; cancel or ignore duplicate Rocky visit `83795531-…` in queue |
+
+---
+
+*Section 11 appended after v0.2.1 QA hardening implementation (2026-06-15).*

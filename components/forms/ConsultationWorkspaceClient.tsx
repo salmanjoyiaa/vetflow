@@ -22,7 +22,8 @@ import {
   FileCheck2,
   History,
   CheckCircle,
-  FlaskConical
+  FlaskConical,
+  X,
 } from 'lucide-react';
 
 interface Product {
@@ -95,6 +96,7 @@ interface ConsultationWorkspaceClientProps {
   labCatalog: LabCatalogItem[];
   labOrders: LabOrder[];
   documents: DocumentItem[];
+  previousDocuments?: DocumentItem[];
 }
 
 export default function ConsultationWorkspaceClient({
@@ -111,6 +113,7 @@ export default function ConsultationWorkspaceClient({
   labCatalog,
   labOrders,
   documents,
+  previousDocuments = [],
 }: ConsultationWorkspaceClientProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'consult' | 'history' | 'labs'>('consult');
@@ -178,6 +181,21 @@ export default function ConsultationWorkspaceClient({
       setValue('followUpDays', next);
       return next;
     });
+    setCustomFollowUpDay('');
+  };
+
+  const removeFollowUpDay = (day: number) => {
+    setFollowUpDays((prev) => {
+      const next = prev.filter((d) => d !== day);
+      setValue('followUpDays', next);
+      return next;
+    });
+  };
+
+  const clearFollowUpDays = () => {
+    setFollowUpDays([]);
+    setValue('followUpDays', []);
+    setCustomFollowUpDay('');
   };
 
   const addCustomFollowUpDay = () => {
@@ -235,14 +253,12 @@ export default function ConsultationWorkspaceClient({
     try {
       const res = await completeConsultationAction(data);
       if (res.success) {
-        router.push('/dashboard/doctors');
-        // Receptionist dashboards poll every 20s for ready_for_checkout
-        router.refresh();
+        router.replace('/dashboard/doctors');
       } else {
         setError(res.error || 'Failed to complete consultation');
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -644,10 +660,37 @@ export default function ConsultationWorkspaceClient({
                 </div>
               </div>
               {followUpDays.length > 0 && (
-                <p className="text-[10px] text-primary font-semibold">
-                  Will create {followUpDays.length} follow-up request{followUpDays.length > 1 ? 's' : ''} on:{' '}
-                  {followUpDays.map((d) => `${d}d`).join(', ')}
-                </p>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {followUpDays.map((d) => (
+                      <span
+                        key={d}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-primary/10 text-primary border border-primary/20"
+                      >
+                        {d} days
+                        <button
+                          type="button"
+                          onClick={() => removeFollowUpDay(d)}
+                          className="hover:text-destructive"
+                          aria-label={`Remove ${d} day follow-up`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={clearFollowUpDays}
+                      className="text-[10px] font-bold text-on-surface-variant hover:text-destructive underline"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-primary font-semibold">
+                    Will create {followUpDays.length} follow-up request{followUpDays.length > 1 ? 's' : ''} on:{' '}
+                    {followUpDays.map((d) => `${d}d`).join(', ')}
+                  </p>
+                </div>
               )}
               <input
                 type="text"
@@ -893,7 +936,7 @@ export default function ConsultationWorkspaceClient({
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Finalizing consult...
+                  Finalizing consult…
                 </>
               ) : (
                 <>
@@ -916,6 +959,7 @@ export default function ConsultationWorkspaceClient({
             labCatalog={labCatalog}
             labOrders={labOrders}
             documents={documents}
+            previousDocuments={previousDocuments}
           />
         </div>
       )}

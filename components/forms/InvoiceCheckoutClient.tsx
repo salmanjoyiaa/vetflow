@@ -118,7 +118,7 @@ export default function InvoiceCheckoutClient({
           invoiceId: res.invoiceId,
           prescriptionId: res.prescriptionId || prescriptionId || null,
         });
-        router.refresh();
+        router.replace(`/dashboard/invoices/${res.invoiceId}`);
       } else {
         setError(res.error || 'Failed to complete billing transaction.');
       }
@@ -402,7 +402,7 @@ export default function InvoiceCheckoutClient({
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Processing...
+                  Processing…
                 </>
               ) : (
                 <>

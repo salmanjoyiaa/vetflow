@@ -68,8 +68,34 @@ async function createFollowUpAppointments(
   const baseTime = new Date(visit.checked_in_at);
   const customerName = `${customer.first_name} ${customer.last_name}`.trim();
 
+  const { data: existingFollowUps } = await supabase
+    .from('appointments')
+    .select('id, preferred_date, status')
+    .eq('follow_up_of_visit_id', visit.id)
+    .eq('organization_id', ctx.organizationId);
+
+  const existingDates = new Set(
+    (existingFollowUps || [])
+      .filter((a) => a.status === 'requested')
+      .map((a) => a.preferred_date as string)
+  );
+
+  const desiredDates = new Set(
+    followUpDays.map((days) => formatDate(addDays(new Date(), days)))
+  );
+
+  // Cancel stale requested follow-ups that are no longer selected
+  for (const appt of existingFollowUps || []) {
+    if (appt.status === 'requested' && !desiredDates.has(appt.preferred_date as string)) {
+      await supabase.from('appointments').update({ status: 'cancelled' }).eq('id', appt.id);
+    }
+  }
+
   for (const days of followUpDays) {
     const followDate = addDays(new Date(), days);
+    const preferredDate = formatDate(followDate);
+    if (existingDates.has(preferredDate)) continue;
+
     const reason = followUpNote?.trim()
       ? `Follow-up (${days}d): ${followUpNote}`
       : `Follow-up check (${days} days) — ${diagnosis}`;
@@ -84,7 +110,7 @@ async function createFollowUpAppointments(
       customer_phone: customer.phone || '',
       patient_name: patient.name,
       patient_species: patient.species,
-      preferred_date: formatDate(followDate),
+      preferred_date: preferredDate,
       preferred_time: formatTime(baseTime),
       reason,
       status: 'requested',
