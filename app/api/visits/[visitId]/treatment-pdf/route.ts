@@ -17,9 +17,13 @@ export async function GET(
       return new Response('Unauthorized', { status: 401 });
     }
     try {
-      assertCapability(ctx, 'billing_checkout');
+      assertCapability(ctx, 'view_treatment_pdf');
     } catch {
-      return new Response('Forbidden', { status: 403 });
+      try {
+        assertCapability(ctx, 'billing_checkout');
+      } catch {
+        return new Response('Forbidden', { status: 403 });
+      }
     }
 
     const supabase = await createClient();

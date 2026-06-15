@@ -110,6 +110,30 @@ export default function ConsultationLabsDocsPanel({
     }
   };
 
+  const [resultDrafts, setResultDrafts] = useState<Record<string, string>>({});
+
+  const getResultDraft = (order: LabOrder) =>
+    resultDrafts[order.id] ?? order.resultText ?? '';
+
+  const saveLabResult = async (order: LabOrder) => {
+    setError(null);
+    const resultText = getResultDraft(order);
+    const status =
+      order.status === 'completed'
+        ? 'completed'
+        : resultText.trim()
+          ? 'in_progress'
+          : order.status;
+    const res = await updateLabOrderResultAction({
+      labOrderId: order.id,
+      status,
+      resultText,
+      resultDocumentId: order.resultDocumentId || null,
+    });
+    if (res.success) router.refresh();
+    else setError(res.error || 'Failed to save result.');
+  };
+
   const changeLabStatus = async (order: LabOrder, status: string) => {
     setError(null);
     const res = await updateLabOrderResultAction({
@@ -225,28 +249,66 @@ export default function ConsultationLabsDocsPanel({
         </div>
 
         {labOrders.length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {labOrders.map((o) => (
               <div
                 key={o.id}
-                className="flex items-center justify-between gap-3 p-3 bg-surface-container/20 border border-outline-variant/40 rounded-xl"
+                className="p-4 bg-surface-container/20 border border-outline-variant/40 rounded-xl space-y-3"
               >
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-on-surface truncate">{o.testName}</p>
-                  {o.resultText && (
-                    <p className="text-[10px] text-on-surface-variant/60 truncate">{o.resultText}</p>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-on-surface truncate">{o.testName}</p>
+                    <p className="text-[10px] text-on-surface-variant/60">
+                      {o.status === 'ordered' && 'Demanded'}
+                      {o.status === 'in_progress' && 'Uploaded'}
+                      {o.status === 'completed' && 'Completed'}
+                      {o.status === 'cancelled' && 'Cancelled'}
+                    </p>
+                  </div>
+                  <select
+                    value={o.status}
+                    onChange={(e) => changeLabStatus(o, e.target.value)}
+                    className="px-2 py-1 glass-panel border border-outline-variant rounded-lg text-[10px] font-bold text-on-surface outline-none capitalize"
+                  >
+                    <option value="ordered">Demanded</option>
+                    <option value="in_progress">Uploaded</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
+                    Result text
+                  </label>
+                  <textarea
+                    value={getResultDraft(o)}
+                    onChange={(e) =>
+                      setResultDrafts((prev) => ({ ...prev, [o.id]: e.target.value }))
+                    }
+                    rows={3}
+                    placeholder="Enter lab result findings..."
+                    className="w-full px-2.5 py-1.5 glass-panel border border-outline-variant rounded-lg text-[11px] text-on-surface outline-none"
+                  />
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => saveLabResult(o)}
+                    className="text-[10px] font-bold bg-primary text-white px-3 py-1.5 rounded-lg"
+                  >
+                    Save result
+                  </button>
+                  {o.status === 'completed' && (
+                    <a
+                      href={`/api/lab-orders/${o.id}/pdf`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-bold text-primary border border-primary/20 px-3 py-1.5 rounded-lg"
+                    >
+                      Download PDF
+                    </a>
                   )}
                 </div>
-                <select
-                  value={o.status}
-                  onChange={(e) => changeLabStatus(o, e.target.value)}
-                  className="px-2 py-1 glass-panel border border-outline-variant rounded-lg text-[10px] font-bold text-on-surface outline-none capitalize"
-                >
-                  <option value="ordered">Ordered</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
               </div>
             ))}
           </div>

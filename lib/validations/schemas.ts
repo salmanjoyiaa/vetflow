@@ -11,7 +11,7 @@ export const ProductSchema = z.object({
   brand: z.string().optional().or(z.literal('')),
   sku: z.string().optional().or(z.literal('')),
   unit: z.string().min(1, { message: 'Unit is required' }),
-  type: z.enum(['medicine', 'food', 'accessory', 'service'], { message: 'Invalid type' }),
+  type: z.enum(['medicine', 'food', 'accessory', 'service', 'treats'], { message: 'Invalid type' }),
   purchasePrice: z.number().nonnegative(),
   sellingPrice: z.number().nonnegative(),
   stockQuantity: z.number().int().nonnegative(),
@@ -139,7 +139,8 @@ export const SubscriptionSchema = z.object({
 export const CheckoutSchema = z.object({
   visitId: EntityIdSchema,
   discount: z.number().nonnegative(),
-  paymentStatus: z.enum(['paid', 'unpaid']),
+  paymentStatus: z.enum(['paid', 'unpaid', 'partial']),
+  amountPaid: z.number().nonnegative().optional(),
   paymentMethod: z.enum(['cash', 'card', 'bank_transfer']),
   paymentReference: z.string().optional().or(z.literal('')),
   notes: z.string().optional().or(z.literal('')),
@@ -168,6 +169,7 @@ export const UpdateInvoicePaymentSchema = z.object({
   invoiceId: z.string().uuid(),
   paymentMethod: z.enum(['cash', 'card', 'bank_transfer']),
   paymentReference: z.string().optional().or(z.literal('')),
+  amount: z.number().positive().optional(),
 });
 
 // --- CLINICAL WORKSPACE ---
@@ -190,11 +192,14 @@ export const VisitServiceItemSchema = z.object({
 
 export const CompleteConsultationSchema = z.object({
   visitId: EntityIdSchema,
+  visitType: z.enum(['standard', 'lab', 'surgery']),
   chiefComplaint: z.string().min(1, { message: 'Chief complaint is required' }),
   history: z.string().optional().or(z.literal('')),
   examinationFindings: z.string().optional().or(z.literal('')),
   diagnosis: z.string().min(1, { message: 'Diagnosis is required' }),
   treatmentPlan: z.string().optional().or(z.literal('')),
+  procedureNotes: z.string().optional().or(z.literal('')),
+  postOpMedication: z.string().optional().or(z.literal('')),
   internalNotes: z.string().optional().or(z.literal('')),
   followUpRecommendation: z.string().optional().or(z.literal('')),
   followUpDays: z.array(z.number().int().positive()),

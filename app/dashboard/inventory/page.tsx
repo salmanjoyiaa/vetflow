@@ -5,11 +5,11 @@ import { hasCapability } from '@/lib/auth/capabilities';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import ProductForm from '@/components/forms/ProductForm';
-import StockAdjustmentForm from '@/components/forms/StockAdjustmentForm';
 import StockInvoiceIntakeClient from '@/components/inventory/StockInvoiceIntakeClient';
 import InventoryTabsClient from '@/components/inventory/InventoryTabsClient';
+import InventoryCatalogClient from '@/components/inventory/InventoryCatalogClient';
 import PageHeader from '@/components/ui/premium/PageHeader';
-import { Layers, AlertCircle, ShoppingBag, ShieldAlert } from 'lucide-react';
+import { Layers, AlertCircle, ShoppingBag } from 'lucide-react';
 
 export const metadata = {
   title: 'Inventory Catalog',
@@ -141,75 +141,7 @@ export default async function InventoryPage({
 
       {/* PRODUCT LIST TABLE */}
       {products && products.length > 0 ? (
-        <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden shadow-premium">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-surface-container/40 border-b border-outline-variant/40 text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider">
-                <th className="px-6 py-4">Item Details</th>
-                <th className="px-6 py-4">Type & Category</th>
-                <th className="px-6 py-4">Pricing</th>
-                <th className="px-6 py-4">Stock Balance</th>
-                <th className="px-6 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/30 text-xs">
-              {products.map((prod) => {
-                const isLowStock = prod.type !== 'service' && prod.stock_quantity <= prod.reorder_level;
-                return (
-                  <tr key={prod.id} className="hover:bg-surface-container/10 transition-colors">
-                    <td className="px-6 py-4">
-                      <span className="font-bold text-on-surface block">{prod.name}</span>
-                      <span className="text-[10px] text-on-surface-variant/50 block">
-                        {prod.brand && `Brand: ${prod.brand}`} {prod.sku && `• SKU: ${prod.sku}`}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 capitalize text-on-surface-variant/70">
-                      <span className="font-semibold text-on-surface">{prod.type}</span>
-                      {prod.product_categories && (
-                        <span className="text-on-surface-variant/60 block text-[10px]">
-                          Category: {(prod.product_categories as any).name}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 space-y-0.5 text-on-surface-variant/80 font-medium">
-                      <div>Sell: ${Number(prod.selling_price).toFixed(2)}</div>
-                      <div className="text-[10px] text-on-surface-variant/50">Buy: ${Number(prod.purchase_price).toFixed(2)}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {prod.type === 'service' ? (
-                        <span className="text-on-surface-variant/50 italic font-semibold">Virtual Service</span>
-                      ) : (
-                        <div className="space-y-1">
-                          <span className={`font-bold ${isLowStock ? 'text-destructive' : 'text-on-surface'}`}>
-                            {prod.stock_quantity} {prod.unit || 'pcs'}
-                          </span>
-                          {isLowStock && (
-                            <span className="flex items-center gap-1 text-[9px] font-bold text-destructive bg-destructive/5 border border-destructive/20 px-2 py-0.5 rounded-lg w-max">
-                              <ShieldAlert className="w-3 h-3" />
-                              Low Stock (Limit {prod.reorder_level})
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      {prod.type !== 'service' ? (
-                        <StockAdjustmentForm
-                          productId={prod.id}
-                          productName={prod.name}
-                          branchId={activeBranchId}
-                          currentStock={prod.stock_quantity}
-                        />
-                      ) : (
-                        <span className="text-[10px] text-on-surface-variant/40 italic">Billed Service</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <InventoryCatalogClient products={products || []} activeBranchId={activeBranchId} />
       ) : (
         <div className="glass-panel rounded-2xl border border-outline-variant/40 p-12 text-center">
           <ShoppingBag className="w-12 h-12 text-on-surface-variant/30 mx-auto mb-4" />

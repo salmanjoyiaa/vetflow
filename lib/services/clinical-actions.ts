@@ -142,11 +142,14 @@ export async function completeConsultationAction(payload: unknown) {
       v !== undefined && !Number.isNaN(v) ? v : null;
 
     const notePayload = {
+      visit_type: parsed.visitType || 'standard',
       chief_complaint: parsed.chiefComplaint,
       history: parsed.history || null,
       examination_findings: parsed.examinationFindings || null,
       diagnosis: parsed.diagnosis,
       treatment_plan: parsed.treatmentPlan || null,
+      procedure_notes: parsed.procedureNotes || null,
+      post_op_medication: parsed.postOpMedication || null,
       internal_notes: parsed.internalNotes || null,
       follow_up_recommendation: parsed.followUpRecommendation || null,
       follow_up_days: parsed.followUpDays?.length ? parsed.followUpDays : null,

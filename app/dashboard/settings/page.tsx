@@ -7,9 +7,10 @@ import DeniedState from '@/components/ui/premium/DeniedState';
 import { createClient } from '@/lib/supabase/server';
 import SettingsForm from '@/components/forms/SettingsForm';
 import ServicesCatalogClient from '@/components/forms/ServicesCatalogClient';
+import CameraDevicesClient from '@/components/settings/CameraDevicesClient';
 import { listServicesAction } from '@/lib/services/service-catalog-actions';
 import PageHeader from '@/components/ui/premium/PageHeader';
-import { isBrandedPdfsEnabled } from '@/lib/auth/features';
+import { isBrandedPdfsEnabled, isCameraFeedEnabled } from '@/lib/auth/features';
 import { Settings } from 'lucide-react';
 
 export const metadata = {
@@ -67,6 +68,9 @@ export default async function SettingsPage() {
   const brandedPdfsAllowed = isBrandedPdfsEnabled(
     (sub?.features as Record<string, unknown>) || null
   );
+  const cameraFeedEnabled = isCameraFeedEnabled(
+    (sub?.features as Record<string, unknown>) || null
+  );
 
   const servicesRes = await listServicesAction();
   const services = (servicesRes.success ? servicesRes.services : []) as Array<{
@@ -103,6 +107,8 @@ export default async function SettingsPage() {
       />
 
       <SettingsForm defaultValues={defaultValues} brandedPdfsAllowed={brandedPdfsAllowed} />
+
+      {cameraFeedEnabled && <CameraDevicesClient />}
 
       <ServicesCatalogClient initialServices={services} />
     </div>

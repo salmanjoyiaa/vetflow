@@ -7,7 +7,9 @@ export type Feature =
   | 'ai_assistant'
   | 'social_automation'
   | 'branded_pdfs'
-  | 'consult_tracking';
+  | 'consult_tracking'
+  | 'clinic_benchmarking'
+  | 'camera_feed';
 
 export const ALL_FEATURES: Feature[] = [
   'appointments',
@@ -24,7 +26,12 @@ export const ALL_FEATURES: Feature[] = [
  * (opt-in). These are NOT route-gated and are excluded from the default-on
  * resolution used by `resolveFeatures`.
  */
-export const OPT_IN_FEATURES: Feature[] = ['branded_pdfs', 'consult_tracking'];
+export const OPT_IN_FEATURES: Feature[] = [
+  'branded_pdfs',
+  'consult_tracking',
+  'clinic_benchmarking',
+  'camera_feed',
+];
 
 /** Full set a super admin can toggle per organization. */
 export const SUPERADMIN_TOGGLEABLE_FEATURES: Feature[] = [
@@ -42,6 +49,8 @@ export const FEATURE_LABELS: Record<Feature, string> = {
   social_automation: 'Social media automation',
   branded_pdfs: 'Branded PDF documents',
   consult_tracking: 'Consultation time tracking',
+  clinic_benchmarking: 'Clinic benchmarking',
+  camera_feed: 'Live camera feed',
 };
 
 /**
@@ -59,6 +68,18 @@ export function isConsultTrackingEnabled(
   featuresJson: Record<string, unknown> | null | undefined
 ): boolean {
   return featuresJson?.consult_tracking === true;
+}
+
+export function isClinicBenchmarkingEnabled(
+  featuresJson: Record<string, unknown> | null | undefined
+): boolean {
+  return featuresJson?.clinic_benchmarking === true;
+}
+
+export function isCameraFeedEnabled(
+  featuresJson: Record<string, unknown> | null | undefined
+): boolean {
+  return featuresJson?.camera_feed === true;
 }
 
 /** Nav route → required feature (undefined = no feature gate) */

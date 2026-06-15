@@ -114,6 +114,7 @@ export default function ConsultationWorkspaceClient({
 }: ConsultationWorkspaceClientProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'consult' | 'history' | 'labs'>('consult');
+  const [visitType, setVisitType] = useState<'standard' | 'lab' | 'surgery'>('standard');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [followUpDays, setFollowUpDays] = useState<number[]>([]);
@@ -130,6 +131,7 @@ export default function ConsultationWorkspaceClient({
     resolver: zodResolver(CompleteConsultationSchema),
     defaultValues: {
       visitId,
+      visitType: 'standard',
       chiefComplaint: visitReason,
       history: '',
       examinationFindings: '',
@@ -206,7 +208,28 @@ export default function ConsultationWorkspaceClient({
     }
   };
 
+  const handleVisitTypeChange = (type: 'standard' | 'lab' | 'surgery') => {
+    setVisitType(type);
+    setValue('visitType', type);
+    if (type === 'lab') {
+      setActiveTab('labs');
+    }
+    if (type === 'surgery') {
+      const surgerySvc = catalogServices.find((s) => s.name.toLowerCase().includes('surgery'));
+      if (surgerySvc && serviceFields.length > 0) {
+        setValue('serviceItems.0.serviceId', surgerySvc.id);
+        setValue('serviceItems.0.name', surgerySvc.name);
+        setValue('serviceItems.0.unitPrice', surgerySvc.price);
+      }
+    }
+  };
+
   const onSubmit = async (data: CompleteConsultationInput) => {
+    if (visitType === 'lab' && labOrders.length === 0) {
+      setError('Lab-focused visit: order at least one lab test before completing.');
+      setActiveTab('labs');
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     try {
@@ -399,6 +422,27 @@ export default function ConsultationWorkspaceClient({
             </div>
           )}
 
+          {/* VISIT TYPE SELECTOR */}
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 p-4 shadow-premium">
+            <span className="text-[10px] font-bold text-on-surface-variant uppercase block mb-2">Visit type</span>
+            <div className="flex flex-wrap gap-2">
+              {(['standard', 'lab', 'surgery'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => handleVisitTypeChange(t)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold capitalize transition-colors ${
+                    visitType === t
+                      ? 'bg-primary text-white'
+                      : 'bg-surface-container border border-outline-variant text-on-surface-variant'
+                  }`}
+                >
+                  {t === 'lab' ? 'Lab-focused' : t}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* CLINICAL NOTE EDITING BOARD */}
           <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-5">
             <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5 border-b border-outline-variant/30 pb-4">
@@ -519,6 +563,33 @@ export default function ConsultationWorkspaceClient({
                 className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
               />
             </div>
+
+            {visitType === 'surgery' && (
+              <>
+                <div>
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+                    Procedure notes
+                  </label>
+                  <textarea
+                    {...register('procedureNotes')}
+                    placeholder="Surgical procedure details, anesthesia notes..."
+                    rows={3}
+                    className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary rounded-xl text-xs text-on-surface outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+                    Post-op medication
+                  </label>
+                  <textarea
+                    {...register('postOpMedication')}
+                    placeholder="Pain management, antibiotics, wound care..."
+                    rows={2}
+                    className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary rounded-xl text-xs text-on-surface outline-none"
+                  />
+                </div>
+              </>
+            )}
 
             <div>
               <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">

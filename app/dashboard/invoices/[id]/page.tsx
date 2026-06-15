@@ -166,6 +166,10 @@ export default async function InvoiceDetailPage({
                     <CheckCircle2 className="w-3 h-3" />
                     Paid
                   </span>
+                ) : invoice.payment_status === 'partially_paid' ? (
+                  <span className="inline-flex items-center gap-1 bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                    Partial
+                  </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">
                     Unpaid
