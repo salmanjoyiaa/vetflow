@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { resolveServerAuthContext } from '@/lib/auth/context';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
+import { formatMoney } from '@/lib/utils/currency';
 import PageHeader from '@/components/ui/premium/PageHeader';
 import InvoicePaymentActions from '@/components/dashboard/InvoicePaymentActions';
 import Link from 'next/link';
@@ -69,6 +70,7 @@ export default async function InvoiceDetailPage({
   const amountPaid = (payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
   const invoiceTotal = Number(invoice.total);
   const remaining = Math.max(0, invoiceTotal - amountPaid);
+  const fmt = (amount: number) => formatMoney(amount, ctx.currency);
 
   // Check if there is a prescription issued for this visit
   const { data: prescription } = await supabase
@@ -221,9 +223,9 @@ export default async function InvoiceDetailPage({
                 <tr key={idx} className="hover:bg-surface-container-high/10">
                   <td className="px-6 py-4 font-bold text-on-surface">{item.name}</td>
                   <td className="px-6 py-4 text-on-surface-variant/70">{item.quantity}</td>
-                  <td className="px-6 py-4 text-on-surface-variant/70">${Number(item.unit_price).toFixed(2)}</td>
+                  <td className="px-6 py-4 text-on-surface-variant/70">{fmt(Number(item.unit_price))}</td>
                   <td className="px-6 py-4 text-right font-semibold text-on-surface">
-                    ${Number(item.total).toFixed(2)}
+                    {fmt(Number(item.total))}
                   </td>
                 </tr>
               ))}
@@ -235,34 +237,34 @@ export default async function InvoiceDetailPage({
             <div className="w-72 space-y-2 text-xs">
               <div className="flex justify-between text-on-surface-variant/70">
                 <span>Subtotal:</span>
-                <span>${Number(invoice.subtotal).toFixed(2)}</span>
+                <span>{fmt(Number(invoice.subtotal))}</span>
               </div>
               {Number(invoice.discount) > 0 && (
                 <div className="flex justify-between text-destructive font-semibold">
                   <span>Discount:</span>
-                  <span>-${Number(invoice.discount).toFixed(2)}</span>
+                  <span>-{fmt(Number(invoice.discount))}</span>
                 </div>
               )}
               {Number(invoice.tax_amount) > 0 && (
                 <div className="flex justify-between text-on-surface-variant/70">
                   <span>Tax ({invoice.tax_percentage}%):</span>
-                  <span>${Number(invoice.tax_amount).toFixed(2)}</span>
+                  <span>{fmt(Number(invoice.tax_amount))}</span>
                 </div>
               )}
               <div className="flex justify-between text-base font-black text-on-surface pt-2 border-t border-outline-variant/30">
                 <span>Invoice total:</span>
-                <span className="text-secondary">${invoiceTotal.toFixed(2)}</span>
+                <span className="text-secondary">{fmt(invoiceTotal)}</span>
               </div>
               {amountPaid > 0 && (
                 <div className="flex justify-between text-emerald-400 font-semibold">
                   <span>Amount paid:</span>
-                  <span>${amountPaid.toFixed(2)}</span>
+                  <span>{fmt(amountPaid)}</span>
                 </div>
               )}
               {remaining > 0 && invoice.payment_status !== 'paid' && (
                 <div className="flex justify-between text-amber-400 font-semibold">
                   <span>Remaining balance:</span>
-                  <span>${remaining.toFixed(2)}</span>
+                  <span>{fmt(remaining)}</span>
                 </div>
               )}
             </div>
@@ -277,7 +279,7 @@ export default async function InvoiceDetailPage({
                     <span className="capitalize">
                       {p.payment_method} · {new Date(p.created_at).toLocaleString()}
                     </span>
-                    <span className="font-bold text-on-surface">${Number(p.amount).toFixed(2)}</span>
+                    <span className="font-bold text-on-surface">{fmt(Number(p.amount))}</span>
                   </div>
                 ))}
               </div>

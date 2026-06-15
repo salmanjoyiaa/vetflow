@@ -1,0 +1,491 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Patient Profile - Salik Pets Clinic</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Public+Sans:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "outline-variant": "#3a494b",
+                      "on-primary-fixed": "#002022",
+                      "on-secondary-fixed": "#320047",
+                      "on-secondary-container": "#fff6fc",
+                      "error": "#ffb4ab",
+                      "primary-fixed": "#74f5ff",
+                      "inverse-on-surface": "#313032",
+                      "on-tertiary": "#303034",
+                      "on-surface-variant": "#b9cacb",
+                      "surface-container-low": "#1c1b1d",
+                      "secondary": "#ebb2ff",
+                      "primary-fixed-dim": "#00dbe7",
+                      "tertiary": "#faf6fc",
+                      "on-primary-container": "#006a71",
+                      "inverse-primary": "#00696f",
+                      "surface-container-lowest": "#0e0e10",
+                      "tertiary-fixed-dim": "#c8c5cb",
+                      "surface-container": "#201f21",
+                      "on-primary": "#00363a",
+                      "secondary-fixed": "#f8d8ff",
+                      "surface-dim": "#131315",
+                      "surface-bright": "#39393b",
+                      "on-secondary": "#520072",
+                      "on-tertiary-fixed": "#1b1b1f",
+                      "secondary-container": "#b600f8",
+                      "surface": "#131315",
+                      "primary-container": "#00f2ff",
+                      "on-tertiary-fixed-variant": "#47464b",
+                      "on-primary-fixed-variant": "#004f54",
+                      "inverse-surface": "#e5e1e4",
+                      "outline": "#849495",
+                      "on-background": "#e5e1e4",
+                      "on-secondary-fixed-variant": "#74009f",
+                      "tertiary-container": "#dddae0",
+                      "surface-container-high": "#2a2a2c",
+                      "on-surface": "#e5e1e4",
+                      "surface-container-highest": "#353437",
+                      "on-error-container": "#ffdad6",
+                      "on-error": "#690005",
+                      "on-tertiary-container": "#605f64",
+                      "error-container": "#93000a",
+                      "surface-variant": "#353437",
+                      "tertiary-fixed": "#e4e1e7",
+                      "background": "#131315",
+                      "primary": "#e1fdff",
+                      "surface-tint": "#00dbe7",
+                      "secondary-fixed-dim": "#ebb2ff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-max": "1440px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "48px",
+                      "base": "8px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Public Sans"
+                      ],
+                      "headline-lg": [
+                              "Public Sans"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "mono-data": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Public Sans"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Public Sans"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "mono-data": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .insight-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(235, 178, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .insight-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(180deg, rgba(235,178,255,0.4) 0%, rgba(235,178,255,0) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            animation: pulse-border 3s infinite alternate;
+        }
+
+        @keyframes pulse-border {
+            0% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        .status-dot-stable {
+            box-shadow: 0 0 8px 2px rgba(116, 245, 255, 0.4);
+            background-color: #74f5ff;
+        }
+        .status-dot-processing {
+            box-shadow: 0 0 8px 2px rgba(235, 178, 255, 0.4);
+            background-color: #ebb2ff;
+        }
+        .status-dot-attention {
+            box-shadow: 0 0 8px 2px rgba(255, 180, 171, 0.4);
+            background-color: #ffb4ab;
+        }
+
+        .light-leak-blue {
+            background: radial-gradient(circle, rgba(0, 242, 255, 0.05) 0%, rgba(19, 19, 21, 0) 70%);
+        }
+        .light-leak-purple {
+            background: radial-gradient(circle, rgba(182, 0, 248, 0.05) 0%, rgba(19, 19, 21, 0) 70%);
+        }
+
+        /* Custom Scrollbar for notes */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #3a494b;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #849495;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased min-h-screen flex selection:bg-primary-container selection:text-on-primary-container relative">
+<!-- Ambient Light Leaks -->
+<div class="fixed top-0 left-0 w-[800px] h-[800px] light-leak-blue rounded-full mix-blend-screen pointer-events-none z-0"></div>
+<div class="fixed bottom-0 right-0 w-[600px] h-[600px] light-leak-purple rounded-full mix-blend-screen pointer-events-none z-0"></div>
+<!-- SideNavBar (from JSON) -->
+<nav class="bg-surface-container-lowest/90 backdrop-blur-2xl text-primary font-label-md text-label-md. Titles: font-headline-md text-headline-md. font-headline-md text-headline-md font-bold text-primary tracking-tighter h-screen w-72 fixed left-0 top-0 z-50 border-r border-outline-variant/20 shadow-2xl shadow-black/50 flex flex-col py-base hidden md:flex">
+<div class="px-6 py-4 border-b border-outline-variant/20 mb-4">
+<h1 class="font-headline-lg text-headline-lg text-primary tracking-tighter">Salik Pets</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Precision Care</p>
+</div>
+<div class="flex flex-col gap-2 flex-grow">
+<!-- Dashboard -->
+<a class="flex items-center gap-4 text-on-surface-variant py-4 px-6 hover:bg-white/5 hover:text-on-surface group-hover:translate-x-1 transition-transform duration-200 cursor-pointer active:scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">dashboard</span>
+<span>Dashboard</span>
+</a>
+<!-- Patients (Active) -->
+<a class="flex items-center gap-4 bg-primary/10 text-primary border-r-2 border-primary py-4 px-6 group-hover:translate-x-1 transition-transform duration-200 cursor-pointer active:scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">pets</span>
+<span>Patients</span>
+</a>
+<!-- Treatment Plans -->
+<a class="flex items-center gap-4 text-on-surface-variant py-4 px-6 hover:bg-white/5 hover:text-on-surface group-hover:translate-x-1 transition-transform duration-200 cursor-pointer active:scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">medical_services</span>
+<span>Treatment Plans</span>
+</a>
+<!-- Diagnostics -->
+<a class="flex items-center gap-4 text-on-surface-variant py-4 px-6 hover:bg-white/5 hover:text-on-surface group-hover:translate-x-1 transition-transform duration-200 cursor-pointer active:scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">biotech</span>
+<span>Diagnostics</span>
+</a>
+<!-- Medical Archive -->
+<a class="flex items-center gap-4 text-on-surface-variant py-4 px-6 hover:bg-white/5 hover:text-on-surface group-hover:translate-x-1 transition-transform duration-200 cursor-pointer active:scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">folder_special</span>
+<span>Medical Archive</span>
+</a>
+</div>
+<div class="px-6 py-4 mt-auto flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-variant overflow-hidden border border-outline-variant/30 flex-shrink-0">
+<img alt="Clinic Administrator" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpckRmFBbINafswuHxK4hNoVsjGum8r36B-1mlajyQ1jeMKezjI69JPuu7Nl6yVUBVxKM0qSdKSaFyInaqr4v628HO5TZI2kkoZ-6dcBjZLznWS6nu8Nctrep2xmrRnqK8tChSjmOyqQXdRXF34rtyQc7OOb8Z7VVRrspo6n2CWiv9FFao6zemUjwjgjIApdZNloGiZUcRz_rKG1H_8tYFVQc50fNc4P_WSejeQW8m-d4kLins4YCiRIQg41WLJglaYWxf-z6Na9g">
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Admin</p>
+<p class="font-mono-data text-mono-data text-on-surface-variant text-xs">ID: SPC-001</p>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-72 flex flex-col relative z-10 w-full">
+<!-- TopNavBar (from JSON) -->
+<header class="bg-surface/80 backdrop-blur-xl text-primary font-headline-md text-headline-md. Body: font-body-md text-body-md. font-headline-md text-headline-md font-bold text-primary docked full-width top-0 sticky z-40 border-b border-outline-variant/30 shadow-lg shadow-black/20 focus-within:ring-1 focus-within:ring-primary flex justify-between items-center w-full px-margin-desktop h-16">
+<div class="flex items-center gap-4 md:hidden">
+<button class="text-on-surface hover:text-primary transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<span class="font-headline-md text-headline-md font-bold text-primary">Salik Pets Clinic</span>
+</div>
+<!-- Search Bar (on left per JSON intent, pushing actions right) -->
+<div class="hidden md:flex flex-1 max-w-md relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full bg-white/5 border border-outline-variant/30 rounded-full py-2 pl-10 pr-4 font-body-md text-body-md text-on-surface placeholder-on-surface-variant/50 focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container focus:bg-white/10 transition-all duration-300" placeholder="Search patient ID, name, or condition..." type="text">
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-4 ml-auto">
+<button class="text-on-surface-variant hover:text-primary hover:bg-white/5 transition-all duration-300 p-2 rounded-full relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full status-dot-attention"></span>
+</button>
+<button class="text-on-surface-variant hover:text-primary hover:bg-white/5 transition-all duration-300 p-2 rounded-full hidden sm:block">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary hover:bg-white/5 transition-all duration-300 p-2 rounded-full md:hidden">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<div class="p-margin-mobile md:p-margin-desktop max-w-container-max mx-auto w-full space-y-gutter flex-1 pb-32">
+<!-- Page Header / Breadcrumb area -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md">
+<span>Patients</span>
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+<span class="text-primary-container">Barnaby (ID: P-8821)</span>
+</div>
+<button class="bg-primary text-on-primary-fixed px-6 py-2 rounded-full font-label-md text-label-md hover:shadow-[0_0_15px_rgba(116,245,255,0.4)] transition-all duration-300 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">edit_document</span>
+                    Log Visit
+                </button>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- 1. Header Profile Card (Spans 8 cols) -->
+<div class="md:col-span-8 glass-panel rounded-xl p-6 flex flex-col md:flex-row gap-6 items-start relative overflow-hidden">
+<!-- Decor gradient -->
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary-container/10 blur-[50px] -translate-y-1/2 translate-x-1/4 rounded-full pointer-events-none"></div>
+<!-- Pet Photo -->
+<div class="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-2 border-outline-variant/50 relative flex-shrink-0 bg-surface-container-high shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+<img alt="Barnaby the Beagle" class="w-full h-full object-cover" data-alt="A highly detailed portrait of a handsome Beagle dog sitting calmly. The background is a dark, sleek clinical setting. The lighting is cinematic and high-key on the dog, emphasizing a premium, professional medical environment. The mood is calm and professional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCf2WocGUB-x0D-mmdwgloPV4Dv06CvfUREgJjwGf44xiNMqwmfGlSQXeXbTuCZNiPnazphEH6bo0e3evht8kt2_OCsFMjW5agga8aG6WWMGqQObJtAKzjdk7miUQ22xKU8X5VfQsPa5o_cSDVWQwJUMeMz2d5gPUIiFNguRurT2aw1B8JkrNg0t1-gFIKGOMxv_Tt-vAizRw1TnkFeaFAJtij-Rhv4oAedU0bFNfkZ9kDmlI5ZBlAZmAkG_kH3szrc5o4faTKdDz8">
+<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent h-12"></div>
+</div>
+<!-- Details -->
+<div class="flex-1 w-full z-10">
+<div class="flex justify-between items-start mb-2">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface mb-1">Barnaby</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant flex items-center gap-2">
+                                    Canine <span class="w-1 h-1 rounded-full bg-outline-variant"></span> Beagle
+                                </p>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-high/50 rounded-full border border-outline-variant/30">
+<span class="w-2 h-2 rounded-full status-dot-stable"></span>
+<span class="font-label-md text-label-md text-primary-container uppercase text-xs tracking-wider">Stable</span>
+</div>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 border-t border-outline-variant/20 pt-6">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase text-xs mb-1">Age</p>
+<p class="font-mono-data text-mono-data text-on-surface">6 yrs 2 mo</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase text-xs mb-1">Weight</p>
+<p class="font-mono-data text-mono-data text-on-surface">12.4 kg <span class="text-error ml-1">↓</span></p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase text-xs mb-1">Sex</p>
+<p class="font-mono-data text-mono-data text-on-surface">Male (N)</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase text-xs mb-1">Blood Type</p>
+<p class="font-mono-data text-mono-data text-on-surface">DEA 1.1+</p>
+</div>
+</div>
+</div>
+</div>
+<!-- 2. Owner Info (Spans 4 cols) -->
+<div class="md:col-span-4 glass-panel rounded-xl p-6 flex flex-col relative">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container">person</span>
+                            Owner Profile
+                        </h3>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">open_in_new</span>
+</button>
+</div>
+<div class="space-y-4 flex-1">
+<div>
+<p class="font-body-lg text-body-lg text-on-surface font-medium">Sarah Jenkins</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Primary Contact</p>
+</div>
+<div class="flex items-center gap-3 text-on-surface-variant font-mono-data text-mono-data">
+<span class="material-symbols-outlined text-sm">call</span>
+<span>+1 (555) 019-2834</span>
+</div>
+<div class="flex items-center gap-3 text-on-surface-variant font-mono-data text-mono-data">
+<span class="material-symbols-outlined text-sm">mail</span>
+<span class="truncate">s.jenkins@example.com</span>
+</div>
+<div class="flex items-start gap-3 text-on-surface-variant font-mono-data text-mono-data pt-2 border-t border-outline-variant/20">
+<span class="material-symbols-outlined text-sm mt-0.5">location_on</span>
+<span>1244 Sycamore Lane<br>Apt 4B<br>Neo-Seattle, WA 98101</span>
+</div>
+</div>
+</div>
+</div><div class="space-y-6">
+<!-- Tab Bar -->
+<div class="border-b border-outline-variant/30 flex gap-8 overflow-x-auto no-scrollbar">
+<button class="pb-4 px-1 text-primary-container border-b-2 border-primary-container font-label-md text-label-md whitespace-nowrap">Medical History</button>
+<button class="pb-4 px-1 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors whitespace-nowrap">Lab Reports</button>
+<button class="pb-4 px-1 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors whitespace-nowrap">Billing</button>
+<button class="pb-4 px-1 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors whitespace-nowrap">Special Care &amp; Allergies</button>
+<button class="pb-4 px-1 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors whitespace-nowrap">Diet &amp; Nutrition</button>
+<button class="pb-4 px-1 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors whitespace-nowrap">Recommendations</button>
+</div>
+<!-- Tab Content -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Primary Content Area -->
+<div class="md:col-span-8 space-y-gutter">
+<!-- Medical History Section -->
+<div class="glass-panel rounded-xl p-6">
+<h4 class="font-headline-md text-headline-md text-on-surface mb-6">Treatment Timeline</h4>
+<div class="space-y-6 relative">
+<div class="absolute left-[11px] top-2 bottom-2 w-0.5 bg-outline-variant/30"></div>
+<div class="relative pl-10">
+<div class="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-surface-container-high border-2 border-primary-container flex items-center justify-center">
+<div class="w-2 h-2 rounded-full bg-primary-container"></div>
+</div>
+<p class="font-label-md text-label-md text-primary-container mb-1">Oct 12, 2023</p>
+<p class="font-body-lg text-body-lg text-on-surface">Annual Wellness Checkup</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Routine vaccination and dental cleaning. Heart rate and respiration normal.</p>
+</div>
+<div class="relative pl-10">
+<div class="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-surface-container-high border-2 border-outline-variant flex items-center justify-center">
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Aug 05, 2023</p>
+<p class="font-body-lg text-body-lg text-on-surface">Minor Ear Infection Treatment</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Prescribed Otomax drops for 7 days. Resolved on follow-up.</p>
+</div>
+</div>
+</div>
+<!-- Disease History -->
+<div class="glass-panel rounded-xl p-6">
+<h4 class="font-headline-md text-headline-md text-on-surface mb-4">Chronic Conditions</h4>
+<div class="flex flex-wrap gap-3">
+<span class="px-4 py-2 bg-error-container/20 border border-error/30 text-error rounded-lg font-body-md">Mild Hip Dysplasia</span>
+<span class="px-4 py-2 bg-surface-container-high border border-outline-variant/30 text-on-surface-variant rounded-lg font-body-md">Seasonal Allergies</span>
+</div>
+</div>
+</div>
+<!-- Secondary Content Area (Alerts & Summaries) -->
+<div class="md:col-span-4 space-y-gutter">
+<!-- Special Care & Allergies -->
+<div class="glass-panel border-error/20 bg-error-container/5 rounded-xl p-6">
+<div class="flex items-center gap-2 text-error mb-4">
+<span class="material-symbols-outlined">warning</span>
+<h4 class="font-headline-md text-headline-md">Critical Alerts</h4>
+</div>
+<div class="space-y-4">
+<div class="p-3 bg-error/10 border-l-4 border-error rounded-r-lg">
+<p class="font-label-md text-label-md text-error uppercase text-xs">Allergy</p>
+<p class="font-body-lg text-body-lg text-on-surface">Chicken Protein</p>
+</div>
+<div class="p-3 bg-primary-container/10 border-l-4 border-primary-container rounded-r-lg">
+<p class="font-label-md text-label-md text-primary-container uppercase text-xs">Handling</p>
+<p class="font-body-md text-body-md text-on-surface">Support hind legs when lifting due to hip dysplasia.</p>
+</div>
+</div>
+</div>
+<!-- Diet & Nutrition -->
+<div class="glass-panel rounded-xl p-6">
+<h4 class="font-headline-md text-headline-md text-on-surface mb-4">Diet Schedule</h4>
+<ul class="space-y-3">
+<li class="flex justify-between items-center py-2 border-b border-outline-variant/20">
+<span class="text-on-surface-variant font-body-md">Morning (7 AM)</span>
+<span class="text-on-surface font-mono-data">200g Fish &amp; Rice</span>
+</li>
+<li class="flex justify-between items-center py-2 border-b border-outline-variant/20">
+<span class="text-on-surface-variant font-body-md">Evening (6 PM)</span>
+<span class="text-on-surface font-mono-data">200g Fish &amp; Rice</span>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

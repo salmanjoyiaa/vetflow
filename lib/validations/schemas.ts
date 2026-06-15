@@ -119,7 +119,11 @@ export type UpdateDocumentInput = z.infer<typeof UpdateDocumentSchema>;
 // --- CLINIC / APP SETTINGS ---
 export const SettingsSchema = z.object({
   timezone: z.string().min(1, { message: 'Timezone is required' }),
-  currency: z.string().min(1, { message: 'Currency is required' }),
+  currency: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{3}$/, { message: 'Currency must be a 3-letter ISO code (e.g. PKR, USD)' }),
   isTaxEnabled: z.boolean(),
   taxName: z.string().min(1, { message: 'Tax name is required' }),
   taxPercentage: z.number().min(0).max(100),

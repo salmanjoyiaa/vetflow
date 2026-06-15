@@ -1,18 +1,17 @@
 'use client';
 
-import { 
-  ResponsiveContainer, 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  PieChart, 
-  Pie, 
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  PieChart,
+  Pie,
   Cell,
-  BarChart,
-  Bar
 } from 'recharts';
+import { formatMoney } from '@/lib/utils/currency';
 
 interface ChartDataPoint {
   name: string;
@@ -22,6 +21,7 @@ interface ChartDataPoint {
 interface ReportsChartsClientProps {
   salesData: ChartDataPoint[];
   paymentData: ChartDataPoint[];
+  currency: string;
 }
 
 const COLORS = ['#17403a', '#0F172A', '#D97706', '#84CC16'];
@@ -29,7 +29,11 @@ const COLORS = ['#17403a', '#0F172A', '#D97706', '#84CC16'];
 export default function ReportsChartsClient({
   salesData,
   paymentData,
+  currency,
 }: ReportsChartsClientProps) {
+  const formatAxis = (val: number) =>
+    formatMoney(val, currency, { decimals: 0, compact: true });
+
   return (
     <div className="grid md:grid-cols-12 gap-8">
       
@@ -58,10 +62,11 @@ export default function ReportsChartsClient({
                 tick={{ fontSize: 9, fill: '#718096' }} 
                 axisLine={false} 
                 tickLine={false} 
-                tickFormatter={(val) => `$${val}`}
+                tickFormatter={formatAxis}
               />
-              <Tooltip 
-                contentStyle={{ 
+              <Tooltip
+                formatter={(val) => [formatMoney(Number(val ?? 0), currency), 'Revenue']}
+                contentStyle={{
                   backgroundColor: '#FFFFFF', 
                   borderColor: '#E2E8F0', 
                   borderRadius: '12px',
@@ -108,8 +113,9 @@ export default function ReportsChartsClient({
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip 
-                contentStyle={{ 
+              <Tooltip
+                formatter={(val) => [formatMoney(Number(val ?? 0), currency), 'Amount']}
+                contentStyle={{
                   backgroundColor: '#FFFFFF', 
                   borderColor: '#E2E8F0', 
                   borderRadius: '12px',

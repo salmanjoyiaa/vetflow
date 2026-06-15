@@ -19,6 +19,7 @@ import {
   formatVisitStatusLabel,
   getPetSpeciesAvatarSrc,
 } from '@/lib/utils/pet-species-avatar';
+import { useCurrency } from '@/lib/context/CurrencyContext';
 import {
   AlertTriangle,
   Camera,
@@ -86,6 +87,7 @@ export default function PetMedicalProfileClient({
   canEditCareNotes = false,
   onRefresh,
 }: PetMedicalProfileClientProps) {
+  const { formatCurrency } = useCurrency();
   const [activeTab, setActiveTab] = useState<TabKey>('history');
   const [error, setError] = useState<string | null>(null);
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(
@@ -878,7 +880,7 @@ export default function PetMedicalProfileClient({
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-mono text-on-surface">
-                      {inv.total.toFixed(2)}
+                      {formatCurrency(inv.total)}
                     </span>
                     <Link
                       href={`/dashboard/invoices/${inv.id}`}

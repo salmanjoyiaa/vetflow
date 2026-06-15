@@ -9,6 +9,7 @@ import {
   assertOrganization,
   resolveServerAuthContext,
 } from '@/lib/auth/context';
+import { formatMoney } from '@/lib/utils/currency';
 
 const SearchSchema = z.object({
   query: z.string().min(2).max(100),
@@ -179,7 +180,7 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
           type: 'invoice',
           id: inv.id as string,
           title: inv.invoice_number as string,
-          subtitle: `${inv.payment_status} · $${Number(inv.total).toFixed(2)}`,
+          subtitle: `${inv.payment_status} · ${formatMoney(Number(inv.total), ctx.currency)}`,
           href: `/dashboard/invoices/${inv.id}`,
         });
       }

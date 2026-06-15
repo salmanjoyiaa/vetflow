@@ -11,6 +11,7 @@ import { globalClinicSearchAction } from '@/lib/services/search-actions';
 import LogoutButton from '@/components/ui/premium/LogoutButton';
 import ImpersonationBanner from '@/components/layout/ImpersonationBanner';
 import DashboardPageTransition from '@/components/layout/DashboardPageTransition';
+import { CurrencyProvider } from '@/lib/context/CurrencyContext';
 import type { LucideIcon } from 'lucide-react';
 import {
   Stethoscope,
@@ -424,7 +425,9 @@ export default function DashboardShellClient({
           </header>
 
           <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
-            <DashboardPageTransition>{children}</DashboardPageTransition>
+            <CurrencyProvider currency={session.currency}>
+              <DashboardPageTransition>{children}</DashboardPageTransition>
+            </CurrencyProvider>
           </main>
         </div>
       </div>

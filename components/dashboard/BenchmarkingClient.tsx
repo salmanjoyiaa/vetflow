@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { getClinicBenchmarkingDataAction } from '@/lib/services/benchmarking-actions';
+import { useCurrency } from '@/lib/context/CurrencyContext';
 import { Loader2 } from 'lucide-react';
 
 export default function BenchmarkingClient() {
+  const { formatCurrency } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [branches, setBranches] = useState<
@@ -53,7 +55,7 @@ export default function BenchmarkingClient() {
             </span>
           </div>
           <div className="grid sm:grid-cols-3 gap-4 mb-4">
-            <Metric label="Revenue (paid)" value={`$${b.revenue.toFixed(0)}`} />
+            <Metric label="Revenue (paid)" value={formatCurrency(b.revenue, { decimals: 0 })} />
             <Metric label="Visits" value={String(b.visitCount)} />
             <Metric
               label="Avg consult"

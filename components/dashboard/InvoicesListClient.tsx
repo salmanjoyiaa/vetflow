@@ -20,6 +20,7 @@ import {
   updateInvoicePaymentStatusAction,
   resendInvoiceEmailAction,
 } from '@/lib/services/billing-actions';
+import { useCurrency } from '@/lib/context/CurrencyContext';
 
 export type InvoiceRow = {
   id: string;
@@ -47,6 +48,7 @@ export default function InvoicesListClient({
   invoices,
   initialStatus = 'all',
 }: InvoicesListClientProps) {
+  const { formatCurrency } = useCurrency();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus);
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -202,7 +204,7 @@ export default function InvoicesListClient({
                   </span>
                 </td>
                 <td className="px-6 py-4 font-bold text-on-surface">
-                  ${Number(inv.total).toFixed(2)}
+                  {formatCurrency(Number(inv.total))}
                 </td>
                 <td className="px-6 py-4">
                   {inv.payment_status === 'paid' ? (

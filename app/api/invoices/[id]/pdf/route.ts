@@ -1,7 +1,7 @@
 import { renderToStream } from '@react-pdf/renderer';
 import InvoicePdfDocument from '@/components/pdf/InvoicePdfDocument';
 import { createClient } from '@/lib/supabase/server';
-import { resolveServerSession } from '@/lib/services/auth';
+import { resolveServerAuthContext } from '@/lib/auth/context';
 import { getPdfBranding } from '@/lib/services/branding';
 import React from 'react';
 
@@ -16,8 +16,8 @@ export async function GET(
     const { id } = await params;
     
     // 1. Authenticate user session
-    const session = await resolveServerSession();
-    if (!session) {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx || !ctx.organizationId) {
       return new Response('Unauthorized: Session is invalid.', { status: 401 });
     }
 
@@ -35,7 +35,7 @@ export async function GET(
         payments ( payment_method )
       `)
       .eq('id', id)
-      .eq('organization_id', session.organizationId)
+      .eq('organization_id', ctx.organizationId)
       .single();
 
     if (error || !invoice) {
@@ -48,8 +48,8 @@ export async function GET(
     const paymentsArr = invoice.payments as any[] || [];
     const paymentMethod = paymentsArr[0]?.payment_method || 'cash';
 
-    const clinicName = session.organizationName || 'Clinic';
-    const branding = await getPdfBranding(supabase, session.organizationId!, clinicName);
+    const clinicName = ctx.organizationName || 'Clinic';
+    const branding = await getPdfBranding(supabase, ctx.organizationId, clinicName);
 
     // 3. Render React-pdf component directly to stream
     const stream = await renderToStream(
@@ -70,6 +70,7 @@ export async function GET(
         taxAmount: Number(invoice.tax_amount),
         total: Number(invoice.total),
         paymentMethod: paymentMethod,
+        currency: ctx.currency,
         brandName: branding.brandName,
         accentColor: branding.accentColor,
         footerText: branding.footerText || undefined,

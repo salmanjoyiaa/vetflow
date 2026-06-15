@@ -9,6 +9,7 @@ import {
 import { chatCompletion } from '@/lib/ai/llm-client';
 import { createClient } from '@/lib/supabase/server';
 import { writeAuditLog } from '@/lib/services/audit';
+import { formatMoney } from '@/lib/utils/currency';
 
 export async function generateAiAnalyticsReportAction() {
   try {
@@ -82,8 +83,8 @@ export async function generateAiAnalyticsReportAction() {
 
     const metricsBlock = `
 Branch metrics (current month unless noted):
-- Revenue (paid invoices): $${paidTotal.toFixed(2)}
-- Unpaid outstanding: $${unpaidTotal.toFixed(2)}
+- Revenue (paid invoices): ${formatMoney(paidTotal, ctx.currency)}
+- Unpaid outstanding: ${formatMoney(unpaidTotal, ctx.currency)}
 - Visits this month: ${visitCount}
 - Appointments today: ${apptTodayRes.count || 0}
 - Low stock SKUs: ${lowStock.length} (${lowStock.map((p) => p.name).slice(0, 5).join(', ')})

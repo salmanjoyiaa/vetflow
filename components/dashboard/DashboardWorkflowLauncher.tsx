@@ -8,6 +8,7 @@ import SlideOverPanel from '@/components/ui/premium/SlideOverPanel';
 import NewAppointmentWizard from '@/components/reception/NewAppointmentWizard';
 import LiveOperationsPanel, { type LiveConsultRow } from '@/components/dashboard/LiveOperationsPanel';
 import AiAssistantClient from '@/components/ai/AiAssistantClient';
+import { useCurrency } from '@/lib/context/CurrencyContext';
 import SocialAutomationClient from '@/components/social/SocialAutomationClient';
 import { globalClinicSearchAction } from '@/lib/services/search-actions';
 import {
@@ -511,6 +512,7 @@ function LiveCameraModal({ open, onClose }: { open: boolean; onClose: () => void
 }
 
 function AiAnalyticsSlideOver({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { formatCurrency } = useCurrency();
   const [loading, setLoading] = useState(false);
   const [narrative, setNarrative] = useState('');
   const [metrics, setMetrics] = useState<Record<string, number> | null>(null);
@@ -535,8 +537,8 @@ function AiAnalyticsSlideOver({ open, onClose }: { open: boolean; onClose: () =>
         <div className="space-y-4">
           {metrics && (
             <div className="grid grid-cols-2 gap-2">
-              <MetricCard label="Revenue (MTD)" value={`$${metrics.paidTotal?.toFixed(0)}`} />
-              <MetricCard label="Unpaid" value={`$${metrics.unpaidTotal?.toFixed(0)}`} />
+              <MetricCard label="Revenue (MTD)" value={formatCurrency(metrics.paidTotal ?? 0, { decimals: 0 })} />
+              <MetricCard label="Unpaid" value={formatCurrency(metrics.unpaidTotal ?? 0, { decimals: 0 })} />
               <MetricCard label="Visits (MTD)" value={String(metrics.visitCount)} />
               <MetricCard label="Low stock" value={String(metrics.lowStockCount)} />
             </div>
