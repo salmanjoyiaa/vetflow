@@ -3,6 +3,7 @@ import { resolveServerAuthContext } from '@/lib/auth/context';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import PageHeader from '@/components/ui/premium/PageHeader';
+import InvoicePaymentActions from '@/components/dashboard/InvoicePaymentActions';
 import Link from 'next/link';
 import { 
   ArrowLeft, 
@@ -58,6 +59,16 @@ export default async function InvoiceDetailPage({
       </div>
     );
   }
+
+  const { data: payments } = await supabase
+    .from('payments')
+    .select('id, amount, payment_method, created_at')
+    .eq('invoice_id', invoice.id)
+    .order('created_at', { ascending: true });
+
+  const amountPaid = (payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+  const invoiceTotal = Number(invoice.total);
+  const remaining = Math.max(0, invoiceTotal - amountPaid);
 
   // Check if there is a prescription issued for this visit
   const { data: prescription } = await supabase
@@ -166,6 +177,10 @@ export default async function InvoiceDetailPage({
                     <CheckCircle2 className="w-3 h-3" />
                     Paid
                   </span>
+                ) : invoice.payment_status === 'partially_paid' ? (
+                  <span className="inline-flex items-center gap-1 bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                    Partial
+                  </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">
                     Unpaid
@@ -174,6 +189,13 @@ export default async function InvoiceDetailPage({
               </div>
             </div>
           </div>
+
+          <InvoicePaymentActions
+            invoiceId={invoice.id}
+            invoiceTotal={invoiceTotal}
+            amountPaid={amountPaid}
+            paymentStatus={invoice.payment_status}
+          />
         </div>
 
         {/* RIGHT: LEDGER TABLE */}
@@ -228,11 +250,39 @@ export default async function InvoiceDetailPage({
                 </div>
               )}
               <div className="flex justify-between text-base font-black text-on-surface pt-2 border-t border-outline-variant/30">
-                <span>Total Paid:</span>
-                <span className="text-secondary">${Number(invoice.total).toFixed(2)}</span>
+                <span>Invoice total:</span>
+                <span className="text-secondary">${invoiceTotal.toFixed(2)}</span>
               </div>
+              {amountPaid > 0 && (
+                <div className="flex justify-between text-emerald-400 font-semibold">
+                  <span>Amount paid:</span>
+                  <span>${amountPaid.toFixed(2)}</span>
+                </div>
+              )}
+              {remaining > 0 && invoice.payment_status !== 'paid' && (
+                <div className="flex justify-between text-amber-400 font-semibold">
+                  <span>Remaining balance:</span>
+                  <span>${remaining.toFixed(2)}</span>
+                </div>
+              )}
             </div>
           </div>
+
+          {(payments || []).length > 0 && (
+            <div className="px-6 py-4 border-t border-outline-variant/30 bg-surface-container/20">
+              <h4 className="text-[10px] font-bold uppercase text-on-surface-variant mb-2">Payment history</h4>
+              <div className="space-y-1">
+                {(payments || []).map((p) => (
+                  <div key={p.id} className="flex justify-between text-xs text-on-surface-variant">
+                    <span className="capitalize">
+                      {p.payment_method} · {new Date(p.created_at).toLocaleString()}
+                    </span>
+                    <span className="font-bold text-on-surface">${Number(p.amount).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

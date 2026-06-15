@@ -78,6 +78,7 @@ export default function InvoiceCheckoutClient({
 
   const discountWatch = watch('discount') || 0;
   const paymentStatusWatch = watch('paymentStatus');
+  const amountPaidWatch = watch('amountPaid') || 0;
   const sendEmailWatch = watch('sendEmailReceipt');
 
   let subtotal = 0;
@@ -259,7 +260,7 @@ export default function InvoiceCheckoutClient({
               <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                 Payment status
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <label
                   className={`flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer border ${
                     paymentStatusWatch === 'paid'
@@ -269,6 +270,16 @@ export default function InvoiceCheckoutClient({
                 >
                   <input type="radio" value="paid" {...register('paymentStatus')} className="sr-only" />
                   Paid now
+                </label>
+                <label
+                  className={`flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer border ${
+                    paymentStatusWatch === 'partial'
+                      ? 'bg-sky-500 text-white border-sky-500'
+                      : 'border-outline-variant text-on-surface-variant'
+                  }`}
+                >
+                  <input type="radio" value="partial" {...register('paymentStatus')} className="sr-only" />
+                  Partial
                 </label>
                 <label
                   className={`flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer border ${
@@ -283,7 +294,7 @@ export default function InvoiceCheckoutClient({
               </div>
             </div>
 
-            {paymentStatusWatch === 'paid' && (
+            {(paymentStatusWatch === 'paid' || paymentStatusWatch === 'partial') && (
               <div>
                 <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                   Payment method
@@ -296,6 +307,27 @@ export default function InvoiceCheckoutClient({
                   <option value="card">Card</option>
                   <option value="bank_transfer">Bank transfer</option>
                 </select>
+              </div>
+            )}
+
+            {paymentStatusWatch === 'partial' && (
+              <div>
+                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+                  Amount paid now (${total.toFixed(2)} total)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min={0.01}
+                  max={total - 0.01}
+                  {...register('amountPaid', { valueAsNumber: true })}
+                  className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant rounded-xl text-xs font-bold outline-none"
+                />
+                {amountPaidWatch > 0 && amountPaidWatch < total && (
+                  <p className="text-[10px] text-on-surface-variant mt-1">
+                    Remaining balance: ${(total - amountPaidWatch).toFixed(2)}
+                  </p>
+                )}
               </div>
             )}
 
@@ -375,7 +407,11 @@ export default function InvoiceCheckoutClient({
               ) : (
                 <>
                   <CheckCircle className="w-4 h-4" />
-                  {paymentStatusWatch === 'paid' ? 'Record payment & close visit' : 'Save invoice (unpaid)'}
+                  {paymentStatusWatch === 'paid'
+                    ? 'Record payment & close visit'
+                    : paymentStatusWatch === 'partial'
+                      ? 'Record partial payment & close visit'
+                      : 'Save invoice (unpaid)'}
                 </>
               )}
             </button>

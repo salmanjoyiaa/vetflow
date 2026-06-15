@@ -122,6 +122,16 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
     // 6. Create Invoice Row
     const invoiceNumber = `INV-${Date.now()}`;
     const isPaid = parsed.paymentStatus === 'paid';
+    const isPartial = parsed.paymentStatus === 'partial';
+    const amountPaid = isPartial ? (parsed.amountPaid ?? 0) : isPaid ? total : 0;
+
+    if (isPartial && (amountPaid <= 0 || amountPaid >= total)) {
+      throw new Error('Partial payment amount must be greater than zero and less than the invoice total.');
+    }
+
+    let paymentStatus: 'paid' | 'unpaid' | 'partially_paid' = 'unpaid';
+    if (isPaid) paymentStatus = 'paid';
+    else if (isPartial) paymentStatus = 'partially_paid';
 
     const { data: invoice, error: invoiceErr } = await adminClient
       .from('invoices')
@@ -137,7 +147,7 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
         tax_percentage: taxPercentage,
         tax_amount: taxAmountTotal,
         total,
-        payment_status: isPaid ? 'paid' : 'unpaid',
+        payment_status: paymentStatus,
         notes: parsed.notes || null,
         created_by: ctx.userId,
         paid_at: isPaid ? new Date().toISOString() : null,
@@ -162,15 +172,15 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
       throw new Error(itemsErr.message || 'Failed to save invoice billing items.');
     }
 
-    // 8. Register Payment record when paid at checkout
-    if (isPaid) {
+    // 8. Register Payment record when paid or partial at checkout
+    if (isPaid || isPartial) {
       const { error: payErr } = await adminClient
         .from('payments')
         .insert({
           organization_id: ctx.organizationId,
           branch_id: visit.branch_id,
           invoice_id: invoice.id,
-          amount: total,
+          amount: amountPaid,
           payment_method: parsed.paymentMethod,
           reference_number: parsed.paymentReference || null,
           created_by: ctx.userId,
@@ -257,6 +267,17 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
         resourceId: invoice.id,
         afterData: { total, paymentMethod: parsed.paymentMethod },
       });
+    } else if (isPartial) {
+      await writeAuditLog({
+        organizationId: ctx.organizationId,
+        branchId: visit.branch_id,
+        actorUserId: ctx.userId,
+        actorRole: ctx.role || 'receptionist',
+        action: 'PAYMENT_RECEIVED',
+        resourceType: 'PAYMENT',
+        resourceId: invoice.id,
+        afterData: { amountPaid, remaining: total - amountPaid, paymentMethod: parsed.paymentMethod },
+      });
     }
 
     const { data: clinicalNote } = await adminClient
@@ -340,11 +361,28 @@ export async function updateInvoicePaymentStatusAction(payload: unknown) {
 
     const total = Number(invoice.total);
 
+    const { data: existingPayments } = await adminClient
+      .from('payments')
+      .select('amount')
+      .eq('invoice_id', invoice.id);
+
+    const paidSoFar = (existingPayments || []).reduce((s, p) => s + Number(p.amount), 0);
+    const remaining = total - paidSoFar;
+
+    if (remaining <= 0) {
+      throw new Error('Invoice has no remaining balance.');
+    }
+
+    const payAmount = parsed.amount ?? remaining;
+    if (payAmount <= 0 || payAmount > remaining) {
+      throw new Error(`Payment amount must be between 0 and ${remaining.toFixed(2)}.`);
+    }
+
     const { error: payErr } = await adminClient.from('payments').insert({
       organization_id: ctx.organizationId,
       branch_id: invoice.branch_id,
       invoice_id: invoice.id,
-      amount: total,
+      amount: payAmount,
       payment_method: parsed.paymentMethod,
       reference_number: parsed.paymentReference || null,
       created_by: ctx.userId,
@@ -354,11 +392,14 @@ export async function updateInvoicePaymentStatusAction(payload: unknown) {
       throw new Error(payErr.message || 'Failed to register payment.');
     }
 
+    const newPaidTotal = paidSoFar + payAmount;
+    const isFullyPaid = newPaidTotal >= total - 0.001;
+
     const { error: updateErr } = await adminClient
       .from('invoices')
       .update({
-        payment_status: 'paid',
-        paid_at: new Date().toISOString(),
+        payment_status: isFullyPaid ? 'paid' : 'partially_paid',
+        paid_at: isFullyPaid ? new Date().toISOString() : null,
       })
       .eq('id', invoice.id);
 
@@ -374,16 +415,16 @@ export async function updateInvoicePaymentStatusAction(payload: unknown) {
       action: 'PAYMENT_RECEIVED',
       resourceType: 'INVOICE',
       resourceId: invoice.id,
-      afterData: { total, paymentMethod: parsed.paymentMethod },
+      afterData: { amount: payAmount, totalPaid: newPaidTotal, paymentMethod: parsed.paymentMethod },
     });
 
-    // Thank-you email once the invoice transitions to paid.
+    // Thank-you email once the invoice transitions to fully paid.
     const customer = invoice.customers as {
       email?: string | null;
       first_name?: string | null;
       last_name?: string | null;
     } | null;
-    if (customer?.email) {
+    if (isFullyPaid && customer?.email) {
       await sendEmail({
         to: customer.email,
         subject: `Thank you for your payment — ${ctx.organizationName || 'ClinixDev'}`,

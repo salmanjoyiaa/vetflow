@@ -114,6 +114,7 @@ export default function ProductForm({ categories, branches, activeBranchId }: Pr
                   { value: 'service', label: 'Service' },
                   { value: 'medicine', label: 'Medicine' },
                   { value: 'food', label: 'Food' },
+                  { value: 'treats', label: 'Treats' },
                   { value: 'accessory', label: 'Accessory' },
                 ]}
               />

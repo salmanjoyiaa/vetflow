@@ -1,5 +1,5 @@
 import { resolveServerAuthContext } from '@/lib/auth/context';
-import { canAccessRoute, canShowWidget, hasCapability } from '@/lib/auth/capabilities';
+import { canAccessRoute, canShowWidget, hasCapability, getCapabilitiesForRole } from '@/lib/auth/capabilities';
 import { canAccessRouteByFeature } from '@/lib/auth/features';
 import { createClient } from '@/lib/supabase/server';
 import { isDemoMode } from '@/lib/demo/credentials';
@@ -57,6 +57,7 @@ import {
 } from 'lucide-react';
 import type { UserSessionDetails } from '@/lib/services/auth';
 import { getTimeGreeting } from '@/lib/utils/greeting';
+import DashboardQabShell from '@/components/dashboard/DashboardQabShell';
 
 export const metadata = {
   title: 'Dashboard — Overview',
@@ -143,6 +144,8 @@ export default async function DashboardOverview() {
   let liveCheckoutQueue: LiveConsultRow[] = [];
   let medicalActivities: MedicalActivityRow[] = [];
   let showConsultTimer = false;
+  let featuresJson: Record<string, unknown> | null = null;
+  let doctors: { id: string; firstName: string; lastName: string }[] = [];
   const showAttendance = hasCapability(role, 'mark_attendance');
 
   if (isDemoMode()) {
@@ -477,12 +480,26 @@ export default async function DashboardOverview() {
         .select('features')
         .eq('organization_id', session.organizationId || '')
         .maybeSingle();
-      showConsultTimer = isConsultTrackingEnabled(
-        (subRow?.features as Record<string, unknown>) || null
-      );
+      featuresJson = (subRow?.features as Record<string, unknown>) || null;
+      showConsultTimer = isConsultTrackingEnabled(featuresJson);
     }
 
-    if (role === 'clinic_admin') {
+    if (role === 'clinic_admin' || role === 'receptionist' || role === 'doctor') {
+      const { data: doctorsData } = await supabase
+        .from('organization_members')
+        .select('user_id, user_profiles ( first_name, last_name )')
+        .eq('organization_id', session.organizationId || '')
+        .eq('role', 'doctor')
+        .eq('is_active', true);
+      doctors =
+        doctorsData?.map((d) => ({
+          id: d.user_id,
+          firstName: (d.user_profiles as { first_name?: string } | null)?.first_name || '',
+          lastName: (d.user_profiles as { first_name?: string; last_name?: string } | null)?.last_name || '',
+        })) || [];
+    }
+
+    if (role === 'clinic_admin' || role === 'receptionist') {
       const mapLiveVisit = (v: {
         id: string;
         status: string;
@@ -642,7 +659,10 @@ export default async function DashboardOverview() {
     totalCustomers,
     totalPets,
   }, canLink);
-  const quickActions = buildQuickActions(role, readyForCheckout, canLink);
+  const quickActions =
+    role === 'clinic_admin' || role === 'receptionist' || role === 'doctor'
+      ? []
+      : buildQuickActions(role, readyForCheckout, canLink);
   const showLowStock = canShowWidget(role, 'lowStock') && lowStockItems.length > 0;
   const showSecondary =
     canShowWidget(role, 'totalCustomers') ||
@@ -660,6 +680,20 @@ export default async function DashboardOverview() {
       />
 
       {showAttendance && <AttendanceWidgetClient initial={myAttendance} />}
+
+      <DashboardQabShell
+        role={role}
+        capabilities={getCapabilitiesForRole(role)}
+        features={session.features}
+        featuresJson={featuresJson}
+        doctors={doctors}
+        activeBranchId={activeBranchId}
+        organizationId={session.organizationId || ''}
+        clinicName={session.organizationName || 'Clinic'}
+        liveActiveConsults={liveActiveConsults}
+        liveCheckoutQueue={liveCheckoutQueue}
+        showConsultTimer={showConsultTimer}
+      />
 
       {kpis.length > 0 && <DashboardWidgetGrid kpis={kpis} />}
 

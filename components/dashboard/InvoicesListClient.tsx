@@ -36,7 +36,7 @@ export type InvoiceRow = {
   customerEmail: string | null;
 };
 
-type StatusFilter = 'all' | 'paid' | 'unpaid';
+type StatusFilter = 'all' | 'paid' | 'unpaid' | 'partially_paid';
 
 interface InvoicesListClientProps {
   invoices: InvoiceRow[];
@@ -77,6 +77,7 @@ export default function InvoicesListClient({
       all: invoices.length,
       paid: invoices.filter((i) => i.payment_status === 'paid').length,
       unpaid: invoices.filter((i) => i.payment_status === 'unpaid').length,
+      partially_paid: invoices.filter((i) => i.payment_status === 'partially_paid').length,
     }),
     [invoices]
   );
@@ -131,7 +132,7 @@ export default function InvoicesListClient({
       )}
 
       <div className="flex flex-wrap gap-2 items-center">
-        {(['all', 'unpaid', 'paid'] as const).map((s) => (
+        {(['all', 'unpaid', 'partially_paid', 'paid'] as const).map((s) => (
           <button
             key={s}
             type="button"
@@ -142,7 +143,7 @@ export default function InvoicesListClient({
                 : 'bg-surface-container border border-outline-variant text-on-surface-variant'
             }`}
           >
-            {s} ({counts[s]})
+            {s === 'partially_paid' ? 'partial' : s} ({counts[s]})
           </button>
         ))}
       </div>
@@ -208,6 +209,10 @@ export default function InvoicesListClient({
                     <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">
                       <CheckCircle2 className="w-3 h-3" />
                       Paid
+                    </span>
+                  ) : inv.payment_status === 'partially_paid' ? (
+                    <span className="inline-flex items-center gap-1 bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                      Partial
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">

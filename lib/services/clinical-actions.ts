@@ -138,15 +138,29 @@ export async function completeConsultationAction(payload: unknown) {
       throw new Error('Visit record not found or access denied.');
     }
 
+    if (parsed.visitType === 'lab') {
+      const { count: labOrderCount } = await supabase
+        .from('lab_orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('visit_id', parsed.visitId);
+
+      if (!labOrderCount) {
+        throw new Error('Lab-focused visit: order at least one lab test before completing.');
+      }
+    }
+
     const numOrNull = (v: number | undefined) =>
       v !== undefined && !Number.isNaN(v) ? v : null;
 
     const notePayload = {
+      visit_type: parsed.visitType || 'standard',
       chief_complaint: parsed.chiefComplaint,
       history: parsed.history || null,
       examination_findings: parsed.examinationFindings || null,
       diagnosis: parsed.diagnosis,
       treatment_plan: parsed.treatmentPlan || null,
+      procedure_notes: parsed.procedureNotes || null,
+      post_op_medication: parsed.postOpMedication || null,
       internal_notes: parsed.internalNotes || null,
       follow_up_recommendation: parsed.followUpRecommendation || null,
       follow_up_days: parsed.followUpDays?.length ? parsed.followUpDays : null,

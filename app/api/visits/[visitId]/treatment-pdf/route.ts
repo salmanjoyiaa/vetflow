@@ -17,9 +17,13 @@ export async function GET(
       return new Response('Unauthorized', { status: 401 });
     }
     try {
-      assertCapability(ctx, 'billing_checkout');
+      assertCapability(ctx, 'view_treatment_pdf');
     } catch {
-      return new Response('Forbidden', { status: 403 });
+      try {
+        assertCapability(ctx, 'billing_checkout');
+      } catch {
+        return new Response('Forbidden', { status: 403 });
+      }
     }
 
     const supabase = await createClient();
@@ -38,6 +42,9 @@ export async function GET(
           diagnosis,
           treatment_plan,
           follow_up_recommendation,
+          visit_type,
+          procedure_notes,
+          post_op_medication,
           temperature_c,
           heart_rate_bpm,
           respiratory_rate,
@@ -91,6 +98,9 @@ export async function GET(
         diagnosis: (notes.diagnosis as string) || '',
         treatmentPlan: (notes.treatment_plan as string) || undefined,
         followUp: (notes.follow_up_recommendation as string) || undefined,
+        visitType: (notes.visit_type as string) || 'standard',
+        procedureNotes: (notes.procedure_notes as string) || undefined,
+        postOpMedication: (notes.post_op_medication as string) || undefined,
         temperatureC: notes.temperature_c != null ? Number(notes.temperature_c) : null,
         heartRateBpm: notes.heart_rate_bpm != null ? Number(notes.heart_rate_bpm) : null,
         respiratoryRate: notes.respiratory_rate != null ? Number(notes.respiratory_rate) : null,

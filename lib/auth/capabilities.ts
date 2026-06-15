@@ -21,7 +21,11 @@ export type Capability =
   | 'manage_subscription'
   | 'use_ai_assistant'
   | 'manage_social'
-  | 'view_patient_history';
+  | 'view_patient_history'
+  | 'view_consultation_status'
+  | 'view_treatment_pdf'
+  | 'view_camera_feed'
+  | 'manage_camera_devices';
 
 const ROLE_CAPABILITIES: Record<ClinicRole, Capability[]> = {
   clinic_admin: [
@@ -43,6 +47,10 @@ const ROLE_CAPABILITIES: Record<ClinicRole, Capability[]> = {
     'manage_subscription',
     'use_ai_assistant',
     'manage_social',
+    'view_consultation_status',
+    'view_treatment_pdf',
+    'view_camera_feed',
+    'manage_camera_devices',
   ],
   doctor: [
     'view_dashboard',
@@ -50,6 +58,7 @@ const ROLE_CAPABILITIES: Record<ClinicRole, Capability[]> = {
     'clinical_queue',
     'manage_prescriptions',
     'view_patient_history',
+    'view_treatment_pdf',
     'mark_attendance',
     'use_ai_assistant',
   ],
@@ -61,6 +70,8 @@ const ROLE_CAPABILITIES: Record<ClinicRole, Capability[]> = {
     'manage_pets',
     'billing_checkout',
     'manage_inventory',
+    'view_consultation_status',
+    'view_camera_feed',
     'mark_attendance',
     'use_ai_assistant',
   ],
@@ -101,6 +112,8 @@ export const ROUTE_CAPABILITIES: Record<string, Capability | undefined> = {
   '/dashboard/upgrade': 'manage_subscription',
   '/dashboard/ai-assistant': 'use_ai_assistant',
   '/dashboard/social': 'manage_social',
+  '/dashboard/benchmarking': 'view_reports',
+  '/dashboard/reports/ai': 'view_reports',
 };
 
 export function canAccessRoute(
