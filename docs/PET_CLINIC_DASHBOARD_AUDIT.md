@@ -524,11 +524,9 @@ SELECT id, name, created_by FROM products WHERE organization_id = '0faa414a-9faf
 
 | Migration | Status | Notes |
 |-----------|--------|-------|
-| `14_product_created_by.sql` | **Pending apply on prod** | Supabase MCP unavailable this session; run in SQL editor before inventory CRUD verification |
-| `15_default_lab_tests.sql` | **Pending apply on prod** | Backfills default lab catalog for orgs without tests |
-| `16_visits_appointment_unique.sql` | **Pending apply on prod** | Unique index on `visits.appointment_id` |
-
-**Apply order:** 14 → 15 → 16 via Supabase SQL editor.
+| `14_product_created_by.sql` | **Applied on prod** | Via Supabase MCP `apply_migration` (2026-06-15) |
+| `15_default_lab_tests.sql` | **Applied on prod** | QA org has 3 default lab tests |
+| `16_visits_appointment_unique.sql` | **Applied on prod** | Unique index on `visits.appointment_id` |
 
 ### Bug fix status
 
@@ -585,9 +583,9 @@ SELECT id, name, created_by FROM products WHERE organization_id = '0faa414a-9faf
 
 ### Deploy recommendation
 
-| Deploy v0.2.1? | **Yes — after migrations 14–16 applied** |
-|----------------|------------------------------------------|
-| Rationale | All targeted code fixes built and deployed; DB backfill/index required for full QA-001 and inventory CRUD |
+| Deploy v0.2.1? | **Yes** |
+|----------------|---------|
+| Rationale | Migrations 14–16 applied; code pushed to GitHub for Vercel auto-deploy |
 
 ### Demo readiness
 
