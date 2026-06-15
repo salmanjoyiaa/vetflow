@@ -341,6 +341,13 @@ export const WalkInSchema = z.object({
   triageNotes: z.string().optional().or(z.literal('')),
 });
 
+export const UpdateClinicalNoteSchema = z.object({
+  visitId: EntityIdSchema,
+  chiefComplaint: z.string().min(1, { message: 'Chief complaint is required' }),
+  diagnosis: z.string().min(1, { message: 'Diagnosis is required' }),
+  treatmentPlan: z.string().optional().or(z.literal('')),
+});
+
 // --- TYPE INFERENCES ---
 export type ProductInput = z.infer<typeof ProductSchema>;
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
@@ -353,6 +360,7 @@ export type BranchInput = z.infer<typeof BranchSchema>;
 export type SubscriptionInput = z.infer<typeof SubscriptionSchema>;
 export type CheckoutInput = z.infer<typeof CheckoutSchema>;
 export type CompleteConsultationInput = z.infer<typeof CompleteConsultationSchema>;
+export type UpdateClinicalNoteInput = z.infer<typeof UpdateClinicalNoteSchema>;
 export type AppointmentRequestInput = z.infer<typeof AppointmentRequestSchema>;
 export type WalkInInput = z.infer<typeof WalkInSchema>;
 export type StaffAppointmentInput = z.infer<typeof StaffAppointmentSchema>;
