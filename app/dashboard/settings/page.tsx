@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import SettingsForm from '@/components/forms/SettingsForm';
 import ServicesCatalogClient from '@/components/forms/ServicesCatalogClient';
 import CameraDevicesClient from '@/components/settings/CameraDevicesClient';
+import ClinicResetPanel from '@/components/settings/ClinicResetPanel';
 import { listServicesAction } from '@/lib/services/service-catalog-actions';
 import PageHeader from '@/components/ui/premium/PageHeader';
 import { isBrandedPdfsEnabled, isCameraFeedEnabled } from '@/lib/auth/features';
@@ -111,6 +112,10 @@ export default async function SettingsPage() {
       {cameraFeedEnabled && <CameraDevicesClient />}
 
       <ServicesCatalogClient initialServices={services} />
+
+      {session.role === 'clinic_admin' && (
+        <ClinicResetPanel organizationName={session.organizationName || 'Clinic'} />
+      )}
     </div>
   );
 }

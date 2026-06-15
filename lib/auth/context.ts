@@ -276,6 +276,15 @@ export function assertOrganization(
   }
 }
 
+export function assertClinicAdmin(ctx: ServerAuthContext): void {
+  if (ctx.role !== 'clinic_admin') {
+    throw new AuthError(
+      'Forbidden: Only clinic administrators can perform this action.',
+      'FORBIDDEN'
+    );
+  }
+}
+
 export function assertActiveBranch(
   ctx: ServerAuthContext
 ): asserts ctx is ServerAuthContext & { activeBranchId: string } {

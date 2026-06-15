@@ -14,7 +14,7 @@ export async function setActiveBranchAction(branchId: string): Promise<{
 }> {
   try {
     const ctx = await resolveServerAuthContext();
-    if (!ctx || ctx.isSuperAdmin) {
+    if (!ctx || (ctx.isSuperAdmin && !ctx.isImpersonating)) {
       return { success: false, error: 'Unauthorized' };
     }
 

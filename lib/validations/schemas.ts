@@ -371,6 +371,24 @@ export const UpdatePatientCareNotesSchema = z.object({
   weightKg: z.number().nonnegative().optional().or(z.nan()),
 });
 
+export const PrescriptionItemEditSchema = z.object({
+  medicineName: z.string().min(1, { message: 'Medicine name is required' }),
+  dosage: z.string().min(1, { message: 'Dosage is required' }),
+  frequency: z.string().min(1, { message: 'Frequency is required' }),
+  duration: z.string().min(1, { message: 'Duration is required' }),
+  instructions: z.string().optional().or(z.literal('')),
+  quantityRequested: z.number().int().positive().default(1),
+});
+
+export const PrescriptionEditSchema = z.object({
+  notes: z.string().optional().or(z.literal('')),
+  items: z.array(PrescriptionItemEditSchema).min(1, { message: 'At least one item is required' }),
+});
+
+export const ClinicResetSchema = z.object({
+  confirmationPhrase: z.string().min(1, { message: 'Confirmation phrase is required' }),
+});
+
 // --- TYPE INFERENCES ---
 export type ProductInput = z.infer<typeof ProductSchema>;
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
@@ -385,6 +403,8 @@ export type CheckoutInput = z.infer<typeof CheckoutSchema>;
 export type CompleteConsultationInput = z.infer<typeof CompleteConsultationSchema>;
 export type UpdateClinicalNoteInput = z.infer<typeof UpdateClinicalNoteSchema>;
 export type UpdatePatientCareNotesInput = z.infer<typeof UpdatePatientCareNotesSchema>;
+export type PrescriptionEditInput = z.infer<typeof PrescriptionEditSchema>;
+export type ClinicResetInput = z.infer<typeof ClinicResetSchema>;
 export type AppointmentRequestInput = z.infer<typeof AppointmentRequestSchema>;
 export type WalkInInput = z.infer<typeof WalkInSchema>;
 export type StaffAppointmentInput = z.infer<typeof StaffAppointmentSchema>;

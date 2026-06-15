@@ -3,6 +3,7 @@ import { resolveServerAuthContext } from '@/lib/auth/context';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import PetForm from '@/components/forms/PetForm';
+import CustomerDetailAdminBar, { PetRowAdminActions } from '@/components/dashboard/CustomerDetailAdminBar';
 import PageHeader from '@/components/ui/premium/PageHeader';
 import Link from 'next/link';
 import { 
@@ -44,6 +45,7 @@ export default async function CustomerDetailPage({
     .select('*')
     .eq('id', customerId)
     .eq('organization_id', session.organizationId)
+    .is('deleted_at', null)
     .single();
 
   if (customerError || !customer) {
@@ -60,7 +62,10 @@ export default async function CustomerDetailPage({
     .select('*')
     .eq('customer_id', customerId)
     .eq('organization_id', session.organizationId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
+
+  const isAdmin = session.role === 'clinic_admin';
 
   return (
     <div className="space-y-8">
@@ -76,7 +81,18 @@ export default async function CustomerDetailPage({
       <PageHeader
         title="Customer Profile"
         icon={User}
-        actions={<PetForm customerId={customer.id} />}
+        actions={
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <CustomerDetailAdminBar
+                isAdmin={isAdmin}
+                branches={session.branches}
+                customer={customer}
+              />
+            )}
+            <PetForm customerId={customer.id} />
+          </div>
+        }
       />
 
       {/* CORE DETAILS MATRIX */}
@@ -190,6 +206,7 @@ export default async function CustomerDetailPage({
                       Medical file
                       <ChevronRight className="w-3 h-3" />
                     </Link>
+                    <PetRowAdminActions isAdmin={isAdmin} pet={pet} />
                   </div>
                 </div>
               ))}

@@ -7,6 +7,7 @@ import PetMedicalProfileClient from '@/components/pets/PetMedicalProfileClient';
 import { getPatientMedicalProfileAction } from '@/lib/services/patient-medical-actions';
 import type { PatientMedicalProfileData } from '@/lib/types/patient-medical';
 import { FileText, Download, ExternalLink, AlertTriangle, Loader2, ChevronRight } from 'lucide-react';
+import PrescriptionEditModal, { PrescriptionDeleteButton } from '@/components/prescriptions/PrescriptionEditModal';
 
 export type PrescriptionListRow = {
   id: string;
@@ -149,6 +150,12 @@ export default function PrescriptionsListClient({
                 <Download className="w-3 h-3" />
                 PDF
               </a>
+              {userRole === 'clinic_admin' && (
+                <>
+                  <PrescriptionEditModal prescriptionId={rx.id} />
+                  <PrescriptionDeleteButton prescriptionId={rx.id} />
+                </>
+              )}
             </div>
           </div>
         ))}

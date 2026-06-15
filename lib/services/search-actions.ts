@@ -63,6 +63,7 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
           .select('id, first_name, last_name, phone, email')
           .eq('organization_id', orgId)
           .eq('branch_id', branchId)
+          .is('deleted_at', null)
           .or(
             `first_name.ilike.${pattern},last_name.ilike.${pattern},phone.ilike.${pattern},email.ilike.${pattern}`
           )
@@ -78,6 +79,7 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
           .from('patients')
           .select('id, name, species, customers ( first_name, last_name )')
           .eq('organization_id', orgId)
+          .is('deleted_at', null)
           .ilike('name', pattern)
           .limit(5)
       );
@@ -87,6 +89,7 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
           .from('patients')
           .select('id, name, species, customers ( first_name, last_name )')
           .eq('organization_id', orgId)
+          .is('deleted_at', null)
           .ilike('name', pattern)
           .limit(5)
       );

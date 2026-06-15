@@ -41,6 +41,7 @@ export default async function CustomersPage({
     .from('customers')
     .select(`
       id,
+      branch_id,
       first_name,
       last_name,
       email,
@@ -49,6 +50,7 @@ export default async function CustomersPage({
       pets:patients ( id )
     `)
     .eq('branch_id', activeBranchId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -61,6 +63,7 @@ export default async function CustomersPage({
 
   const rows = (customers || []).map((cust) => ({
     id: cust.id,
+    branch_id: cust.branch_id,
     first_name: cust.first_name,
     last_name: cust.last_name,
     email: cust.email,
@@ -88,6 +91,9 @@ export default async function CustomersPage({
         customers={rows}
         initialPhone={phone || ''}
         focusPhone={focus === 'phone'}
+        isAdmin={session.role === 'clinic_admin'}
+        branches={session.branches}
+        activeBranchId={activeBranchId}
       />
     </div>
   );
