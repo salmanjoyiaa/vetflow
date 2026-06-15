@@ -133,6 +133,7 @@ export default async function AppointmentsPage() {
       <AppointmentsListClient 
         initialAppointments={appointments || []} 
         doctors={doctors}
+        userRole={session.role}
       />
 
     </div>

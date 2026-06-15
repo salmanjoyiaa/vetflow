@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useTransition } from 'react';
 import RoleQuickActionsGrid from '@/components/dashboard/RoleQuickActionsGrid';
 import DashboardWorkflowLauncher from '@/components/dashboard/DashboardWorkflowLauncher';
 import {
@@ -49,6 +49,8 @@ export default function DashboardQabShell({
 }: DashboardQabShellProps) {
   const router = useRouter();
   const [activeModal, setActiveModal] = useState<QabModalId | null>(null);
+  const [pendingQabId, setPendingQabId] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
   const qabItems = useMemo(
     () => filterQabs(getQabsForRole(role), { role, capabilities, features, featuresJson }),
@@ -58,7 +60,10 @@ export default function DashboardQabShell({
   const handleAction = useCallback(
     (item: QabItem) => {
       if (item.launcher === 'page' && item.href) {
-        router.push(item.href);
+        setPendingQabId(item.id);
+        startTransition(() => {
+          router.push(item.href!);
+        });
         return;
       }
       if (item.modalId) {
@@ -72,7 +77,7 @@ export default function DashboardQabShell({
 
   return (
     <>
-      <RoleQuickActionsGrid items={qabItems} onAction={handleAction} />
+      <RoleQuickActionsGrid items={qabItems} onAction={handleAction} pendingId={pendingQabId} />
       <DashboardWorkflowLauncher
         activeModal={activeModal}
         onClose={closeModal}

@@ -140,18 +140,25 @@ export async function deleteDocumentAction(documentId: string) {
     const ctx = await resolveServerAuthContext();
     if (!ctx) throw new Error('Unauthorized: Session is invalid.');
     assertOrganization(ctx);
-    assertCapability(ctx, 'clinical_queue');
 
     const supabase = await createClient();
     const { data: doc, error: docError } = await supabase
       .from('documents')
-      .select('id, organization_id, branch_id, bucket_id, storage_path, file_name')
+      .select('id, organization_id, branch_id, bucket_id, storage_path, file_name, uploaded_by')
       .eq('id', documentId)
       .eq('organization_id', ctx.organizationId)
       .single();
 
     if (docError || !doc) {
       throw new Error('Document not found or access denied.');
+    }
+
+    if (ctx.role === 'receptionist' && doc.uploaded_by !== ctx.userId) {
+      throw new Error('You can only delete documents you uploaded.');
+    }
+
+    if (ctx.role !== 'clinic_admin' && ctx.role !== 'doctor' && ctx.role !== 'receptionist') {
+      throw new Error('You do not have permission to delete documents.');
     }
 
     await supabase.storage.from(doc.bucket_id).remove([doc.storage_path]);
