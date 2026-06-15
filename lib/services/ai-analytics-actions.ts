@@ -8,6 +8,7 @@ import {
 } from '@/lib/auth/context';
 import { chatCompletion } from '@/lib/ai/llm-client';
 import { createClient } from '@/lib/supabase/server';
+import { writeAuditLog } from '@/lib/services/audit';
 
 export async function generateAiAnalyticsReportAction() {
   try {
@@ -104,6 +105,22 @@ Branch metrics (current month unless noted):
     if ('error' in narrativeResult) {
       throw new Error(narrativeResult.error);
     }
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId,
+      branchId: branchId,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'clinic_admin',
+      action: 'AI_ANALYTICS_REPORT_GENERATED',
+      resourceType: 'REPORT',
+      resourceId: branchId,
+      afterData: {
+        paidTotal,
+        unpaidTotal,
+        visitCount,
+        lowStockCount: lowStock.length,
+      },
+    });
 
     return {
       success: true,

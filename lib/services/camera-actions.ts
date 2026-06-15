@@ -7,6 +7,20 @@ import {
   assertOrganization,
   resolveServerAuthContext,
 } from '@/lib/auth/context';
+import { isCameraFeedEnabled } from '@/lib/auth/features';
+
+async function assertCameraFeedFeature(organizationId: string) {
+  const supabase = await createClient();
+  const { data: sub } = await supabase
+    .from('subscription_status')
+    .select('features')
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+
+  if (!isCameraFeedEnabled((sub?.features as Record<string, unknown>) || null)) {
+    throw new Error('Camera feed is not enabled for this organization.');
+  }
+}
 
 export async function listCameraDevicesAction() {
   try {
@@ -14,6 +28,7 @@ export async function listCameraDevicesAction() {
     if (!ctx) throw new Error('Unauthorized');
     assertOrganization(ctx);
     assertCapability(ctx, 'view_camera_feed');
+    await assertCameraFeedFeature(ctx.organizationId);
     if (!ctx.activeBranchId) throw new Error('Select a branch');
 
     const supabase = await createClient();
@@ -42,6 +57,7 @@ export async function createCameraDeviceAction(payload: unknown) {
     if (!ctx) throw new Error('Unauthorized');
     assertOrganization(ctx);
     assertCapability(ctx, 'manage_camera_devices');
+    await assertCameraFeedFeature(ctx.organizationId);
     if (!ctx.activeBranchId) throw new Error('Select a branch');
 
     const parsed = DeviceSchema.parse(payload);

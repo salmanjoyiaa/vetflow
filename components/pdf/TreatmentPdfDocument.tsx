@@ -69,6 +69,9 @@ export interface TreatmentPdfProps {
   diagnosis: string;
   treatmentPlan?: string;
   followUp?: string;
+  visitType?: string;
+  procedureNotes?: string;
+  postOpMedication?: string;
   temperatureC?: number | null;
   heartRateBpm?: number | null;
   respiratoryRate?: number | null;
@@ -165,6 +168,20 @@ export default function TreatmentPdfDocument(props: TreatmentPdfProps) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Treatment plan</Text>
             <Text style={styles.body}>{props.treatmentPlan}</Text>
+          </View>
+        )}
+
+        {props.visitType === 'surgery' && props.procedureNotes && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Procedure notes</Text>
+            <Text style={styles.body}>{props.procedureNotes}</Text>
+          </View>
+        )}
+
+        {props.visitType === 'surgery' && props.postOpMedication && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Post-op medication</Text>
+            <Text style={styles.body}>{props.postOpMedication}</Text>
           </View>
         )}
 

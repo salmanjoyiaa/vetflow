@@ -172,4 +172,89 @@ supabase db push
 
 ---
 
+## 7. Verification Run (gap-fix pass)
+
+**CI status (2026-06-15):**
+- `npm run typecheck` — pass
+- `npm run build` — pass
+- `npm run lint` — pre-existing `@typescript-eslint/no-explicit-any` warnings in PDF routes (not introduced by this pass)
+
+### Already working (confirmed)
+
+- QAB system: 14 admin / 6 reception / 6 doctor QABs via `DashboardQabShell` + `DashboardWorkflowLauncher`
+- Appointments: Upcoming / Emergency / Closed tabs, follow-up badges (`AppointmentsListClient`)
+- Queue: `visits` status flow in walk-ins, doctors, billing checkout
+- Consultation: Standard / Lab / Surgery visit types, surgery fields, client + server lab guard
+- Prescriptions + PDF API routes
+- Partial payments: checkout (paid/partial/unpaid), list filter/badge, billing actions
+- Inventory: type tabs (medicine/food/treats/accessories/services), OCR intake, forecast in QAB modal
+- AI analytics slide-over, social slide-over, camera modal, benchmarking page
+- Permissions matrix and opt-in feature filtering on QAB grid
+
+### Fixed in gap-fix pass
+
+| Fix | File(s) |
+|-----|---------|
+| Treats option in product create form | `components/forms/ProductForm.tsx` |
+| Server-side lab order guard | `lib/services/clinical-actions.ts` |
+| Invoice detail: paid/remaining balance, payment history, record payment UI | `app/dashboard/invoices/[id]/page.tsx`, `components/dashboard/InvoicePaymentActions.tsx` |
+| CheckoutSchema requires `amountPaid` when partial | `lib/validations/schemas.ts` |
+| Surgery fields in treatment PDF | `TreatmentPdfDocument.tsx`, `treatment-pdf/route.ts` |
+| Camera actions gated by `camera_feed` opt-in | `lib/services/camera-actions.ts` |
+| Benchmarking page gated by `clinic_benchmarking` opt-in | `app/dashboard/benchmarking/page.tsx` |
+| AI analytics audit log on report generation | `lib/services/ai-analytics-actions.ts` |
+| Lab export button renamed to "Download report" | `ConsultationLabsDocsPanel.tsx` |
+| Removed dead `clinic_benchmarking` from `QabModalId` | `role-qab-config.ts` |
+| Hide duplicate legacy Quick Actions for QAB roles | `app/dashboard/page.tsx` |
+
+### Still remaining / deferred
+
+- True RTSP/HLS live streaming (snapshot URL MVP only)
+- Custom RBAC role builder (`custom_roles` tables)
+- Full react-pdf lab report template (route returns plain text)
+- `camera_recordings` UI (table exists, no app surface)
+- Super-admin benchmarking UI (`getSuperAdminBenchmarkingAction` has no page)
+- `app/dashboard/reports/ai` dedicated page (QAB slide-over covers this)
+- ESLint `no-explicit-any` cleanup in legacy PDF routes
+
+### Migration steps needed
+
+Apply in order on remote Supabase if not already applied:
+
+1. `db/migrations/11_workflow_upgrades.sql`
+2. `db/migrations/12_clinical_visit_types.sql`
+3. `db/migrations/13_camera_feeds.sql`
+
+Post-apply verification:
+
+```sql
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'clinical_notes'
+  AND column_name IN ('visit_type','procedure_notes','post_op_medication');
+
+SELECT conname FROM pg_constraint WHERE conname = 'products_type_check';
+
+SELECT table_name FROM information_schema.tables
+WHERE table_name IN ('services','visit_services','camera_devices');
+```
+
+Enable opt-in features in `subscription_status.features`:
+
+```json
+{ "clinic_benchmarking": true, "camera_feed": true, "consult_tracking": true }
+```
+
+### Production risks
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Migrations 11–13 not applied | Clinical complete, visit types, camera CRUD fail | Apply SQL before deploy |
+| Opt-in flags off | Camera/benchmarking QABs hidden | Toggle via super-admin |
+| No Groq/Gemini API key | AI analytics slide-over errors | Configure `GROQ_API_KEY` or `GEMINI_API_KEY` |
+| Camera MVP = snapshot URLs only | No true live stream | Use external stream service later |
+| Partial balances derived from `payments` table | Must sum payments for remaining | Invoice detail now shows ledger |
+| Reception treatment PDF via `billing_checkout` fallback | Intended at checkout | Documented behavior |
+
+---
+
 *Generated as part of the Pet Clinic Role-Based Dashboards implementation.*

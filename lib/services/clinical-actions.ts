@@ -138,6 +138,17 @@ export async function completeConsultationAction(payload: unknown) {
       throw new Error('Visit record not found or access denied.');
     }
 
+    if (parsed.visitType === 'lab') {
+      const { count: labOrderCount } = await supabase
+        .from('lab_orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('visit_id', parsed.visitId);
+
+      if (!labOrderCount) {
+        throw new Error('Lab-focused visit: order at least one lab test before completing.');
+      }
+    }
+
     const numOrNull = (v: number | undefined) =>
       v !== undefined && !Number.isNaN(v) ? v : null;
 

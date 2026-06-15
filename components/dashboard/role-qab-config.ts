@@ -38,7 +38,6 @@ export type QabModalId =
   | 'social_media'
   | 'live_camera'
   | 'multi_branch'
-  | 'clinic_benchmarking'
   | 'ai_assistant'
   | 'treatment_record'
   | 'next_appointment_checkin';

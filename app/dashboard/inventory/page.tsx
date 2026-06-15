@@ -96,7 +96,7 @@ export default async function InventoryPage({
       
       <PageHeader
         title="Inventory & Catalog"
-        description="Configure medicines, foods, accessories, services, and check stock levels."
+        description="Configure medicines, foods, treats, accessories, services, and check stock levels."
         icon={Layers}
         actions={
           hasCapability(session.role, 'manage_inventory') ? (

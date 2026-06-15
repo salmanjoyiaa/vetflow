@@ -659,7 +659,10 @@ export default async function DashboardOverview() {
     totalCustomers,
     totalPets,
   }, canLink);
-  const quickActions = buildQuickActions(role, readyForCheckout, canLink);
+  const quickActions =
+    role === 'clinic_admin' || role === 'receptionist' || role === 'doctor'
+      ? []
+      : buildQuickActions(role, readyForCheckout, canLink);
   const showLowStock = canShowWidget(role, 'lowStock') && lowStockItems.length > 0;
   const showSecondary =
     canShowWidget(role, 'totalCustomers') ||

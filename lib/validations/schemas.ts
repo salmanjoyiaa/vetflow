@@ -136,16 +136,26 @@ export const SubscriptionSchema = z.object({
 });
 
 // --- BILLING / CHECKOUT ---
-export const CheckoutSchema = z.object({
-  visitId: EntityIdSchema,
-  discount: z.number().nonnegative(),
-  paymentStatus: z.enum(['paid', 'unpaid', 'partial']),
-  amountPaid: z.number().nonnegative().optional(),
-  paymentMethod: z.enum(['cash', 'card', 'bank_transfer']),
-  paymentReference: z.string().optional().or(z.literal('')),
-  notes: z.string().optional().or(z.literal('')),
-  sendEmailReceipt: z.boolean().optional(),
-});
+export const CheckoutSchema = z
+  .object({
+    visitId: EntityIdSchema,
+    discount: z.number().nonnegative(),
+    paymentStatus: z.enum(['paid', 'unpaid', 'partial']),
+    amountPaid: z.number().nonnegative().optional(),
+    paymentMethod: z.enum(['cash', 'card', 'bank_transfer']),
+    paymentReference: z.string().optional().or(z.literal('')),
+    notes: z.string().optional().or(z.literal('')),
+    sendEmailReceipt: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.paymentStatus === 'partial' && (data.amountPaid == null || data.amountPaid <= 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Enter the amount paid for a partial payment',
+        path: ['amountPaid'],
+      });
+    }
+  });
 
 export const StockIntakeLineSchema = z.object({
   name: z.string().min(1),
