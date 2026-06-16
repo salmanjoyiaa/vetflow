@@ -89,6 +89,8 @@ export const ROUTE_FEATURES: Record<string, Feature | undefined> = {
   '/dashboard/walk-ins': 'appointments',
   '/dashboard/inventory': 'inventory',
   '/dashboard/invoices': 'sales',
+  '/dashboard/sales': 'sales',
+  '/dashboard/sales/new': 'sales',
   '/dashboard/reports': 'reports',
   '/dashboard/branches': 'multi_branch',
   '/dashboard/ai-assistant': 'ai_assistant',

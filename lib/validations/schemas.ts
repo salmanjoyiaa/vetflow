@@ -183,6 +183,30 @@ export const CheckoutSchema = z
     }
   });
 
+export const RetailSaleLineSchema = z.object({
+  productId: z.string().uuid().nullable().optional(),
+  serviceId: z.string().uuid().nullable().optional(),
+  name: z.string().min(1),
+  quantity: z.number().int().positive(),
+  unitPrice: z.number().nonnegative(),
+  lineType: z.enum(['product', 'service']),
+});
+
+export const RetailSaleSchema = z.object({
+  branchId: EntityIdSchema,
+  customerId: z.string().uuid().optional(),
+  customerFirstName: z.string().min(1, { message: 'First name is required' }),
+  customerLastName: z.string().min(1, { message: 'Last name is required' }),
+  customerPhone: z.string().min(5, { message: 'Phone number is required' }),
+  customerEmail: z.string().email().optional().or(z.literal('')),
+  lineItems: z.array(RetailSaleLineSchema).min(1, { message: 'Add at least one item' }),
+  discount: z.number().nonnegative().default(0),
+  paymentMethod: z.enum(['cash', 'card', 'bank_transfer']),
+  paymentReference: z.string().optional().or(z.literal('')),
+  notes: z.string().optional().or(z.literal('')),
+  sendEmailReceipt: z.boolean().optional(),
+});
+
 export const StockIntakeLineSchema = z
   .object({
     name: z.string().min(1),
@@ -445,6 +469,7 @@ export type SettingsInput = z.infer<typeof SettingsSchema>;
 export type BranchInput = z.infer<typeof BranchSchema>;
 export type SubscriptionInput = z.infer<typeof SubscriptionSchema>;
 export type CheckoutInput = z.infer<typeof CheckoutSchema>;
+export type RetailSaleInput = z.infer<typeof RetailSaleSchema>;
 export type CompleteConsultationInput = z.infer<typeof CompleteConsultationSchema>;
 export type UpdateClinicalNoteInput = z.infer<typeof UpdateClinicalNoteSchema>;
 export type UpdatePatientCareNotesInput = z.infer<typeof UpdatePatientCareNotesSchema>;

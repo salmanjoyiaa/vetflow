@@ -18,6 +18,8 @@ import {
   BriefcaseMedical,
   FileCheck2,
   UserCheck,
+  ShoppingBag,
+  Store,
 } from 'lucide-react';
 import type { Capability } from '@/lib/auth/capabilities';
 import type { Feature } from '@/lib/auth/features';
@@ -53,6 +55,7 @@ export interface QabItem {
   capability?: Capability;
   feature?: Feature;
   optInFeature?: Feature;
+  adminOnly?: boolean;
 }
 
 const ADMIN_QABS: QabItem[] = [
@@ -62,6 +65,8 @@ const ADMIN_QABS: QabItem[] = [
   { id: 'appointment', label: 'Appointment', description: 'Book & walk-ins', icon: Calendar, launcher: 'modal', modalId: 'appointment', capability: 'manage_appointments', feature: 'appointments' },
   { id: 'patient', label: 'Patient Profile', description: 'Search medical files', icon: Heart, launcher: 'modal', modalId: 'patient_profile', capability: 'manage_pets' },
   { id: 'invoices', label: 'Invoices', description: 'Billing & checkout', icon: Receipt, launcher: 'modal', modalId: 'invoices', capability: 'billing_checkout', feature: 'sales' },
+  { id: 'retail_sale', label: 'Retail Sale', description: 'Counter POS checkout', icon: ShoppingBag, launcher: 'page', href: '/dashboard/sales/new', capability: 'billing_checkout', feature: 'sales' },
+  { id: 'sales_monitor', label: 'Sales Monitor', description: 'Retail revenue deck', icon: Store, launcher: 'page', href: '/dashboard/sales', capability: 'billing_checkout', feature: 'sales', adminOnly: true },
   { id: 'ai_reports', label: 'AI Analytic Reports', description: 'Business insights', icon: TrendingUp, launcher: 'slideover', modalId: 'ai_analytic_reports', capability: 'view_reports', feature: 'reports' },
   { id: 'consultations', label: 'Consultations', description: 'Live clinic status', icon: Stethoscope, launcher: 'modal', modalId: 'consultation_status', capability: 'view_consultation_status' },
   { id: 'prescriptions', label: 'Prescriptions', description: 'Treatment records', icon: FileText, launcher: 'page', href: '/dashboard/prescriptions', capability: 'manage_prescriptions' },
@@ -75,6 +80,7 @@ const ADMIN_QABS: QabItem[] = [
 const RECEPTION_QABS: QabItem[] = [
   { id: 'appointment', label: 'Appointment', description: 'Book & check-in', icon: Calendar, launcher: 'modal', modalId: 'appointment', capability: 'manage_appointments', feature: 'appointments' },
   { id: 'invoices', label: 'Invoices', description: 'Billing & checkout', icon: Receipt, launcher: 'modal', modalId: 'invoices', capability: 'billing_checkout', feature: 'sales' },
+  { id: 'retail_sale', label: 'Retail Sale', description: 'Counter POS checkout', icon: ShoppingBag, launcher: 'page', href: '/dashboard/sales/new', capability: 'billing_checkout', feature: 'sales' },
   { id: 'consultations', label: 'Consultations', description: 'Live queue status', icon: Stethoscope, launcher: 'modal', modalId: 'consultation_status', capability: 'view_consultation_status' },
   { id: 'inventory', label: 'Inventory Control', description: 'Stock updates', icon: Layers, launcher: 'modal', modalId: 'inventory_control', capability: 'manage_inventory', feature: 'inventory' },
   { id: 'ai_assistant', label: 'AI Assistant', description: 'Front desk help', icon: Bot, launcher: 'slideover', modalId: 'ai_assistant', capability: 'use_ai_assistant', feature: 'ai_assistant' },
@@ -112,8 +118,9 @@ export function filterQabs(
     featuresJson?: Record<string, unknown> | null;
   }
 ): QabItem[] {
-  const { capabilities, features, featuresJson } = opts;
+  const { capabilities, features, featuresJson, role } = opts;
   return items.filter((item) => {
+    if (item.adminOnly && role !== 'clinic_admin') return false;
     if (item.capability && !capabilities.includes(item.capability)) return false;
     if (item.feature && !features.includes(item.feature)) return false;
     if (item.optInFeature && featuresJson?.[item.optInFeature] !== true) return false;

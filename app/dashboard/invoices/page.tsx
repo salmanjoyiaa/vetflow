@@ -52,6 +52,7 @@ export default async function InvoicesPage({
       id,
       invoice_number,
       visit_id,
+      sale_type,
       subtotal,
       discount,
       tax_amount,
@@ -59,7 +60,8 @@ export default async function InvoicesPage({
       payment_status,
       created_at,
       customers ( first_name, last_name, email ),
-      pets:patients ( name )
+      pets:patients ( name ),
+      invoice_items ( id )
     `)
     .eq('branch_id', activeBranchId)
     .order('created_at', { ascending: false });
@@ -75,10 +77,12 @@ export default async function InvoicesPage({
   const rows = (invoices || []).map((inv) => {
     const cust = inv.customers as { first_name?: string; last_name?: string; email?: string | null } | null;
     const pet = inv.pets as { name?: string } | null;
+    const items = inv.invoice_items as { id: string }[] | null;
     return {
       id: inv.id,
       invoice_number: inv.invoice_number,
       visit_id: inv.visit_id,
+      sale_type: (inv.sale_type as 'clinical' | 'retail') || (inv.visit_id ? 'clinical' : 'retail'),
       subtotal: Number(inv.subtotal),
       discount: Number(inv.discount),
       tax_amount: Number(inv.tax_amount),
@@ -88,6 +92,7 @@ export default async function InvoicesPage({
       customerName: cust ? `${cust.first_name} ${cust.last_name}`.trim() : '—',
       petName: pet?.name || '—',
       customerEmail: cust?.email || null,
+      itemCount: items?.length || 0,
     };
   });
 

@@ -38,6 +38,8 @@ import {
   Bot,
   Share2,
   UserCircle,
+  ShoppingBag,
+  BarChart3,
 } from 'lucide-react';
 
 interface NavItem {
@@ -56,6 +58,8 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { name: 'Consultations', href: '/dashboard/doctors', icon: BriefcaseMedical },
   { name: 'Prescriptions', href: '/dashboard/prescriptions', icon: FileText },
   { name: 'Invoices', href: '/dashboard/invoices', icon: Receipt },
+  { name: 'Retail Sale', href: '/dashboard/sales/new', icon: ShoppingBag },
+  { name: 'Sales', href: '/dashboard/sales', icon: BarChart3 },
   { name: 'Inventory', href: '/dashboard/inventory', icon: Layers },
   { name: 'Reports', href: '/dashboard/reports', icon: TrendingUp },
   { name: 'AI Assistant', href: '/dashboard/ai-assistant', icon: Bot },
@@ -68,11 +72,13 @@ const ALL_NAV_ITEMS: NavItem[] = [
 ];
 
 function buildNavItems(session: ServerAuthContext): NavItem[] {
-  return ALL_NAV_ITEMS.filter(
-    (item) =>
+  return ALL_NAV_ITEMS.filter((item) => {
+    if (item.href === '/dashboard/sales' && session.role !== 'clinic_admin') return false;
+    return (
       canAccessRoute(session.role, item.href) &&
       canAccessRouteByFeature(session.features, item.href)
-  );
+    );
+  });
 }
 
 function UserAvatar({

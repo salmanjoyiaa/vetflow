@@ -26,6 +26,7 @@ export type InvoiceRow = {
   id: string;
   invoice_number: string;
   visit_id: string | null;
+  sale_type: 'clinical' | 'retail';
   subtotal: number;
   discount: number;
   tax_amount: number;
@@ -35,9 +36,11 @@ export type InvoiceRow = {
   customerName: string;
   petName: string;
   customerEmail: string | null;
+  itemCount: number;
 };
 
 type StatusFilter = 'all' | 'paid' | 'unpaid' | 'partially_paid';
+type SaleTypeFilter = 'all' | 'clinical' | 'retail';
 
 interface InvoicesListClientProps {
   invoices: InvoiceRow[];
@@ -50,6 +53,7 @@ export default function InvoicesListClient({
 }: InvoicesListClientProps) {
   const { formatCurrency } = useCurrency();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus);
+  const [saleTypeFilter, setSaleTypeFilter] = useState<SaleTypeFilter>('all');
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -62,6 +66,7 @@ export default function InvoicesListClient({
     const q = search.trim().toLowerCase();
     return invoices.filter((inv) => {
       if (statusFilter !== 'all' && inv.payment_status !== statusFilter) return false;
+      if (saleTypeFilter !== 'all' && inv.sale_type !== saleTypeFilter) return false;
       const d = inv.created_at.slice(0, 10);
       if (dateFrom && d < dateFrom) return false;
       if (dateTo && d > dateTo) return false;
@@ -72,7 +77,16 @@ export default function InvoicesListClient({
         inv.invoice_number.toLowerCase().includes(q)
       );
     });
-  }, [invoices, statusFilter, search, dateFrom, dateTo]);
+  }, [invoices, statusFilter, saleTypeFilter, search, dateFrom, dateTo]);
+
+  const saleTypeCounts = useMemo(
+    () => ({
+      all: invoices.length,
+      clinical: invoices.filter((i) => i.sale_type === 'clinical').length,
+      retail: invoices.filter((i) => i.sale_type === 'retail').length,
+    }),
+    [invoices]
+  );
 
   const counts = useMemo(
     () => ({
@@ -134,6 +148,23 @@ export default function InvoicesListClient({
       )}
 
       <div className="flex flex-wrap gap-2 items-center">
+        {(['all', 'clinical', 'retail'] as const).map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setSaleTypeFilter(s)}
+            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold capitalize transition-colors ${
+              saleTypeFilter === s
+                ? 'bg-secondary text-white'
+                : 'bg-surface-container border border-outline-variant text-on-surface-variant'
+            }`}
+          >
+            {s} ({saleTypeCounts[s]})
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2 items-center">
         {(['all', 'unpaid', 'partially_paid', 'paid'] as const).map((s) => (
           <button
             key={s}
@@ -192,7 +223,16 @@ export default function InvoicesListClient({
           <tbody className="divide-y divide-border/30 text-xs">
             {filtered.map((inv) => (
               <tr key={inv.id} className="hover:bg-surface-container/10 transition-colors">
-                <td className="px-6 py-4 font-bold text-on-surface">{inv.invoice_number}</td>
+                <td className="px-6 py-4 font-bold text-on-surface">
+                  <div className="flex items-center gap-2">
+                    {inv.invoice_number}
+                    {inv.sale_type === 'retail' && (
+                      <span className="inline-flex bg-violet-500/10 text-violet-400 border border-violet-500/20 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase">
+                        Retail
+                      </span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-6 py-4 space-y-1">
                   <span className="flex items-center gap-1 text-on-surface font-semibold">
                     <User className="w-3.5 h-3.5 text-primary/70" />
@@ -200,7 +240,7 @@ export default function InvoicesListClient({
                   </span>
                   <span className="flex items-center gap-1 text-[10px] text-on-surface-variant/50">
                     <Heart className="w-3 h-3 text-primary/55" />
-                    {inv.petName}
+                    {inv.sale_type === 'retail' ? '—' : inv.petName}
                   </span>
                 </td>
                 <td className="px-6 py-4 font-bold text-on-surface">
