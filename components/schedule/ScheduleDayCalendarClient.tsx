@@ -17,6 +17,11 @@ import {
   parseDateYmd,
   startOfToday,
 } from '@/lib/utils/date-filters';
+import {
+  formatAppointmentTime,
+  normalizeDateYmd,
+  parseAppointmentTimeToMinutes,
+} from '@/lib/utils/time-parse';
 
 const START_HOUR = 7;
 const END_HOUR = 19;
@@ -58,17 +63,37 @@ const STATUS_COLORS: Record<string, string> = {
   rescheduled: 'bg-violet-500/20 border-violet-500/40 text-violet-200',
 };
 
-function timeToMinutes(time: string): number {
-  const [h, m] = time.split(':').map(Number);
-  return (h || 0) * 60 + (m || 0);
-}
-
 function minutesToLabel(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   const ampm = h >= 12 ? 'PM' : 'AM';
   const hr = h % 12 || 12;
   return `${hr}:${m.toString().padStart(2, '0')} ${ampm}`;
+}
+
+function appointmentLayout(
+  preferredTime: string,
+  durationMinutes: number
+): { top: number; height: number } | null {
+  const start = parseAppointmentTimeToMinutes(preferredTime);
+  if (start == null) return null;
+
+  const gridStart = START_HOUR * 60;
+  const gridEnd = END_HOUR * 60;
+
+  // Clamp to visible grid instead of hiding out-of-range appointments
+  const clampedStart = Math.max(gridStart, Math.min(start, gridEnd - SLOT_MINUTES));
+  const startOffset = clampedStart - gridStart;
+  const top = (startOffset / SLOT_MINUTES) * ROW_HEIGHT;
+  const rawHeight = (Math.max(durationMinutes, SLOT_MINUTES) / SLOT_MINUTES) * ROW_HEIGHT - 2;
+  const maxHeight = gridHeightFromSlots() - top;
+  const height = Math.max(ROW_HEIGHT - 2, Math.min(rawHeight, maxHeight));
+
+  return { top: top + 1, height };
+}
+
+function gridHeightFromSlots(): number {
+  return ((END_HOUR - START_HOUR) * 60) / SLOT_MINUTES * ROW_HEIGHT;
 }
 
 export default function ScheduleDayCalendarClient({
@@ -116,7 +141,10 @@ export default function ScheduleDayCalendarClient({
   }, [doctors, doctorFilter]);
 
   const dayAppointments = useMemo(
-    () => appointments.filter((a) => a.preferredDate === selectedDate),
+    () =>
+      appointments.filter(
+        (a) => normalizeDateYmd(a.preferredDate) === normalizeDateYmd(selectedDate)
+      ),
     [appointments, selectedDate]
   );
 
@@ -202,12 +230,17 @@ export default function ScheduleDayCalendarClient({
             className="grid min-w-[720px]"
             style={{
               gridTemplateColumns: `64px repeat(${columns.length}, minmax(140px, 1fr))`,
+              gridTemplateRows: 'auto 1fr',
             }}
           >
-            <div className="bg-surface-container/40 border-b border-r border-outline-variant/30" />
-            {columns.map((col) => (
+            <div
+              className="bg-surface-container/40 border-b border-r border-outline-variant/30"
+              style={{ gridColumn: 1, gridRow: 1 }}
+            />
+            {columns.map((col, colIndex) => (
               <div
                 key={col.id}
+                style={{ gridColumn: colIndex + 2, gridRow: 1 }}
                 className="px-3 py-3 border-b border-r border-outline-variant/30 bg-surface-container/30 text-[10px] font-bold text-on-surface uppercase tracking-wider"
               >
                 {col.label}
@@ -222,7 +255,10 @@ export default function ScheduleDayCalendarClient({
               </div>
             ))}
 
-            <div className="relative border-r border-outline-variant/20" style={{ height: gridHeight }}>
+            <div
+              className="relative border-r border-outline-variant/20"
+              style={{ gridColumn: 1, gridRow: 2, height: gridHeight }}
+            >
               {slots.map((m, i) => (
                 <div
                   key={m}
@@ -234,7 +270,7 @@ export default function ScheduleDayCalendarClient({
               ))}
             </div>
 
-            {columns.map((col) => {
+            {columns.map((col, colIndex) => {
               const colAppts = dayAppointments.filter((a) =>
                 col.id === 'unassigned' ? !a.doctorId : a.doctorId === col.id
               );
@@ -242,13 +278,13 @@ export default function ScheduleDayCalendarClient({
                 <div
                   key={col.id}
                   className="relative border-r border-outline-variant/20 bg-surface/30"
-                  style={{ height: gridHeight }}
+                  style={{ gridColumn: colIndex + 2, gridRow: 2, height: gridHeight }}
                 >
                   {slots.map((m, i) => (
                     <button
                       key={m}
                       type="button"
-                      className="absolute left-0 right-0 border-t border-outline-variant/10 hover:bg-primary/5 transition-colors"
+                      className="absolute left-0 right-0 z-[1] border-t border-outline-variant/10 hover:bg-primary/5 transition-colors"
                       style={{ top: i * ROW_HEIGHT, height: ROW_HEIGHT }}
                       onClick={() =>
                         openSlot(m, col.id === 'unassigned' ? null : col.id)
@@ -257,25 +293,33 @@ export default function ScheduleDayCalendarClient({
                     />
                   ))}
                   {colAppts.map((appt) => {
-                    const start = timeToMinutes(appt.preferredTime.slice(0, 5));
-                    const startOffset = start - START_HOUR * 60;
-                    if (startOffset < 0 || startOffset >= (END_HOUR - START_HOUR) * 60) return null;
-                    const top = (startOffset / SLOT_MINUTES) * ROW_HEIGHT;
-                    const height = Math.max(
-                      ROW_HEIGHT,
-                      (appt.durationMinutes / SLOT_MINUTES) * ROW_HEIGHT - 2
-                    );
+                    const layout = appointmentLayout(appt.preferredTime, appt.durationMinutes);
                     const color =
                       STATUS_COLORS[appt.status] ??
                       'bg-surface-container-high border-outline-variant/40 text-on-surface';
+                    if (!layout) {
+                      return (
+                        <Link
+                          key={appt.id}
+                          href="/dashboard/appointments"
+                          className={`absolute left-1 right-1 top-1 z-[2] rounded-lg border px-2 py-1 text-left shadow-sm ${color}`}
+                        >
+                          <p className="text-[10px] font-bold truncate">
+                            {formatAppointmentTime(appt.preferredTime)} — {appt.patientName}
+                          </p>
+                        </Link>
+                      );
+                    }
                     return (
                       <Link
                         key={appt.id}
                         href="/dashboard/appointments"
-                        className={`absolute left-1 right-1 rounded-lg border px-2 py-1 overflow-hidden text-left shadow-sm ${color}`}
-                        style={{ top: top + 1, height, zIndex: 10 }}
+                        className={`absolute left-1 right-1 z-[2] rounded-lg border px-2 py-1 overflow-hidden text-left shadow-sm ${color}`}
+                        style={{ top: layout.top, height: layout.height }}
                       >
-                        <p className="text-[10px] font-bold truncate">{appt.patientName}</p>
+                        <p className="text-[10px] font-bold truncate">
+                          {formatAppointmentTime(appt.preferredTime)} · {appt.patientName}
+                        </p>
                         <p className="text-[9px] opacity-80 truncate">{appt.reason}</p>
                         {appt.isEmergency && (
                           <span className="text-[8px] font-black text-destructive">ER</span>

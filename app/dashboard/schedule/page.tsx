@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import PageHeader from '@/components/ui/premium/PageHeader';
 import ScheduleDayCalendarClient from '@/components/schedule/ScheduleDayCalendarClient';
 import { resolveDateFromParam } from '@/lib/utils/date-filters';
+import { formatAppointmentTime, normalizeDateYmd } from '@/lib/utils/time-parse';
 import { Calendar } from 'lucide-react';
 
 export const metadata = {
@@ -52,15 +53,21 @@ export default async function SchedulePage({
       .eq('organization_id', ctx.organizationId)
       .eq('role', 'doctor')
       .eq('is_active', true),
-    supabase
-      .from('appointments')
-      .select(
-        'id, patient_name, customer_name, reason, status, preferred_date, preferred_time, doctor_id, is_emergency, duration_minutes'
-      )
-      .eq('branch_id', activeBranchId)
-      .eq('preferred_date', selectedDate)
-      .in('status', ['requested', 'confirmed', 'rescheduled', 'checked_in'])
-      .order('preferred_time', { ascending: true }),
+    (() => {
+      let query = supabase
+        .from('appointments')
+        .select(
+          'id, patient_name, customer_name, reason, status, preferred_date, preferred_time, doctor_id, is_emergency, duration_minutes'
+        )
+        .eq('branch_id', activeBranchId)
+        .eq('preferred_date', selectedDate)
+        .in('status', ['requested', 'confirmed', 'rescheduled', 'checked_in'])
+        .order('preferred_time', { ascending: true });
+      if (ctx.role === 'doctor') {
+        query = query.eq('doctor_id', ctx.userId);
+      }
+      return query;
+    })(),
   ]);
 
   const doctors =
@@ -81,8 +88,8 @@ export default async function SchedulePage({
     customerName: a.customer_name,
     reason: a.reason,
     status: a.status,
-    preferredDate: a.preferred_date as string,
-    preferredTime: (a.preferred_time as string).slice(0, 8),
+    preferredDate: normalizeDateYmd(a.preferred_date as string),
+    preferredTime: formatAppointmentTime(a.preferred_time as string),
     durationMinutes: (a.duration_minutes as number) ?? 30,
     doctorId: a.doctor_id as string | null,
     isEmergency: a.is_emergency ?? false,
