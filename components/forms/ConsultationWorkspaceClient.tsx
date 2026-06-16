@@ -8,7 +8,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { CompleteConsultationSchema, type CompleteConsultationInput } from '@/lib/validations/schemas';
 import { completeConsultationAction } from '@/lib/services/clinical-actions';
 import ConsultationLabsDocsPanel from '@/components/forms/ConsultationLabsDocsPanel';
-import { 
+import { SoapTabBar, SOAP_TAB_ORDER, getSoapTabTitle, type SoapTab } from '@/components/consultation/SoapTabBar';
+import {
   Heart, 
   User, 
   Calendar, 
@@ -22,7 +23,6 @@ import {
   FileCheck2,
   History,
   CheckCircle,
-  FlaskConical,
   X,
 } from 'lucide-react';
 
@@ -116,7 +116,8 @@ export default function ConsultationWorkspaceClient({
   previousDocuments = [],
 }: ConsultationWorkspaceClientProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'consult' | 'history' | 'labs'>('consult');
+  const [activeSoapTab, setActiveSoapTab] = useState<SoapTab>('S');
+  const [showHistory, setShowHistory] = useState(false);
   const [visitType, setVisitType] = useState<'standard' | 'lab' | 'surgery'>('standard');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -174,6 +175,41 @@ export default function ConsultationWorkspaceClient({
   });
 
   const prescriptionItemsWatch = watch('prescriptionItems');
+  const chiefComplaintWatch = watch('chiefComplaint');
+  const examinationWatch = watch('examinationFindings');
+  const diagnosisWatch = watch('diagnosis');
+  const treatmentPlanWatch = watch('treatmentPlan');
+
+  const soapCompleted: Partial<Record<SoapTab, boolean>> = {
+    S: Boolean(chiefComplaintWatch?.trim()),
+    O: Boolean(examinationWatch?.trim()) || Boolean(watch('temperatureC')),
+    A: Boolean(diagnosisWatch?.trim()),
+    P: Boolean(treatmentPlanWatch?.trim()) || serviceFields.length > 0,
+    D: labOrders.length > 0 || documents.length > 0,
+    Rx: prescriptionItemsWatch.length > 0,
+  };
+
+  const goToNextSoapTab = () => {
+    const idx = SOAP_TAB_ORDER.indexOf(activeSoapTab);
+    if (idx < SOAP_TAB_ORDER.length - 1) {
+      setActiveSoapTab(SOAP_TAB_ORDER[idx + 1]);
+    }
+  };
+
+  const goToPrevSoapTab = () => {
+    const idx = SOAP_TAB_ORDER.indexOf(activeSoapTab);
+    if (idx > 0) {
+      setActiveSoapTab(SOAP_TAB_ORDER[idx - 1]);
+    }
+  };
+
+  const jumpToErrorTab = () => {
+    if (errors.chiefComplaint) setActiveSoapTab('S');
+    else if (errors.examinationFindings) setActiveSoapTab('O');
+    else if (errors.diagnosis) setActiveSoapTab('A');
+    else if (errors.treatmentPlan || errors.serviceItems) setActiveSoapTab('P');
+    else if (errors.prescriptionItems) setActiveSoapTab('Rx');
+  };
 
   const toggleFollowUpDay = (day: number) => {
     setFollowUpDays((prev) => {
@@ -230,7 +266,7 @@ export default function ConsultationWorkspaceClient({
     setVisitType(type);
     setValue('visitType', type);
     if (type === 'lab') {
-      setActiveTab('labs');
+      setActiveSoapTab('D');
     }
     if (type === 'surgery') {
       const surgerySvc = catalogServices.find((s) => s.name.toLowerCase().includes('surgery'));
@@ -245,7 +281,7 @@ export default function ConsultationWorkspaceClient({
   const onSubmit = async (data: CompleteConsultationInput) => {
     if (visitType === 'lab' && labOrders.length === 0) {
       setError('Lab-focused visit: order at least one lab test before completing.');
-      setActiveTab('labs');
+      setActiveSoapTab('D');
       return;
     }
     setIsSubmitting(true);
@@ -349,34 +385,25 @@ export default function ConsultationWorkspaceClient({
           )}
         </div>
 
-        {/* NAVIGATION TABS */}
+        {/* NAVIGATION: History sidebar */}
         <div className="flex glass-panel p-1 rounded-xl border border-outline-variant/40 shadow-sm">
           <button
-            onClick={() => setActiveTab('consult')}
+            type="button"
+            onClick={() => setShowHistory(false)}
             className={`flex-1 py-2.5 text-[11px] font-bold rounded-lg transition-all ${
-              activeTab === 'consult' 
-                ? 'bg-primary text-white shadow-sm' 
+              !showHistory
+                ? 'bg-primary text-white shadow-sm'
                 : 'text-on-surface-variant/60 hover:text-on-surface'
             }`}
           >
-            Workspace
+            Consultation
           </button>
           <button
-            onClick={() => setActiveTab('labs')}
+            type="button"
+            onClick={() => setShowHistory(true)}
             className={`flex-1 py-2.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
-              activeTab === 'labs' 
-                ? 'bg-primary text-white shadow-sm' 
-                : 'text-on-surface-variant/60 hover:text-on-surface'
-            }`}
-          >
-            <FlaskConical className="w-3.5 h-3.5" />
-            Labs/Docs ({labOrders.length + documents.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex-1 py-2.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
-              activeTab === 'history' 
-                ? 'bg-primary text-white shadow-sm' 
+              showHistory
+                ? 'bg-primary text-white shadow-sm'
                 : 'text-on-surface-variant/60 hover:text-on-surface'
             }`}
           >
@@ -385,8 +412,7 @@ export default function ConsultationWorkspaceClient({
           </button>
         </div>
 
-        {/* TABS INNER: VISIT HISTORY */}
-        {activeTab === 'history' && (
+        {showHistory && (
           <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
             {history.length > 0 ? (
               history.map((h) => (
@@ -428,9 +454,11 @@ export default function ConsultationWorkspaceClient({
 
       </div>
 
-      {/* RIGHT/CENTER: WORKSPACE FORM (Only shown when activeTab === 'consult') */}
-      {activeTab === 'consult' && (
-        <form onSubmit={handleSubmit(onSubmit)} className="md:col-span-8 space-y-6 pb-12">
+      {/* RIGHT: SOAPDRx WORKSPACE */}
+      <form
+        onSubmit={handleSubmit(onSubmit, jumpToErrorTab)}
+        className="md:col-span-8 space-y-6 pb-28"
+      >
           
           {error && (
             <div className="p-4 bg-destructive/5 border border-destructive/20 text-destructive text-xs rounded-xl">
@@ -459,13 +487,16 @@ export default function ConsultationWorkspaceClient({
             </div>
           </div>
 
-          {/* CLINICAL NOTE EDITING BOARD */}
-          <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-5">
-            <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5 border-b border-outline-variant/30 pb-4">
-              <Stethoscope className="w-4 h-4 text-primary" />
-              Clinical Consultation Notes
-            </h3>
+          {/* SOAPDRx TAB BAR */}
+          <SoapTabBar active={activeSoapTab} onChange={setActiveSoapTab} completed={soapCompleted} />
 
+          {/* S — Subjective */}
+          {activeSoapTab === 'S' && (
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-5 animate-in fade-in duration-200">
+            <div>
+              <h3 className="text-sm font-bold text-primary uppercase tracking-wider">SOAP Subjective</h3>
+              <p className="text-[10px] text-on-surface-variant/60 mt-1">Chief complaint and patient-reported history.</p>
+            </div>
             <div>
               <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                 Chief Complaint / Reason for Visit
@@ -473,101 +504,98 @@ export default function ConsultationWorkspaceClient({
               <input
                 type="text"
                 {...register('chiefComplaint')}
-                className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
+                className="w-full px-3 py-2.5 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-sm text-on-surface outline-none"
               />
               {errors.chiefComplaint && (
                 <span className="text-[10px] text-destructive mt-1 block">{errors.chiefComplaint.message}</span>
               )}
             </div>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                  Anamnesis / History
-                </label>
-                <textarea
-                  {...register('history')}
-                  placeholder="Record anamnesis details, signs onset, symptoms..."
-                  rows={4}
-                  className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                  Examination Findings
-                </label>
-                <textarea
-                  {...register('examinationFindings')}
-                  placeholder="Record clinical checks (temperature, cardiac, visual check)..."
-                  rows={4}
-                  className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
-                />
-              </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+                Anamnesis / History
+              </label>
+              <textarea
+                {...register('history')}
+                placeholder="Record anamnesis details, signs onset, symptoms..."
+                rows={8}
+                className="w-full px-3 py-2.5 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-sm text-on-surface outline-none"
+              />
             </div>
+          </div>
+          )}
 
+          {/* O — Objective */}
+          {activeSoapTab === 'O' && (
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-5 animate-in fade-in duration-200">
+            <div>
+              <h3 className="text-sm font-bold text-primary uppercase tracking-wider">SOAP Objective</h3>
+              <p className="text-[10px] text-on-surface-variant/60 mt-1">Physical exam findings and structured vitals.</p>
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+                Examination Findings
+              </label>
+              <textarea
+                {...register('examinationFindings')}
+                placeholder="Record clinical checks (temperature, cardiac, visual check)..."
+                rows={8}
+                className="w-full px-3 py-2.5 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-sm text-on-surface outline-none"
+              />
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-surface-container/20 border border-outline-variant/30">
-              <p className="col-span-full text-[10px] font-bold text-primary uppercase tracking-wider">
-                Vitals (structured)
-              </p>
+              <p className="col-span-full text-[10px] font-bold text-primary uppercase tracking-wider">Vitals</p>
               <div>
-                <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">
-                  Temp (°C)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  {...register('temperatureC', { valueAsNumber: true })}
-                  className="w-full px-2 py-1.5 bg-surface border border-outline-variant rounded-lg text-xs"
-                />
+                <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">Temp (°C)</label>
+                <input type="number" step="0.1" {...register('temperatureC', { valueAsNumber: true })} className="w-full px-2 py-2 bg-surface border border-outline-variant rounded-lg text-sm" />
               </div>
               <div>
-                <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">
-                  Heart rate
-                </label>
-                <input
-                  type="number"
-                  {...register('heartRateBpm', { valueAsNumber: true })}
-                  className="w-full px-2 py-1.5 bg-surface border border-outline-variant rounded-lg text-xs"
-                />
+                <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">Heart rate</label>
+                <input type="number" {...register('heartRateBpm', { valueAsNumber: true })} className="w-full px-2 py-2 bg-surface border border-outline-variant rounded-lg text-sm" />
               </div>
               <div>
-                <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">
-                  Resp. rate
-                </label>
-                <input
-                  type="number"
-                  {...register('respiratoryRate', { valueAsNumber: true })}
-                  className="w-full px-2 py-1.5 bg-surface border border-outline-variant rounded-lg text-xs"
-                />
+                <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">Resp. rate</label>
+                <input type="number" {...register('respiratoryRate', { valueAsNumber: true })} className="w-full px-2 py-2 bg-surface border border-outline-variant rounded-lg text-sm" />
               </div>
               <div>
-                <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">
-                  Weight (kg)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  {...register('weightKg', { valueAsNumber: true })}
-                  className="w-full px-2 py-1.5 bg-surface border border-outline-variant rounded-lg text-xs"
-                />
+                <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">Weight (kg)</label>
+                <input type="number" step="0.1" {...register('weightKg', { valueAsNumber: true })} className="w-full px-2 py-2 bg-surface border border-outline-variant rounded-lg text-sm" />
               </div>
             </div>
+          </div>
+          )}
 
+          {/* A — Assessment */}
+          {activeSoapTab === 'A' && (
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-5 animate-in fade-in duration-200">
+            <div>
+              <h3 className="text-sm font-bold text-primary uppercase tracking-wider">SOAP Assessment</h3>
+              <p className="text-[10px] text-on-surface-variant/60 mt-1">Clinical diagnosis and assessment.</p>
+            </div>
             <div>
               <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                 Diagnosis / Assessment
               </label>
-              <input
-                type="text"
+              <textarea
                 {...register('diagnosis')}
                 placeholder="e.g. Feline Infectious Enteritis, Otitis Externa"
-                className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none font-bold"
+                rows={4}
+                className="w-full px-3 py-2.5 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-sm text-on-surface outline-none font-semibold"
               />
               {errors.diagnosis && (
                 <span className="text-[10px] text-destructive mt-1 block">{errors.diagnosis.message}</span>
               )}
             </div>
+          </div>
+          )}
 
+          {/* P — Plan */}
+          {activeSoapTab === 'P' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-5">
+            <div>
+              <h3 className="text-sm font-bold text-primary uppercase tracking-wider">SOAP Plan</h3>
+              <p className="text-[10px] text-on-surface-variant/60 mt-1">Treatment plan, follow-up, and services performed.</p>
+            </div>
             <div>
               <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
                 Treatment Plan & Recommendations
@@ -575,8 +603,8 @@ export default function ConsultationWorkspaceClient({
               <textarea
                 {...register('treatmentPlan')}
                 placeholder="Specify general directions, clinical advice, or home care details..."
-                rows={3}
-                className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
+                rows={5}
+                className="w-full px-3 py-2.5 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-sm text-on-surface outline-none"
               />
             </div>
 
@@ -606,18 +634,6 @@ export default function ConsultationWorkspaceClient({
                 </div>
               </>
             )}
-
-            <div>
-              <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                Internal Notes (Doctor Only)
-              </label>
-              <input
-                type="text"
-                {...register('internalNotes')}
-                placeholder="Private findings not visible on client receipts"
-                className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface outline-none"
-              />
-            </div>
 
             <div className="p-4 bg-surface-container/20 border border-outline-variant/40 rounded-xl space-y-3">
               <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider">
@@ -787,14 +803,39 @@ export default function ConsultationWorkspaceClient({
               </p>
             )}
           </div>
+          </div>
+          )}
 
-          {/* PRESCRIPTION BUILDER PANEL */}
-          <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-5">
+          {/* D — Diagnostics */}
+          {activeSoapTab === 'D' && (
+          <div className="animate-in fade-in duration-200">
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-primary uppercase tracking-wider">SOAP Diagnostics</h3>
+              <p className="text-[10px] text-on-surface-variant/60 mt-1">Lab orders, results, and clinical documents.</p>
+            </div>
+            <ConsultationLabsDocsPanel
+              visitId={visitId}
+              patientId={patientId}
+              labCatalog={labCatalog}
+              labOrders={labOrders}
+              documents={documents}
+              previousDocuments={previousDocuments}
+            />
+          </div>
+          )}
+
+          {/* Rx — Prescription */}
+          {activeSoapTab === 'Rx' && (
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-5 animate-in fade-in duration-200">
+            <div>
+              <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Prescription (Rx)</h3>
+              <p className="text-[10px] text-on-surface-variant/60 mt-1">Medicines and items to dispense at checkout.</p>
+            </div>
             <div className="flex items-center justify-between border-b border-outline-variant/30 pb-4">
-              <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5">
+              <h4 className="text-xs font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5">
                 <FileCheck2 className="w-4 h-4 text-primary" />
-                Items dispensed / prescription
-              </h3>
+                Items dispensed
+              </h4>
               <button
                 type="button"
                 onClick={() => append({ medicineName: '', dosage: '', frequency: '', duration: '', instructions: '', quantityRequested: 1 })}
@@ -925,44 +966,66 @@ export default function ConsultationWorkspaceClient({
               </p>
             )}
           </div>
+          )}
 
-          {/* ACTION SUBMIT BUTTON */}
-          <div className="flex justify-end pt-4">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-primary hover:opacity-90 text-white py-3 px-8 rounded-2xl font-bold text-sm shadow-premium flex items-center gap-2 transition-all disabled:opacity-75"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Finalizing consult…
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  Complete Consultation & Discharge
-                </>
-              )}
-            </button>
+          {/* Internal notes — visible on all tabs */}
+          <div className="glass-panel rounded-xl border border-outline-variant/30 p-4">
+            <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
+              Internal Notes (Doctor Only)
+            </label>
+            <input
+              type="text"
+              {...register('internalNotes')}
+              placeholder="Private findings not visible on client receipts"
+              className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant rounded-xl text-xs text-on-surface outline-none"
+            />
+          </div>
+
+          {/* STICKY FOOTER: nav + complete */}
+          <div className="fixed bottom-0 left-0 right-0 md:left-64 z-40 p-4 bg-surface/95 backdrop-blur-md border-t border-outline-variant/40">
+            <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={goToPrevSoapTab}
+                  disabled={activeSoapTab === 'S'}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-outline-variant text-on-surface disabled:opacity-40"
+                >
+                  Previous
+                </button>
+                <span className="text-[10px] text-on-surface-variant font-semibold hidden sm:inline">
+                  {getSoapTabTitle(activeSoapTab)}
+                </span>
+                <button
+                  type="button"
+                  onClick={goToNextSoapTab}
+                  disabled={activeSoapTab === 'Rx'}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-outline-variant text-on-surface disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-primary hover:opacity-90 text-white py-2.5 px-6 rounded-2xl font-bold text-sm shadow-premium flex items-center gap-2 transition-all disabled:opacity-75"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Finalizing consult…
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Complete Consultation & Discharge
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
         </form>
-      )}
-
-      {/* LABS & DOCUMENTS PANEL */}
-      {activeTab === 'labs' && (
-        <div className="md:col-span-8 pb-12">
-          <ConsultationLabsDocsPanel
-            visitId={visitId}
-            patientId={patientId}
-            labCatalog={labCatalog}
-            labOrders={labOrders}
-            documents={documents}
-            previousDocuments={previousDocuments}
-          />
-        </div>
-      )}
 
     </div>
     </div>

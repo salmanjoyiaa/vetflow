@@ -57,6 +57,7 @@ import {
 } from 'lucide-react';
 import type { UserSessionDetails } from '@/lib/services/auth';
 import { getTimeGreeting } from '@/lib/utils/greeting';
+import { normalizeOneToOne } from '@/lib/supabase/embed';
 import DashboardQabShell from '@/components/dashboard/DashboardQabShell';
 import StaffDashboardGate from '@/components/dashboard/StaffDashboardGate';
 import StaffAttendanceOverviewPanel, {
@@ -547,11 +548,12 @@ export default async function DashboardOverview() {
         is_emergency: boolean;
         pets: { name: string; species: string } | { name: string; species: string }[] | null;
         customers: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null;
-        visit_assignments: Array<{ user_profiles: { first_name: string; last_name: string } | null }> | null;
+        visit_assignments: { user_profiles: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null } | { user_profiles: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null }[] | null;
       }): LiveConsultRow => {
         const pet = Array.isArray(v.pets) ? v.pets[0] : v.pets;
         const cust = Array.isArray(v.customers) ? v.customers[0] : v.customers;
-        const doc = v.visit_assignments?.[0]?.user_profiles;
+        const assignment = normalizeOneToOne(v.visit_assignments);
+        const doc = normalizeOneToOne(assignment?.user_profiles ?? null);
         return {
           id: v.id,
           status: v.status,

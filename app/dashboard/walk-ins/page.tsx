@@ -5,6 +5,7 @@ import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import WalkInDashboardClient from '@/components/dashboard/WalkInDashboardClient';
 import PageHeader from '@/components/ui/premium/PageHeader';
+import { normalizeOneToOne } from '@/lib/supabase/embed';
 import { ClipboardList } from 'lucide-react';
 
 export const metadata = {
@@ -126,12 +127,18 @@ export default async function WalkInsPage({
         last_name: (v.customers as any).last_name,
         phone: (v.customers as any).phone,
       },
-      doctor: v.visit_assignments?.[0]
-        ? {
-            first_name: (v.visit_assignments[0].user_profiles as any)?.first_name,
-            last_name: (v.visit_assignments[0].user_profiles as any)?.last_name,
-          }
-        : null,
+      doctor: (() => {
+        const assignment = normalizeOneToOne(
+          v.visit_assignments as
+            | { user_profiles: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null }
+            | { user_profiles: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null }[]
+            | null
+        );
+        const profile = normalizeOneToOne(assignment?.user_profiles ?? null);
+        return profile
+          ? { first_name: profile.first_name, last_name: profile.last_name }
+          : null;
+      })(),
     })) || [];
 
   const checkoutVisits =
