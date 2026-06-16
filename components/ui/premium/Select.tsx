@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, Check } from 'lucide-react';
+import { ChevronDown, Check, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type SelectOption = { value: string; label: string };
@@ -20,6 +20,9 @@ interface SelectProps {
   /** @deprecated Use options prop — kept for simple native fallback */
   children?: React.ReactNode;
   name?: string;
+  onAddNew?: () => void;
+  addNewLabel?: string;
+  size?: 'default' | 'compact';
 }
 
 export default function Select({
@@ -33,6 +36,9 @@ export default function Select({
   disabled,
   className,
   name,
+  onAddNew,
+  addNewLabel = 'Add new…',
+  size = 'default',
 }: SelectProps) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
@@ -40,6 +46,7 @@ export default function Select({
   const listRef = useRef<HTMLDivElement>(null);
 
   const selected = options.find((o) => o.value === value);
+  const isCompact = size === 'compact';
 
   useEffect(() => {
     if (!open || !triggerRef.current) return;
@@ -70,11 +77,22 @@ export default function Select({
     setOpen(false);
   };
 
+  const handleAddNew = () => {
+    setOpen(false);
+    onAddNew?.();
+  };
+
   return (
     <div className={cn('space-y-1.5', className)}>
       {name && <input type="hidden" name={name} value={value} readOnly />}
       {label && (
-        <label htmlFor={id} className="block text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">
+        <label
+          htmlFor={id}
+          className={cn(
+            'block font-semibold text-on-surface-variant uppercase tracking-wider',
+            isCompact ? 'text-[9px]' : 'text-[10px]'
+          )}
+        >
           {label}
         </label>
       )}
@@ -85,10 +103,11 @@ export default function Select({
         disabled={disabled}
         onClick={() => !disabled && setOpen((o) => !o)}
         className={cn(
-          'w-full px-4 py-3 bg-surface-container border border-outline-variant rounded-2xl outline-none text-sm text-on-surface',
+          'w-full bg-surface-container border border-outline-variant rounded-2xl outline-none text-on-surface',
           'flex items-center justify-between gap-2 text-left transition-colors',
           'focus:border-primary focus:ring-1 focus:ring-primary',
           'disabled:opacity-50 disabled:cursor-not-allowed',
+          isCompact ? 'px-2 py-1 text-[10px] rounded-xl' : 'px-4 py-3 text-sm',
           error && 'border-destructive'
         )}
         aria-haspopup="listbox"
@@ -97,7 +116,13 @@ export default function Select({
         <span className={cn('truncate', !selected && 'text-on-surface-variant')}>
           {selected?.label ?? placeholder}
         </span>
-        <ChevronDown className={cn('w-4 h-4 shrink-0 text-on-surface-variant transition-transform', open && 'rotate-180')} />
+        <ChevronDown
+          className={cn(
+            'shrink-0 text-on-surface-variant transition-transform',
+            isCompact ? 'w-3 h-3' : 'w-4 h-4',
+            open && 'rotate-180'
+          )}
+        />
       </button>
       {error && <p className="text-[10px] text-destructive">{error}</p>}
 
@@ -120,7 +145,8 @@ export default function Select({
                   aria-selected={active}
                   onClick={() => pick(opt.value)}
                   className={cn(
-                    'w-full text-left px-3 py-2.5 text-xs flex items-center justify-between gap-2 transition-colors',
+                    'w-full text-left flex items-center justify-between gap-2 transition-colors',
+                    isCompact ? 'px-2 py-1.5 text-[10px]' : 'px-3 py-2.5 text-xs',
                     active
                       ? 'bg-primary/15 text-primary font-semibold'
                       : 'text-on-surface hover:bg-surface-container-highest'
@@ -131,6 +157,19 @@ export default function Select({
                 </button>
               );
             })}
+            {onAddNew && (
+              <button
+                type="button"
+                onClick={handleAddNew}
+                className={cn(
+                  'w-full flex items-center gap-2 text-primary hover:bg-primary/5 font-semibold border-t border-outline-variant/40',
+                  isCompact ? 'px-2 py-1.5 text-[10px]' : 'px-3 py-2.5 text-xs'
+                )}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {addNewLabel}
+              </button>
+            )}
           </div>,
           document.body
         )}

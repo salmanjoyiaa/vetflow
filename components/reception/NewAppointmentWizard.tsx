@@ -10,6 +10,9 @@ import {
 import { createAppointmentWithPatientAction } from '@/lib/services/appointment-actions';
 import { normalizePhoneInput, looksLikePhone } from '@/lib/reception/phone';
 import Select from '@/components/ui/premium/Select';
+import CreatableSelect from '@/components/ui/premium/CreatableSelect';
+import { SPECIES_OPTIONS } from '@/lib/pets/species-options';
+import { useCreatableOptions } from '@/lib/hooks/useCreatableOptions';
 import {
   X,
   Loader2,
@@ -69,6 +72,12 @@ export default function NewAppointmentWizard({
   const [petName, setPetName] = useState('');
   const [petSpecies, setPetSpecies] = useState('Dog');
   const [petBreed, setPetBreed] = useState('');
+
+  const { options: speciesOptions, handleCreate: handleCreateSpecies } = useCreatableOptions(
+    SPECIES_OPTIONS,
+    undefined,
+    { refreshOnCreate: false }
+  );
 
   const [preferredDate, setPreferredDate] = useState(initialPreferredDate);
   const [preferredTime, setPreferredTime] = useState(initialPreferredTime);
@@ -435,16 +444,14 @@ export default function NewAppointmentWizard({
                     className="w-full px-3 py-2 bg-surface-container border border-outline-variant rounded-xl text-xs"
                   />
                   <div className="grid grid-cols-2 gap-2">
-                    <select
+                    <CreatableSelect
+                      size="compact"
                       value={petSpecies}
-                      onChange={(e) => setPetSpecies(e.target.value)}
-                      className="px-3 py-2 bg-surface-container border border-outline-variant rounded-xl text-xs"
-                    >
-                      <option>Dog</option>
-                      <option>Cat</option>
-                      <option>Bird</option>
-                      <option>Other</option>
-                    </select>
+                      onChange={setPetSpecies}
+                      options={speciesOptions}
+                      onCreateOption={handleCreateSpecies}
+                      placeholder="Species…"
+                    />
                     <input
                       type="text"
                       placeholder="Breed (optional)"

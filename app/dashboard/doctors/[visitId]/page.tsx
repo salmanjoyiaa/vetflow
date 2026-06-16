@@ -138,6 +138,13 @@ export default async function ConsultationRoomPage({
     price: Number(s.price),
   }));
 
+  const { data: categoriesData } = await supabase
+    .from('product_categories')
+    .select('id, name')
+    .eq('organization_id', session.organizationId);
+
+  const categories = categoriesData || [];
+
   // 5. Lab test catalog, lab orders, current visit docs, and patient history docs
   const patientIdForDocs = visit.pet_id as string;
   const [
@@ -256,6 +263,8 @@ export default async function ConsultationRoomPage({
         consultPauseReason={visit.consult_pause_reason as string | null}
         consultPauseAccumulatedSec={(visit.consult_pause_accumulated_sec as number) ?? 0}
         initialDraft={(visit.consult_draft as import('@/lib/validations/schemas').CompleteConsultationInput | null) ?? null}
+        activeBranchId={visit.branch_id as string}
+        categories={categories}
       />
 
     </div>

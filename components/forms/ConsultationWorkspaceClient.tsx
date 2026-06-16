@@ -9,6 +9,9 @@ import { CompleteConsultationSchema, type CompleteConsultationInput } from '@/li
 import { completeConsultationAction, saveConsultationDraftAction } from '@/lib/services/clinical-actions';
 import { pauseConsultationAction, resumeConsultationAction } from '@/lib/services/visit-actions';
 import ConsultationLabsDocsPanel from '@/components/forms/ConsultationLabsDocsPanel';
+import CatalogItemQuickAddModal from '@/components/inventory/CatalogItemQuickAddModal';
+import Select from '@/components/ui/premium/Select';
+import type { ProductType } from '@/lib/inventory/product-types';
 import { SoapTabBar, SOAP_TAB_ORDER, getSoapTabTitle, type SoapTab } from '@/components/consultation/SoapTabBar';
 import {
   Heart, 
@@ -105,6 +108,8 @@ interface ConsultationWorkspaceClientProps {
   consultPauseReason?: string | null;
   consultPauseAccumulatedSec?: number;
   initialDraft?: Partial<CompleteConsultationInput> | null;
+  activeBranchId: string;
+  categories?: { id: string; name: string }[];
 }
 
 export default function ConsultationWorkspaceClient({
@@ -127,8 +132,14 @@ export default function ConsultationWorkspaceClient({
   consultPauseReason: initialPauseReason = null,
   consultPauseAccumulatedSec = 0,
   initialDraft = null,
+  activeBranchId,
+  categories = [],
 }: ConsultationWorkspaceClientProps) {
   const router = useRouter();
+  const [localProducts, setLocalProducts] = useState(products);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddType, setQuickAddType] = useState<ProductType>('medicine');
+  const [quickAddTarget, setQuickAddTarget] = useState<{ kind: 'product'; index: number } | null>(null);
   const [activeSoapTab, setActiveSoapTab] = useState<SoapTab>('S');
   const [maxUnlockedIndex, setMaxUnlockedIndex] = useState(() => {
     if (!initialDraft) return 0;
@@ -369,6 +380,7 @@ export default function ConsultationWorkspaceClient({
   };
 
   const handleSelectService = (index: number, serviceId: string) => {
+    if (!serviceId) return;
     const selected = catalogServices.find((s) => s.id === serviceId);
     if (selected) {
       setValue(`serviceItems.${index}.serviceId`, selected.id, { shouldValidate: true });
@@ -378,7 +390,11 @@ export default function ConsultationWorkspaceClient({
   };
 
   const handleSelectProduct = (index: number, productId: string) => {
-    const selected = products.find((p) => p.id === productId);
+    if (!productId) {
+      setValue(`prescriptionItems.${index}.productId`, null);
+      return;
+    }
+    const selected = localProducts.find((p) => p.id === productId);
     if (selected) {
       setValue(`prescriptionItems.${index}.medicineName`, selected.name, { shouldValidate: true });
       setValue(`prescriptionItems.${index}.productId`, selected.id, { shouldValidate: true });
@@ -959,20 +975,21 @@ export default function ConsultationWorkspaceClient({
                       <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
                         Service
                       </label>
-                      <select
-                        onChange={(e) => handleSelectService(idx, e.target.value)}
-                        className="w-full px-2 py-1.5 glass-panel border border-outline-variant rounded-lg text-[10px] font-bold text-on-surface outline-none"
-                        defaultValue={
-                          catalogServices.find((s) => s.id === watch(`serviceItems.${idx}.serviceId`))?.id || ''
-                        }
-                      >
-                        <option value="">-- Select service --</option>
-                        {catalogServices.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name} (${s.price})
-                          </option>
-                        ))}
-                      </select>
+                      <Select
+                        size="compact"
+                        value={watch(`serviceItems.${idx}.serviceId`) || ''}
+                        onChange={(v) => handleSelectService(idx, v)}
+                        options={[
+                          { value: '', label: '— Select service —' },
+                          ...catalogServices.map((s) => ({
+                            value: s.id,
+                            label: `${s.name} ($${s.price})`,
+                          })),
+                        ]}
+                        placeholder="Select service…"
+                        onAddNew={() => router.push('/dashboard/settings')}
+                        addNewLabel="Add service in settings"
+                      />
                     </div>
                     <div className="col-span-6 sm:col-span-3">
                       <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
@@ -1072,17 +1089,25 @@ export default function ConsultationWorkspaceClient({
                       <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
                         Link Inventory Product
                       </label>
-                      <select
-                        onChange={(e) => handleSelectProduct(idx, e.target.value)}
-                        className="w-full px-2 py-1.5 glass-panel border border-outline-variant rounded-lg text-[10px] font-bold text-on-surface outline-none"
-                      >
-                        <option value="">-- Custom/Free-text --</option>
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} (${p.sellingPrice})
-                          </option>
-                        ))}
-                      </select>
+                      <Select
+                        size="compact"
+                        value={watch(`prescriptionItems.${idx}.productId`) || ''}
+                        onChange={(v) => handleSelectProduct(idx, v)}
+                        options={[
+                          { value: '', label: '— Custom / free-text —' },
+                          ...localProducts.map((p) => ({
+                            value: p.id,
+                            label: `${p.name} ($${p.sellingPrice})`,
+                          })),
+                        ]}
+                        placeholder="Link product…"
+                        onAddNew={() => {
+                          setQuickAddType('medicine');
+                          setQuickAddTarget({ kind: 'product', index: idx });
+                          setQuickAddOpen(true);
+                        }}
+                        addNewLabel="Add catalog item"
+                      />
                     </div>
 
                     <div className="col-span-12 sm:col-span-8 grid grid-cols-4 gap-2">
@@ -1263,6 +1288,34 @@ export default function ConsultationWorkspaceClient({
           </div>
 
         </form>
+
+      <CatalogItemQuickAddModal
+        open={quickAddOpen}
+        onClose={() => {
+          setQuickAddOpen(false);
+          setQuickAddTarget(null);
+        }}
+        categories={categories}
+        activeBranchId={activeBranchId}
+        defaultType={quickAddType}
+        onSuccess={(product) => {
+          setLocalProducts((prev) => {
+            if (prev.some((p) => p.id === product.id)) return prev;
+            return [
+              ...prev,
+              {
+                id: product.id,
+                name: product.name,
+                type: product.type,
+                sellingPrice: product.sellingPrice,
+              },
+            ];
+          });
+          if (quickAddTarget?.kind === 'product') {
+            handleSelectProduct(quickAddTarget.index, product.id);
+          }
+        }}
+      />
 
     </div>
     </div>

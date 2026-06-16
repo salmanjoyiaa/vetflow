@@ -5,6 +5,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AppointmentRequestSchema, type AppointmentRequestInput } from '@/lib/validations/schemas';
 import { createAppointmentRequestAction } from '@/lib/services/appointment-actions';
+import CreatableSelect from '@/components/ui/premium/CreatableSelect';
+import { SPECIES_OPTIONS } from '@/lib/pets/species-options';
+import { useCreatableOptions } from '@/lib/hooks/useCreatableOptions';
 import { Loader2, CheckCircle2, ArrowRight } from 'lucide-react';
 
 interface Branch {
@@ -29,6 +32,8 @@ export default function PublicBookingFormClient({
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<AppointmentRequestInput>({
     resolver: zodResolver(AppointmentRequestSchema),
@@ -39,6 +44,13 @@ export default function PublicBookingFormClient({
       preferredTime: '09:00',
     },
   });
+
+  const petSpeciesWatch = watch('petSpecies');
+  const { options: speciesOptions, handleCreate: handleCreateSpecies } = useCreatableOptions(
+    SPECIES_OPTIONS,
+    undefined,
+    { refreshOnCreate: false }
+  );
 
   const onSubmit = async (data: AppointmentRequestInput) => {
     setIsLoading(true);
@@ -164,15 +176,14 @@ export default function PublicBookingFormClient({
           <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
             Pet Species
           </label>
-          <select
-            {...register('petSpecies')}
-            className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface font-bold outline-none"
-          >
-            <option value="Dog">Dog</option>
-            <option value="Cat">Cat</option>
-            <option value="Bird">Bird</option>
-            <option value="Exotic">Exotic / Other</option>
-          </select>
+          <CreatableSelect
+            label="Pet Species"
+            value={petSpeciesWatch || ''}
+            onChange={(v) => setValue('petSpecies', v, { shouldValidate: true })}
+            options={speciesOptions}
+            onCreateOption={handleCreateSpecies}
+            placeholder="Select or add species…"
+          />
         </div>
       </div>
 

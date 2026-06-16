@@ -6,6 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { createPetAction, deletePetAction, updatePetAction } from '@/lib/services/pet-actions';
 import { PetSchema, type PetInput } from '@/lib/validations/schemas';
+import CreatableSelect from '@/components/ui/premium/CreatableSelect';
+import { SPECIES_OPTIONS } from '@/lib/pets/species-options';
+import { useCreatableOptions } from '@/lib/hooks/useCreatableOptions';
 import { Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
 
 interface PetFormProps {
@@ -31,10 +34,17 @@ export default function PetForm({
   const router = useRouter();
   const isEdit = mode === 'edit';
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<PetInput>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<PetInput>({
     resolver: zodResolver(PetSchema),
     defaultValues: initialValues || { customerId, weightKg: 0, name: '', species: '', gender: 'Male' },
   });
+
+  const speciesWatch = watch('species');
+  const { options: speciesOptions, handleCreate: handleCreateSpecies } = useCreatableOptions(
+    SPECIES_OPTIONS,
+    undefined,
+    { refreshOnCreate: false }
+  );
 
   useEffect(() => {
     if (initialValues) reset(initialValues);
@@ -94,8 +104,14 @@ export default function PetForm({
                   {errors.name && <span className="text-[10px] text-destructive">{errors.name.message}</span>}
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase mb-1.5">Species</label>
-                  <input type="text" {...register('species')} className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant rounded-xl text-xs" />
+                  <CreatableSelect
+                    label="Species"
+                    value={speciesWatch || ''}
+                    onChange={(v) => setValue('species', v, { shouldValidate: true })}
+                    options={speciesOptions}
+                    onCreateOption={handleCreateSpecies}
+                    placeholder="Select or add species…"
+                  />
                   {errors.species && <span className="text-[10px] text-destructive">{errors.species.message}</span>}
                 </div>
               </div>

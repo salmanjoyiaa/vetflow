@@ -183,15 +183,27 @@ export const CheckoutSchema = z
     }
   });
 
-export const StockIntakeLineSchema = z.object({
-  name: z.string().min(1),
-  sku: z.string().optional().or(z.literal('')),
-  quantity: z.number().int().positive(),
-  unitPrice: z.number().nonnegative(),
-  unit: z.string().optional().or(z.literal('')),
-  productId: z.string().uuid().nullable().optional(),
-  createNew: z.boolean().optional(),
-});
+export const StockIntakeLineSchema = z
+  .object({
+    name: z.string().min(1),
+    sku: z.string().optional().or(z.literal('')),
+    quantity: z.number().int().positive(),
+    unitPrice: z.number().nonnegative(),
+    unit: z.string().optional().or(z.literal('')),
+    productId: z.string().uuid().nullable().optional(),
+    createNew: z.boolean().optional(),
+    type: z.enum(['medicine', 'food', 'treats', 'accessory']).optional(),
+    categoryName: z.string().max(100).optional().or(z.literal('')),
+  })
+  .superRefine((line, ctx) => {
+    if (line.createNew && !line.productId && !line.type) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Product type is required for new catalog items',
+        path: ['type'],
+      });
+    }
+  });
 
 export const ConfirmStockIntakeSchema = z.object({
   branchId: z.string().uuid(),

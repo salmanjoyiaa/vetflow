@@ -28,6 +28,31 @@ function canManageProduct(
   return false;
 }
 
+export async function createCategoryAction(name: string) {
+  try {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
+    }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'manage_inventory');
+    assertFeature(ctx, 'inventory');
+
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return { success: false as const, error: 'Category name is required.' };
+    }
+
+    const id = await findOrCreateCategory(ctx.organizationId!, trimmed);
+    return { success: true as const, category: { id, name: trimmed } };
+  } catch (err: unknown) {
+    return {
+      success: false as const,
+      error: err instanceof Error ? err.message : 'Failed to create category.',
+    };
+  }
+}
+
 async function findOrCreateCategory(organizationId: string, name: string): Promise<string> {
   const admin = await createAdminClient();
   const { data: existing } = await admin
@@ -247,6 +272,11 @@ export async function confirmStockIntakeAction(payload: unknown) {
           created_by: ctx.userId,
         });
       } else if (line.createNew) {
+        let categoryId: string | null = null;
+        if (line.categoryName?.trim()) {
+          categoryId = await findOrCreateCategory(ctx.organizationId!, line.categoryName.trim());
+        }
+
         const { data: product, error } = await adminClient
           .from('products')
           .insert({
@@ -255,7 +285,8 @@ export async function confirmStockIntakeAction(payload: unknown) {
             name: line.name,
             sku: line.sku || null,
             unit: line.unit || 'pcs',
-            type: 'medicine',
+            type: line.type ?? 'medicine',
+            category_id: categoryId,
             purchase_price: line.unitPrice,
             selling_price: line.unitPrice * 1.2,
             stock_quantity: line.quantity,

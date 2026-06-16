@@ -9,13 +9,19 @@ import { useCurrency } from '@/lib/context/CurrencyContext';
 import { ShieldAlert, Trash2, Loader2 } from 'lucide-react';
 import type { UserSessionDetails } from '@/lib/services/auth';
 
+import { PRODUCT_TYPE_OPTIONS } from '@/lib/inventory/product-types';
+
+const TYPE_TAB_LABELS: Record<string, string> = {
+  medicine: 'Medicine',
+  food: 'Food',
+  treats: 'Treats',
+  accessory: 'Accessories',
+  service: 'Services',
+};
+
 const TYPE_TABS = [
   { id: 'all', label: 'All' },
-  { id: 'medicine', label: 'Medicine' },
-  { id: 'food', label: 'Food' },
-  { id: 'treats', label: 'Treats' },
-  { id: 'accessory', label: 'Accessories' },
-  { id: 'service', label: 'Services' },
+  ...PRODUCT_TYPE_OPTIONS.map((o) => ({ id: o.value, label: TYPE_TAB_LABELS[o.value] ?? o.label })),
 ] as const;
 
 type TypeTab = (typeof TYPE_TABS)[number]['id'];

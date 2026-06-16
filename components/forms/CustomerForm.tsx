@@ -10,6 +10,7 @@ import {
   updateCustomerAction,
 } from '@/lib/services/customer-actions';
 import { CustomerSchema, type CustomerInput } from '@/lib/validations/schemas';
+import Select from '@/components/ui/premium/Select';
 import { Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
 
 interface CustomerFormProps {
@@ -45,6 +46,8 @@ export default function CustomerForm({
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<CustomerInput>({
     resolver: zodResolver(CustomerSchema),
@@ -203,14 +206,14 @@ export default function CustomerForm({
                 </div>
                 {!activeBranchId && (
                   <div>
-                    <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                      Branch
-                    </label>
-                    <select {...register('branchId')} className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant rounded-xl outline-none text-xs text-on-surface font-semibold">
-                      {branches.map((b) => (
-                        <option key={b.id} value={b.id}>{b.name}</option>
-                      ))}
-                    </select>
+                    <Select
+                      label="Branch"
+                      value={watch('branchId') || ''}
+                      onChange={(v) => setValue('branchId', v, { shouldValidate: true })}
+                      options={branches.map((b) => ({ value: b.id, label: b.name }))}
+                      onAddNew={() => router.push('/dashboard/branches')}
+                      addNewLabel="Add branch"
+                    />
                   </div>
                 )}
               </div>

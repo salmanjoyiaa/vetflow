@@ -9,6 +9,9 @@ import {
 } from '@/lib/services/customer-actions';
 import { createPetAction } from '@/lib/services/pet-actions';
 import { looksLikePhone } from '@/lib/reception/phone';
+import CreatableSelect from '@/components/ui/premium/CreatableSelect';
+import { SPECIES_OPTIONS } from '@/lib/pets/species-options';
+import { useCreatableOptions } from '@/lib/hooks/useCreatableOptions';
 import { Loader2, Phone, Heart, UserPlus, Plus } from 'lucide-react';
 
 export type SelectedPatient = {
@@ -39,6 +42,12 @@ export default function PatientLookupPanel({
   const [newPetBreed, setNewPetBreed] = useState('');
   const [isAddingPet, setIsAddingPet] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { options: speciesOptions, handleCreate: handleCreateSpecies } = useCreatableOptions(
+    SPECIES_OPTIONS,
+    undefined,
+    { refreshOnCreate: false }
+  );
 
   const runSearch = useCallback(async (val: string) => {
     setQuery(val);
@@ -215,16 +224,14 @@ export default function PatientLookupPanel({
                 className="w-full px-2 py-1.5 text-xs border border-outline-variant rounded-lg bg-surface-container"
               />
               <div className="grid grid-cols-2 gap-2">
-                <select
+                <CreatableSelect
+                  size="compact"
                   value={newPetSpecies}
-                  onChange={(e) => setNewPetSpecies(e.target.value)}
-                  className="px-2 py-1.5 text-xs border border-outline-variant rounded-lg bg-surface-container"
-                >
-                  <option>Dog</option>
-                  <option>Cat</option>
-                  <option>Bird</option>
-                  <option>Other</option>
-                </select>
+                  onChange={setNewPetSpecies}
+                  options={speciesOptions}
+                  onCreateOption={handleCreateSpecies}
+                  placeholder="Species…"
+                />
                 <input
                   placeholder="Breed (optional)"
                   value={newPetBreed}

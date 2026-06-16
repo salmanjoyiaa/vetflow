@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { updateProductAction } from '@/lib/services/inventory-actions';
+import { updateProductAction, createCategoryAction } from '@/lib/services/inventory-actions';
 import { UpdateProductSchema, type UpdateProductInput } from '@/lib/validations/schemas';
+import { PRODUCT_TYPE_OPTIONS } from '@/lib/inventory/product-types';
+import { useCreatableOptions } from '@/lib/hooks/useCreatableOptions';
 import Modal from '@/components/ui/premium/Modal';
 import Button from '@/components/ui/premium/Button';
 import Select from '@/components/ui/premium/Select';
@@ -70,6 +72,17 @@ export default function ProductEditModal({
   const typeWatch = watch('type');
   const branchIdWatch = watch('branchId');
   const categoryNameWatch = watch('categoryName');
+
+  const onCreateCategory = useCallback(async (label: string) => {
+    const res = await createCategoryAction(label);
+    if (!res.success) throw new Error(res.error);
+    return { name: res.category!.name };
+  }, []);
+
+  const { options: categoryOptions, handleCreate: handleCreateCategory } = useCreatableOptions(
+    categories,
+    onCreateCategory
+  );
 
   const openModal = () => {
     reset({
@@ -155,13 +168,7 @@ export default function ProductEditModal({
                 label="Type"
                 value={typeWatch}
                 onChange={(v) => setValue('type', v as UpdateProductInput['type'])}
-                options={[
-                  { value: 'service', label: 'Service' },
-                  { value: 'medicine', label: 'Medicine' },
-                  { value: 'food', label: 'Food' },
-                  { value: 'treats', label: 'Treats' },
-                  { value: 'accessory', label: 'Accessory' },
-                ]}
+                options={PRODUCT_TYPE_OPTIONS}
               />
               <div>
                 <label className="block text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">
@@ -187,7 +194,8 @@ export default function ProductEditModal({
               label="Category (optional)"
               value={categoryNameWatch || ''}
               onChange={(v) => setValue('categoryName', v)}
-              options={categories.map((c) => ({ value: c.name, label: c.name }))}
+              options={categoryOptions}
+              onCreateOption={handleCreateCategory}
               placeholder="Select or create category…"
             />
 

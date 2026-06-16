@@ -27,6 +27,7 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 import DateRangeQuickFilter from '@/components/dashboard/DateRangeQuickFilter';
+import Select from '@/components/ui/premium/Select';
 import { resolveDateFromParam } from '@/lib/utils/date-filters';
 
 interface Doctor {
@@ -191,6 +192,7 @@ function AppointmentRow({
   editTime,
   setEditTime,
 }: AppointmentRowProps) {
+  const router = useRouter();
   const isClosed = CLOSED_STATUSES.includes(appt.status);
   const isAdmin = userRole === 'clinic_admin';
   const canManageOpen =
@@ -326,19 +328,19 @@ function AppointmentRow({
             {canManageOpen && (
               <>
                 <div className="flex items-center gap-2">
-                  <select
-                    className="px-2 py-1 bg-surface-container border border-outline-variant rounded-lg text-[10px]"
+                  <Select
+                    size="compact"
                     value={selectedDoctorMap[appt.id] || appt.doctor_id || doctors[0]?.id || ''}
-                    onChange={(e) =>
-                      setSelectedDoctorMap({ ...selectedDoctorMap, [appt.id]: e.target.value })
+                    onChange={(v) =>
+                      setSelectedDoctorMap({ ...selectedDoctorMap, [appt.id]: v })
                     }
-                  >
-                    {doctors.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        Dr. {d.firstName} {d.lastName}
-                      </option>
-                    ))}
-                  </select>
+                    options={doctors.map((d) => ({
+                      value: d.id,
+                      label: `Dr. ${d.firstName} ${d.lastName}`,
+                    }))}
+                    onAddNew={() => router.push('/dashboard/staff')}
+                    addNewLabel="Add staff"
+                  />
                   <button
                     disabled={updatingId !== null}
                     onClick={() =>

@@ -116,10 +116,12 @@ export default async function InventoryPage({
       {tab === 'intake' ? (
         <StockInvoiceIntakeClient
           activeBranchId={activeBranchId}
+          categories={categories || []}
           products={(products || []).map((p) => ({
             id: p.id,
             name: p.name,
             sku: p.sku,
+            type: p.type,
           }))}
         />
       ) : (
