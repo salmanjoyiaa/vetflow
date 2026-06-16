@@ -29,6 +29,11 @@ import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 import DateRangeQuickFilter from '@/components/dashboard/DateRangeQuickFilter';
 import Select from '@/components/ui/premium/Select';
 import { resolveDateFromParam } from '@/lib/utils/date-filters';
+import {
+  isEmergencyAppointmentActive,
+  isTerminalAppointment,
+  isUpcomingAppointment,
+} from '@/lib/appointments/status';
 
 interface Doctor {
   id: string;
@@ -57,9 +62,6 @@ interface Appointment {
 }
 
 type TabKey = 'upcoming' | 'emergency' | 'closed';
-
-const UPCOMING_STATUSES = ['requested', 'confirmed', 'rescheduled'];
-const CLOSED_STATUSES = ['checked_in', 'completed', 'cancelled', 'no_show'];
 
 const STATUS_OPTIONS = [
   'all',
@@ -193,7 +195,10 @@ function AppointmentRow({
   setEditTime,
 }: AppointmentRowProps) {
   const router = useRouter();
-  const isClosed = CLOSED_STATUSES.includes(appt.status);
+  const isTerminal = isTerminalAppointment(appt.status);
+  const isCheckedIn = appt.status === 'checked_in';
+  const queueHref =
+    userRole === 'doctor' ? '/dashboard/doctors' : '/dashboard/walk-ins';
   const isAdmin = userRole === 'clinic_admin';
   const canManageOpen =
     ['confirmed', 'rescheduled'].includes(appt.status) ||
@@ -273,11 +278,19 @@ function AppointmentRow({
       </td>
       <td className="px-6 py-4">{statusBadge(appt.status)}</td>
       <td className="px-6 py-4 text-right">
-        {isClosed ? (
+        {isTerminal ? (
           <span className="text-[10px] text-on-surface-variant/40 italic">Closed</span>
+        ) : isCheckedIn ? (
+          <Link
+            href={queueHref}
+            className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline"
+          >
+            <UserCheck className="w-3 h-3" />
+            In queue →
+          </Link>
         ) : (
           <div className="inline-flex flex-col items-end gap-2">
-            {!['checked_in', 'completed', 'cancelled', 'no_show'].includes(appt.status) && (
+            {!isTerminal && appt.status !== 'checked_in' && (
               <button
                 type="button"
                 disabled={updatingId !== null}
@@ -505,19 +518,19 @@ export default function AppointmentsListClient({
   }, [urlDate]);
 
   const tabCounts = useMemo(() => ({
-    upcoming: initialAppointments.filter((a) => UPCOMING_STATUSES.includes(a.status)).length,
-    emergency: initialAppointments.filter(
-      (a) => a.is_emergency && !CLOSED_STATUSES.includes(a.status)
+    upcoming: initialAppointments.filter((a) => isUpcomingAppointment(a.status)).length,
+    emergency: initialAppointments.filter((a) =>
+      isEmergencyAppointmentActive(a.is_emergency, a.status)
     ).length,
-    closed: initialAppointments.filter((a) => CLOSED_STATUSES.includes(a.status)).length,
+    closed: initialAppointments.filter((a) => isTerminalAppointment(a.status)).length,
   }), [initialAppointments]);
 
   const filtered = useMemo(() => {
     const list = initialAppointments.filter((appt) => {
-      if (activeTab === 'upcoming' && !UPCOMING_STATUSES.includes(appt.status)) return false;
-      if (activeTab === 'emergency' && (!appt.is_emergency || CLOSED_STATUSES.includes(appt.status)))
+      if (activeTab === 'upcoming' && !isUpcomingAppointment(appt.status)) return false;
+      if (activeTab === 'emergency' && !isEmergencyAppointmentActive(appt.is_emergency, appt.status))
         return false;
-      if (activeTab === 'closed' && !CLOSED_STATUSES.includes(appt.status)) return false;
+      if (activeTab === 'closed' && !isTerminalAppointment(appt.status)) return false;
       if (statusFilter !== 'all' && appt.status !== statusFilter) return false;
       if (dateFilter && appt.preferred_date !== dateFilter) return false;
       if (search.trim()) {
@@ -704,7 +717,10 @@ export default function AppointmentsListClient({
                       rescheduleTime={rescheduleTime}
                       setRescheduleTime={setRescheduleTime}
                       runAction={runAction}
-                      onCheckIn={() => setCheckInNotice(true)}
+                      onCheckIn={() => {
+                        setCheckInNotice(true);
+                        setActiveTab('upcoming');
+                      }}
                       userRole={userRole}
                       editId={editId}
                       setEditId={setEditId}

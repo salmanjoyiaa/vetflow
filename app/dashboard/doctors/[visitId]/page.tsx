@@ -36,6 +36,8 @@ export default async function ConsultationRoomPage({
       reason,
       status,
       branch_id,
+      checked_in_at,
+      appointment_id,
       consult_started_at,
       consult_paused_at,
       consult_pause_reason,
@@ -210,6 +212,23 @@ export default async function ConsultationRoomPage({
   const documents = (documentsData || []).map(mapDoc);
   const previousDocuments = (previousDocsData || []).map(mapDoc);
 
+  let isFollowUpPatient = history.length > 0;
+  if (visit.appointment_id) {
+    const { data: linkedAppt } = await supabase
+      .from('appointments')
+      .select('follow_up_of_visit_id')
+      .eq('id', visit.appointment_id as string)
+      .maybeSingle();
+    if (linkedAppt?.follow_up_of_visit_id) {
+      isFollowUpPatient = true;
+    }
+  }
+
+  const checkedInAt =
+    (visit.checked_in_at as string | null) ??
+    (visit.consult_started_at as string | null) ??
+    new Date().toISOString();
+
   const petDetails = visit.pets as any;
   const customerDetails = visit.customers as any;
 
@@ -265,6 +284,8 @@ export default async function ConsultationRoomPage({
         initialDraft={(visit.consult_draft as import('@/lib/validations/schemas').CompleteConsultationInput | null) ?? null}
         activeBranchId={visit.branch_id as string}
         categories={categories}
+        checkedInAt={checkedInAt}
+        isFollowUpPatient={isFollowUpPatient}
       />
 
     </div>

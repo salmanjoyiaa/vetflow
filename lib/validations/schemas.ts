@@ -238,26 +238,59 @@ export const VisitServiceItemSchema = z.object({
   quantity: z.number().int().positive(),
 });
 
-export const CompleteConsultationSchema = z.object({
-  visitId: EntityIdSchema,
-  visitType: z.enum(['standard', 'lab', 'surgery']),
-  chiefComplaint: z.string().min(1, { message: 'Chief complaint is required' }),
-  history: z.string().optional().or(z.literal('')),
-  examinationFindings: z.string().optional().or(z.literal('')),
-  diagnosis: z.string().min(1, { message: 'Diagnosis is required' }),
-  treatmentPlan: z.string().optional().or(z.literal('')),
-  procedureNotes: z.string().optional().or(z.literal('')),
-  postOpMedication: z.string().optional().or(z.literal('')),
-  internalNotes: z.string().optional().or(z.literal('')),
-  followUpRecommendation: z.string().optional().or(z.literal('')),
-  followUpDays: z.array(z.number().int().positive()),
-  temperatureC: z.number().nonnegative().optional().or(z.nan()),
-  heartRateBpm: z.number().int().nonnegative().optional().or(z.nan()),
-  respiratoryRate: z.number().int().nonnegative().optional().or(z.nan()),
-  weightKg: z.number().nonnegative().optional().or(z.nan()),
-  prescriptionItems: z.array(PrescriptionItemSchema),
-  serviceItems: z.array(VisitServiceItemSchema),
+export const FollowUpConsecutiveSchema = z.object({
+  count: z.number().int().positive(),
+  startDate: z.string().min(1),
 });
+
+export const CompleteConsultationSchema = z
+  .object({
+    visitId: EntityIdSchema,
+    visitType: z.enum(['standard', 'lab', 'surgery']),
+    chiefComplaint: z.string().min(1, { message: 'Chief complaint is required' }),
+    history: z.string().optional().or(z.literal('')),
+    examinationFindings: z.string().optional().or(z.literal('')),
+    diagnosis: z.string().min(1, { message: 'Diagnosis is required' }),
+    treatmentPlan: z.string().optional().or(z.literal('')),
+    procedureNotes: z.string().optional().or(z.literal('')),
+    postOpMedication: z.string().optional().or(z.literal('')),
+    internalNotes: z.string().optional().or(z.literal('')),
+    followUpRecommendation: z.string().optional().or(z.literal('')),
+    followUpDays: z.array(z.number().int().positive()).optional(),
+    followUpMode: z.enum(['none', 'offset', 'consecutive']).optional(),
+    followUpOffsetDays: z.array(z.number().int().positive()).optional(),
+    followUpConsecutive: FollowUpConsecutiveSchema.optional(),
+    noPrescriptionNeeded: z.boolean().optional(),
+    temperatureC: z.number().nonnegative().optional().or(z.nan()),
+    heartRateBpm: z.number().int().nonnegative().optional().or(z.nan()),
+    respiratoryRate: z.number().int().nonnegative().optional().or(z.nan()),
+    weightKg: z.number().nonnegative().optional().or(z.nan()),
+    prescriptionItems: z.array(PrescriptionItemSchema),
+    serviceItems: z.array(VisitServiceItemSchema),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.noPrescriptionNeeded && (data.prescriptionItems?.length ?? 0) === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Add at least one prescription or mark "No prescription needed".',
+        path: ['prescriptionItems'],
+      });
+    }
+    if (data.followUpMode === 'offset' && (data.followUpOffsetDays?.length ?? 0) === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Select at least one offset day for follow-up.',
+        path: ['followUpOffsetDays'],
+      });
+    }
+    if (data.followUpMode === 'consecutive' && !data.followUpConsecutive) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Enter consecutive follow-up days and start date.',
+        path: ['followUpConsecutive'],
+      });
+    }
+  });
 
 export const RescheduleAppointmentSchema = z.object({
   appointmentId: z.string().uuid(),

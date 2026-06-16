@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -11,8 +11,17 @@ import { pauseConsultationAction, resumeConsultationAction } from '@/lib/service
 import ConsultationLabsDocsPanel from '@/components/forms/ConsultationLabsDocsPanel';
 import CatalogItemQuickAddModal from '@/components/inventory/CatalogItemQuickAddModal';
 import Select from '@/components/ui/premium/Select';
+import RequiredLabel from '@/components/ui/RequiredLabel';
 import type { ProductType } from '@/lib/inventory/product-types';
 import { SoapTabBar, SOAP_TAB_ORDER, getSoapTabTitle, type SoapTab } from '@/components/consultation/SoapTabBar';
+import { validateSoapTab, validateAllSoapSteps } from '@/lib/consultation/soap-validation';
+import {
+  computeFollowUpPreviews,
+  defaultConsecutiveStartDate,
+  offsetDatePreview,
+  type FollowUpMode,
+} from '@/lib/consultation/follow-up-schedule';
+import { useSoapFieldNavigation } from '@/lib/hooks/useSoapFieldNavigation';
 import {
   Heart, 
   User, 
@@ -110,6 +119,8 @@ interface ConsultationWorkspaceClientProps {
   initialDraft?: Partial<CompleteConsultationInput> | null;
   activeBranchId: string;
   categories?: { id: string; name: string }[];
+  checkedInAt: string;
+  isFollowUpPatient?: boolean;
 }
 
 export default function ConsultationWorkspaceClient({
@@ -134,8 +145,11 @@ export default function ConsultationWorkspaceClient({
   initialDraft = null,
   activeBranchId,
   categories = [],
+  checkedInAt,
+  isFollowUpPatient = false,
 }: ConsultationWorkspaceClientProps) {
   const router = useRouter();
+  const followUpBaseDate = checkedInAt.slice(0, 10);
   const [localProducts, setLocalProducts] = useState(products);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickAddType, setQuickAddType] = useState<ProductType>('medicine');
@@ -167,8 +181,15 @@ export default function ConsultationWorkspaceClient({
   );
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [followUpDays, setFollowUpDays] = useState<number[]>([]);
   const [customFollowUpDay, setCustomFollowUpDay] = useState('');
+  const [consecutiveCountInput, setConsecutiveCountInput] = useState(
+    String(initialDraft?.followUpConsecutive?.count ?? 3)
+  );
+  const [consecutiveStartDate, setConsecutiveStartDate] = useState(
+    initialDraft?.followUpConsecutive?.startDate ?? defaultConsecutiveStartDate(followUpBaseDate)
+  );
+  const [showFollowUpConfirm, setShowFollowUpConfirm] = useState(false);
+  const [pendingSubmitData, setPendingSubmitData] = useState<CompleteConsultationInput | null>(null);
   const [consultPausedAt, setConsultPausedAt] = useState<string | null>(initialPausedAt);
   const [consultPauseReason, setConsultPauseReason] = useState<string | null>(initialPauseReason);
   const [showPauseModal, setShowPauseModal] = useState(false);
@@ -195,7 +216,11 @@ export default function ConsultationWorkspaceClient({
       treatmentPlan: initialDraft?.treatmentPlan ?? '',
       internalNotes: initialDraft?.internalNotes ?? '',
       followUpRecommendation: initialDraft?.followUpRecommendation ?? '',
-      followUpDays: initialDraft?.followUpDays ?? [],
+      followUpDays: initialDraft?.followUpDays ?? initialDraft?.followUpOffsetDays ?? [],
+      followUpMode: initialDraft?.followUpMode ?? 'none',
+      followUpOffsetDays: initialDraft?.followUpOffsetDays ?? initialDraft?.followUpDays ?? [],
+      followUpConsecutive: initialDraft?.followUpConsecutive,
+      noPrescriptionNeeded: initialDraft?.noPrescriptionNeeded ?? false,
       procedureNotes: initialDraft?.procedureNotes ?? '',
       postOpMedication: initialDraft?.postOpMedication ?? '',
       temperatureC: initialDraft?.temperatureC ?? undefined,
@@ -231,6 +256,9 @@ export default function ConsultationWorkspaceClient({
   });
 
   const prescriptionItemsWatch = watch('prescriptionItems');
+  const noPrescriptionNeeded = watch('noPrescriptionNeeded');
+  const followUpMode = (watch('followUpMode') ?? 'none') as FollowUpMode;
+  const followUpOffsetDays = watch('followUpOffsetDays') ?? [];
   const chiefComplaintWatch = watch('chiefComplaint');
   const examinationWatch = watch('examinationFindings');
   const diagnosisWatch = watch('diagnosis');
@@ -242,8 +270,42 @@ export default function ConsultationWorkspaceClient({
     A: Boolean(diagnosisWatch?.trim()),
     P: Boolean(treatmentPlanWatch?.trim()) || serviceFields.length > 0,
     D: labOrders.length > 0 || documents.length > 0,
-    Rx: prescriptionItemsWatch.length > 0,
+    Rx: noPrescriptionNeeded || prescriptionItemsWatch.length > 0,
   };
+
+  const soapContext = useMemo(
+    () => ({
+      visitType,
+      labOrderCount: labOrders.length,
+      noPrescriptionNeeded: Boolean(noPrescriptionNeeded),
+    }),
+    [visitType, labOrders.length, noPrescriptionNeeded]
+  );
+
+  const followUpPreviews = useMemo(() => {
+    if (followUpMode === 'offset') {
+      return computeFollowUpPreviews(
+        { mode: 'offset', offsetDays: followUpOffsetDays },
+        followUpBaseDate
+      );
+    }
+    if (followUpMode === 'consecutive') {
+      const count = parseInt(consecutiveCountInput, 10);
+      if (!count || count < 1) return [];
+      return computeFollowUpPreviews(
+        {
+          mode: 'consecutive',
+          offsetDays: [],
+          consecutive: { count, startDate: consecutiveStartDate },
+        },
+        followUpBaseDate
+      );
+    }
+    return [];
+  }, [followUpMode, followUpOffsetDays, consecutiveCountInput, consecutiveStartDate, followUpBaseDate]);
+
+  const showPriorVisitsCard = isFollowUpPatient || history.length > 0;
+  const priorVisitsPreview = history.slice(0, 3);
 
   const goToNextSoapTab = async () => {
     const idx = SOAP_TAB_ORDER.indexOf(activeSoapTab);
@@ -259,45 +321,8 @@ export default function ConsultationWorkspaceClient({
     }
   };
 
-  const validateTab = (tab: SoapTab): string | null => {
-    const values = getValues();
-    switch (tab) {
-      case 'S':
-        if (!values.chiefComplaint?.trim() || values.chiefComplaint.trim().length < 3) {
-          return 'Enter a chief complaint (at least 3 characters) before continuing.';
-        }
-        return null;
-      case 'O': {
-        const hasExam = Boolean(values.examinationFindings?.trim());
-        const hasVital =
-          values.temperatureC != null ||
-          values.heartRateBpm != null ||
-          values.respiratoryRate != null ||
-          values.weightKg != null;
-        if (!hasExam && !hasVital) {
-          return 'Add examination findings or at least one vital before continuing.';
-        }
-        return null;
-      }
-      case 'A':
-        if (!values.diagnosis?.trim() || values.diagnosis.trim().length < 3) {
-          return 'Enter a diagnosis (at least 3 characters) before continuing.';
-        }
-        return null;
-      case 'P':
-        if (!values.treatmentPlan?.trim() || values.treatmentPlan.trim().length < 3) {
-          return 'Enter a treatment plan (at least 3 characters) before continuing.';
-        }
-        return null;
-      case 'D':
-        if (visitType === 'lab' && labOrders.length === 0) {
-          return 'Lab-focused visit: order at least one lab test before continuing.';
-        }
-        return null;
-      default:
-        return null;
-    }
-  };
+  const validateTab = (tab: SoapTab): string | null =>
+    validateSoapTab(tab, getValues(), soapContext);
 
   const validateAndAdvanceTab = async (targetTab: SoapTab) => {
     const currentIdx = SOAP_TAB_ORDER.indexOf(activeSoapTab);
@@ -337,6 +362,8 @@ export default function ConsultationWorkspaceClient({
     void validateAndAdvanceTab(tab);
   };
 
+  const { handleFormKeyDown } = useSoapFieldNavigation(activeSoapTab, goToNextSoapTab);
+
   const jumpToErrorTab = () => {
     if (errors.chiefComplaint) setActiveSoapTab('S');
     else if (errors.examinationFindings) setActiveSoapTab('O');
@@ -345,38 +372,145 @@ export default function ConsultationWorkspaceClient({
     else if (errors.prescriptionItems) setActiveSoapTab('Rx');
   };
 
+  const setFollowUpMode = (mode: FollowUpMode) => {
+    setValue('followUpMode', mode);
+    if (mode === 'none') {
+      setValue('followUpOffsetDays', []);
+      setValue('followUpDays', []);
+      setValue('followUpConsecutive', undefined);
+    } else if (mode === 'consecutive') {
+      setValue('followUpOffsetDays', []);
+      const count = parseInt(consecutiveCountInput, 10) || 3;
+      setValue('followUpConsecutive', { count, startDate: consecutiveStartDate });
+    }
+  };
+
   const toggleFollowUpDay = (day: number) => {
-    setFollowUpDays((prev) => {
-      const next = prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b);
-      setValue('followUpDays', next);
-      return next;
-    });
+    const current = getValues('followUpOffsetDays') ?? [];
+    const next = current.includes(day)
+      ? current.filter((d) => d !== day)
+      : [...current, day].sort((a, b) => a - b);
+    setValue('followUpMode', 'offset');
+    setValue('followUpOffsetDays', next);
+    setValue('followUpDays', next);
     setCustomFollowUpDay('');
   };
 
   const removeFollowUpDay = (day: number) => {
-    setFollowUpDays((prev) => {
-      const next = prev.filter((d) => d !== day);
-      setValue('followUpDays', next);
-      return next;
-    });
+    const next = (getValues('followUpOffsetDays') ?? []).filter((d) => d !== day);
+    setValue('followUpOffsetDays', next);
+    setValue('followUpDays', next);
+    if (next.length === 0) setValue('followUpMode', 'none');
   };
 
   const clearFollowUpDays = () => {
-    setFollowUpDays([]);
+    setValue('followUpMode', 'none');
+    setValue('followUpOffsetDays', []);
     setValue('followUpDays', []);
+    setValue('followUpConsecutive', undefined);
     setCustomFollowUpDay('');
   };
 
   const addCustomFollowUpDay = () => {
     const day = parseInt(customFollowUpDay, 10);
     if (!day || day < 1) return;
-    if (!followUpDays.includes(day)) {
-      const next = [...followUpDays, day].sort((a, b) => a - b);
-      setFollowUpDays(next);
+    const current = getValues('followUpOffsetDays') ?? [];
+    if (!current.includes(day)) {
+      const next = [...current, day].sort((a, b) => a - b);
+      setValue('followUpMode', 'offset');
+      setValue('followUpOffsetDays', next);
       setValue('followUpDays', next);
     }
     setCustomFollowUpDay('');
+  };
+
+  const applyConsecutiveFollowUp = () => {
+    const count = parseInt(consecutiveCountInput, 10);
+    if (!count || count < 1 || !consecutiveStartDate) return;
+    setValue('followUpMode', 'consecutive');
+    setValue('followUpOffsetDays', []);
+    setValue('followUpDays', []);
+    setValue('followUpConsecutive', { count, startDate: consecutiveStartDate });
+  };
+
+  const buildSubmitPayload = (data: CompleteConsultationInput): CompleteConsultationInput => {
+    const mode = data.followUpMode ?? 'none';
+    if (mode === 'consecutive') {
+      const count = parseInt(consecutiveCountInput, 10) || data.followUpConsecutive?.count || 0;
+      return {
+        ...data,
+        followUpMode: 'consecutive',
+        followUpConsecutive: { count, startDate: consecutiveStartDate },
+        followUpOffsetDays: [],
+        followUpDays: [],
+      };
+    }
+    if (mode === 'offset') {
+      return {
+        ...data,
+        followUpMode: 'offset',
+        followUpOffsetDays: data.followUpOffsetDays ?? [],
+        followUpDays: data.followUpOffsetDays ?? [],
+        followUpConsecutive: undefined,
+      };
+    }
+    return {
+      ...data,
+      followUpMode: 'none',
+      followUpOffsetDays: [],
+      followUpDays: [],
+      followUpConsecutive: undefined,
+    };
+  };
+
+  const executeComplete = async (data: CompleteConsultationInput) => {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const payload = buildSubmitPayload(data);
+      const res = await completeConsultationAction(payload);
+      if (res.success) {
+        router.replace('/dashboard/doctors');
+      } else {
+        setError(res.error || 'Failed to complete consultation');
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
+      setIsSubmitting(false);
+      setShowFollowUpConfirm(false);
+      setPendingSubmitData(null);
+    }
+  };
+
+  const onSubmit = async (data: CompleteConsultationInput) => {
+    if (consultPausedAt) {
+      setError('Resume the consultation before completing.');
+      return;
+    }
+
+    const payload = buildSubmitPayload(data);
+    const validationFailure = validateAllSoapSteps(payload, soapContext);
+    if (validationFailure) {
+      setActiveSoapTab(validationFailure.tab);
+      setTabError(validationFailure.message);
+      return;
+    }
+
+    setTabError(null);
+
+    if ((payload.followUpMode ?? 'none') !== 'none' && followUpPreviews.length > 0) {
+      setPendingSubmitData(payload);
+      setShowFollowUpConfirm(true);
+      return;
+    }
+
+    await executeComplete(payload);
+  };
+
+  const confirmFollowUpAndComplete = async () => {
+    if (!pendingSubmitData) return;
+    await executeComplete(pendingSubmitData);
   };
 
   const handleSelectService = (index: number, serviceId: string) => {
@@ -414,32 +548,6 @@ export default function ConsultationWorkspaceClient({
         setValue('serviceItems.0.name', surgerySvc.name);
         setValue('serviceItems.0.unitPrice', surgerySvc.price);
       }
-    }
-  };
-
-  const onSubmit = async (data: CompleteConsultationInput) => {
-    if (consultPausedAt) {
-      setError('Resume the consultation before completing.');
-      return;
-    }
-    if (visitType === 'lab' && labOrders.length === 0) {
-      setError('Lab-focused visit: order at least one lab test before completing.');
-      setActiveSoapTab('D');
-      return;
-    }
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      const res = await completeConsultationAction(data);
-      if (res.success) {
-        router.replace('/dashboard/doctors');
-      } else {
-        setError(res.error || 'Failed to complete consultation');
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -540,6 +648,50 @@ export default function ConsultationWorkspaceClient({
         </div>
       )}
 
+      {showFollowUpConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 max-w-md w-full shadow-premium space-y-4">
+            <h3 className="text-sm font-bold text-on-surface">Create follow-up appointment requests?</h3>
+            <p className="text-xs text-on-surface-variant">
+              The following appointment requests will be created for receptionist confirmation:
+            </p>
+            <ul className="text-xs space-y-2 max-h-48 overflow-y-auto">
+              {followUpPreviews.map((preview) => (
+                <li key={preview.preferredDate + preview.label} className="flex items-start gap-2 text-on-surface-variant">
+                  <Calendar className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                  <span>
+                    <span className="font-semibold text-on-surface">{preview.preferredDate}</span>
+                    {' — '}
+                    {preview.label}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowFollowUpConfirm(false);
+                  setPendingSubmitData(null);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold border border-outline-variant"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmFollowUpAndComplete()}
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-primary text-white disabled:opacity-50 flex items-center gap-2"
+              >
+                {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Confirm &amp; complete consult
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     <div className="grid md:grid-cols-12 gap-8 items-start">
       
       {/* LEFT: MEDICAL BRIEF / TABS */}
@@ -602,6 +754,45 @@ export default function ConsultationWorkspaceClient({
             </div>
           )}
         </div>
+
+        {showPriorVisitsCard && (
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 p-5 shadow-premium space-y-3">
+            <div className="flex items-center gap-2 border-b border-outline-variant/35 pb-3">
+              <History className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-bold text-on-surface">Previous visits</h3>
+            </div>
+            {priorVisitsPreview.length > 0 ? (
+              <div className="space-y-3">
+                {priorVisitsPreview.map((h) => (
+                  <div key={h.id} className="text-xs space-y-1 border-b border-outline-variant/20 pb-2 last:border-0 last:pb-0">
+                    <p className="text-[10px] font-bold text-on-surface-variant">
+                      {new Date(h.checkedInAt).toLocaleDateString()}
+                    </p>
+                    <p className="text-on-surface-variant/80">
+                      <span className="font-semibold text-on-surface">Reason:</span> {h.reason}
+                    </p>
+                    {h.clinicalNotes && (
+                      <>
+                        <p className="text-on-surface-variant/80">
+                          <span className="font-semibold text-on-surface">Diagnosis:</span>{' '}
+                          {h.clinicalNotes.diagnosis}
+                        </p>
+                        {h.clinicalNotes.treatmentPlan && (
+                          <p className="text-on-surface-variant/80">
+                            <span className="font-semibold text-on-surface">Plan:</span>{' '}
+                            {h.clinicalNotes.treatmentPlan}
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-on-surface-variant/60 italic">Follow-up visit — see full history tab for details.</p>
+            )}
+          </div>
+        )}
 
         {/* NAVIGATION: History sidebar */}
         <div className="flex glass-panel p-1 rounded-xl border border-outline-variant/40 shadow-sm">
@@ -675,6 +866,7 @@ export default function ConsultationWorkspaceClient({
       {/* RIGHT: SOAPDRx WORKSPACE */}
       <form
         onSubmit={handleSubmit(onSubmit, jumpToErrorTab)}
+        onKeyDown={handleFormKeyDown}
         className="md:col-span-8 space-y-6 pb-28"
       >
           
@@ -683,6 +875,9 @@ export default function ConsultationWorkspaceClient({
               {error}
             </div>
           )}
+
+          <input type="hidden" {...register('followUpMode')} />
+          <input type="hidden" {...register('followUpOffsetDays')} />
 
           {/* VISIT TYPE SELECTOR */}
           <div className="glass-panel rounded-2xl border border-outline-variant/40 p-4 shadow-premium">
@@ -729,10 +924,12 @@ export default function ConsultationWorkspaceClient({
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                Chief Complaint / Reason for Visit
+                <RequiredLabel>Chief Complaint / Reason for Visit</RequiredLabel>
               </label>
               <input
                 type="text"
+                data-soap-tab="S"
+                data-soap-field="chiefComplaint"
                 {...register('chiefComplaint')}
                 className="w-full px-3 py-2.5 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-sm text-on-surface outline-none"
               />
@@ -763,9 +960,12 @@ export default function ConsultationWorkspaceClient({
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                Examination Findings
+                <RequiredLabel>Examination Findings</RequiredLabel>
+                <span className="text-on-surface-variant/50 font-normal normal-case ml-1">(or fill vitals below)</span>
               </label>
               <textarea
+                data-soap-tab="O"
+                data-soap-field="examinationFindings"
                 {...register('examinationFindings')}
                 placeholder="Record clinical checks (temperature, cardiac, visual check)..."
                 rows={8}
@@ -773,22 +973,24 @@ export default function ConsultationWorkspaceClient({
               />
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-surface-container/20 border border-outline-variant/30">
-              <p className="col-span-full text-[10px] font-bold text-primary uppercase tracking-wider">Vitals</p>
+              <p className="col-span-full text-[10px] font-bold text-primary uppercase tracking-wider">
+                Vitals <span className="text-on-surface-variant/50 font-normal normal-case">(at least one required if no exam notes)</span>
+              </p>
               <div>
                 <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">Temp (°C)</label>
-                <input type="number" step="0.1" {...register('temperatureC', { valueAsNumber: true })} className="w-full px-2 py-2 bg-surface border border-outline-variant rounded-lg text-sm" />
+                <input type="number" step="0.1" data-soap-tab="O" data-soap-field="temperatureC" {...register('temperatureC', { valueAsNumber: true })} className="w-full px-2 py-2 bg-surface border border-outline-variant rounded-lg text-sm" />
               </div>
               <div>
                 <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">Heart rate</label>
-                <input type="number" {...register('heartRateBpm', { valueAsNumber: true })} className="w-full px-2 py-2 bg-surface border border-outline-variant rounded-lg text-sm" />
+                <input type="number" data-soap-tab="O" data-soap-field="heartRateBpm" {...register('heartRateBpm', { valueAsNumber: true })} className="w-full px-2 py-2 bg-surface border border-outline-variant rounded-lg text-sm" />
               </div>
               <div>
                 <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">Resp. rate</label>
-                <input type="number" {...register('respiratoryRate', { valueAsNumber: true })} className="w-full px-2 py-2 bg-surface border border-outline-variant rounded-lg text-sm" />
+                <input type="number" data-soap-tab="O" data-soap-field="respiratoryRate" {...register('respiratoryRate', { valueAsNumber: true })} className="w-full px-2 py-2 bg-surface border border-outline-variant rounded-lg text-sm" />
               </div>
               <div>
                 <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">Weight (kg)</label>
-                <input type="number" step="0.1" {...register('weightKg', { valueAsNumber: true })} className="w-full px-2 py-2 bg-surface border border-outline-variant rounded-lg text-sm" />
+                <input type="number" step="0.1" data-soap-tab="O" data-soap-field="weightKg" {...register('weightKg', { valueAsNumber: true })} className="w-full px-2 py-2 bg-surface border border-outline-variant rounded-lg text-sm" />
               </div>
             </div>
           </div>
@@ -803,9 +1005,11 @@ export default function ConsultationWorkspaceClient({
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                Diagnosis / Assessment
+                <RequiredLabel>Diagnosis / Assessment</RequiredLabel>
               </label>
               <textarea
+                data-soap-tab="A"
+                data-soap-field="diagnosis"
                 {...register('diagnosis')}
                 placeholder="e.g. Feline Infectious Enteritis, Otitis Externa"
                 rows={4}
@@ -828,9 +1032,11 @@ export default function ConsultationWorkspaceClient({
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                Treatment Plan & Recommendations
+                <RequiredLabel>Treatment Plan & Recommendations</RequiredLabel>
               </label>
               <textarea
+                data-soap-tab="P"
+                data-soap-field="treatmentPlan"
                 {...register('treatmentPlan')}
                 placeholder="Specify general directions, clinical advice, or home care details..."
                 rows={5}
@@ -865,79 +1071,116 @@ export default function ConsultationWorkspaceClient({
               </>
             )}
 
-            <div className="p-4 bg-surface-container/20 border border-outline-variant/40 rounded-xl space-y-3">
+            <div className="p-4 bg-surface-container/20 border border-outline-variant/40 rounded-xl space-y-4">
               <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider">
                 Follow-up Schedule
               </label>
               <p className="text-[10px] text-on-surface-variant/60">
-                Select days to auto-create follow-up appointment requests for receptionist confirmation.
+                Schedule follow-up appointment requests from check-in date ({followUpBaseDate}).
               </p>
+
               <div className="flex flex-wrap gap-2">
-                {FOLLOW_UP_PRESETS.map((day) => (
+                {(['none', 'offset', 'consecutive'] as const).map((mode) => (
                   <button
-                    key={day}
+                    key={mode}
                     type="button"
-                    onClick={() => toggleFollowUpDay(day)}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
-                      followUpDays.includes(day)
+                    onClick={() => setFollowUpMode(mode)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all capitalize ${
+                      followUpMode === mode
                         ? 'bg-primary text-white border-primary'
                         : 'border-outline-variant text-on-surface-variant hover:border-primary/40'
                     }`}
                   >
-                    {day} days
+                    {mode === 'none' ? 'None' : mode === 'offset' ? 'After N days' : 'Consecutive days'}
                   </button>
                 ))}
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    min={1}
-                    value={customFollowUpDay}
-                    onChange={(e) => setCustomFollowUpDay(e.target.value)}
-                    placeholder="Custom"
-                    className="w-16 px-2 py-1.5 bg-surface border border-outline-variant rounded-lg text-[10px]"
-                  />
-                  <button
-                    type="button"
-                    onClick={addCustomFollowUpDay}
-                    className="text-[10px] font-bold text-primary hover:underline"
-                  >
-                    Add
-                  </button>
-                </div>
               </div>
-              {followUpDays.length > 0 && (
+
+              {followUpMode === 'offset' && (
                 <div className="space-y-2">
-                  <div className="flex flex-wrap gap-2 items-center">
-                    {followUpDays.map((d) => (
-                      <span
-                        key={d}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-primary/10 text-primary border border-primary/20"
+                  <p className="text-[10px] font-semibold text-on-surface-variant">Offset from check-in</p>
+                  <div className="flex flex-wrap gap-2">
+                    {FOLLOW_UP_PRESETS.map((day) => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => toggleFollowUpDay(day)}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                          followUpOffsetDays.includes(day)
+                            ? 'bg-primary text-white border-primary'
+                            : 'border-outline-variant text-on-surface-variant hover:border-primary/40'
+                        }`}
                       >
-                        {d} days
-                        <button
-                          type="button"
-                          onClick={() => removeFollowUpDay(d)}
-                          className="hover:text-destructive"
-                          aria-label={`Remove ${d} day follow-up`}
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
+                        {day}d → {offsetDatePreview(followUpBaseDate, day)}
+                      </button>
                     ))}
-                    <button
-                      type="button"
-                      onClick={clearFollowUpDays}
-                      className="text-[10px] font-bold text-on-surface-variant hover:text-destructive underline"
-                    >
-                      Clear all
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={1}
+                        value={customFollowUpDay}
+                        onChange={(e) => setCustomFollowUpDay(e.target.value)}
+                        placeholder="Custom"
+                        className="w-16 px-2 py-1.5 bg-surface border border-outline-variant rounded-lg text-[10px]"
+                      />
+                      <button type="button" onClick={addCustomFollowUpDay} className="text-[10px] font-bold text-primary hover:underline">
+                        Add
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-[10px] text-primary font-semibold">
-                    Will create {followUpDays.length} follow-up request{followUpDays.length > 1 ? 's' : ''} on:{' '}
-                    {followUpDays.map((d) => `${d}d`).join(', ')}
-                  </p>
+                  {followUpOffsetDays.length > 0 && (
+                    <div className="flex flex-wrap gap-2 items-center">
+                      {followUpOffsetDays.map((d) => (
+                        <span key={d} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
+                          {d}d ({offsetDatePreview(followUpBaseDate, d)})
+                          <button type="button" onClick={() => removeFollowUpDay(d)} className="hover:text-destructive" aria-label={`Remove ${d} day follow-up`}>
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                      <button type="button" onClick={clearFollowUpDays} className="text-[10px] font-bold text-on-surface-variant hover:text-destructive underline">
+                        Clear
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
+
+              {followUpMode === 'consecutive' && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-semibold text-on-surface-variant">Back-to-back daily appointments</p>
+                  <div className="flex flex-wrap gap-3 items-end">
+                    <div>
+                      <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">Number of days</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={consecutiveCountInput}
+                        onChange={(e) => setConsecutiveCountInput(e.target.value)}
+                        className="w-20 px-2 py-1.5 bg-surface border border-outline-variant rounded-lg text-[10px]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-semibold text-on-surface-variant uppercase mb-1">Start date</label>
+                      <input
+                        type="date"
+                        value={consecutiveStartDate}
+                        onChange={(e) => setConsecutiveStartDate(e.target.value)}
+                        className="px-2 py-1.5 bg-surface border border-outline-variant rounded-lg text-[10px]"
+                      />
+                    </div>
+                    <button type="button" onClick={applyConsecutiveFollowUp} className="text-[10px] font-bold text-primary border border-primary/30 px-3 py-1.5 rounded-lg">
+                      Apply
+                    </button>
+                  </div>
+                  {followUpPreviews.length > 0 && (
+                    <p className="text-[10px] text-primary font-semibold">
+                      Preview: {followUpPreviews.map((p) => p.preferredDate).join(', ')}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <input
                 type="text"
                 {...register('followUpRecommendation')}
@@ -1062,6 +1305,18 @@ export default function ConsultationWorkspaceClient({
               <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Prescription (Rx)</h3>
               <p className="text-[10px] text-on-surface-variant/60 mt-1">Medicines and items to dispense at checkout.</p>
             </div>
+
+            <label className="flex items-center gap-2 p-3 rounded-xl border border-outline-variant/40 bg-surface-container/20 cursor-pointer">
+              <input
+                type="checkbox"
+                {...register('noPrescriptionNeeded')}
+                className="rounded border-outline-variant"
+              />
+              <span className="text-xs font-semibold text-on-surface">No prescription needed for this visit</span>
+            </label>
+
+            {!noPrescriptionNeeded && (
+            <>
             <div className="flex items-center justify-between border-b border-outline-variant/30 pb-4">
               <h4 className="text-xs font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5">
                 <FileCheck2 className="w-4 h-4 text-primary" />
@@ -1113,10 +1368,12 @@ export default function ConsultationWorkspaceClient({
                     <div className="col-span-12 sm:col-span-8 grid grid-cols-4 gap-2">
                       <div className="col-span-2">
                         <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
-                          Medicine Name
+                          <RequiredLabel>Medicine Name</RequiredLabel>
                         </label>
                         <input
                           type="text"
+                          data-soap-tab="Rx"
+                          data-soap-field="prescription-medicine"
                           {...register(`prescriptionItems.${idx}.medicineName`)}
                           placeholder="e.g. Amoxicillin"
                           className="w-full px-2.5 py-1.5 glass-panel border border-outline-variant rounded-lg text-[10px] text-on-surface outline-none"
@@ -1125,10 +1382,12 @@ export default function ConsultationWorkspaceClient({
                       </div>
                       <div>
                         <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
-                          Dosage
+                          <RequiredLabel>Dosage</RequiredLabel>
                         </label>
                         <input
                           type="text"
+                          data-soap-tab="Rx"
+                          data-soap-field="prescription-dosage"
                           {...register(`prescriptionItems.${idx}.dosage`)}
                           placeholder="e.g. 5ml"
                           className="w-full px-2.5 py-1.5 glass-panel border border-outline-variant rounded-lg text-[10px] text-on-surface outline-none"
@@ -1137,10 +1396,12 @@ export default function ConsultationWorkspaceClient({
                       </div>
                       <div>
                         <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
-                          Qty
+                          <RequiredLabel>Qty</RequiredLabel>
                         </label>
                         <input
                           type="number"
+                          data-soap-tab="Rx"
+                          data-soap-field="prescription-qty"
                           {...register(`prescriptionItems.${idx}.quantityRequested`, { valueAsNumber: true })}
                           className="w-full px-2.5 py-1.5 glass-panel border border-outline-variant rounded-lg text-[10px] text-on-surface outline-none font-bold"
                           min={1}
@@ -1152,10 +1413,12 @@ export default function ConsultationWorkspaceClient({
                     <div className="col-span-12 grid grid-cols-12 gap-2 mt-2 pt-2 border-t border-outline-variant/25">
                       <div className="col-span-5">
                         <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
-                          Frequency
+                          <RequiredLabel>Frequency</RequiredLabel>
                         </label>
                         <input
                           type="text"
+                          data-soap-tab="Rx"
+                          data-soap-field="prescription-frequency"
                           {...register(`prescriptionItems.${idx}.frequency`)}
                           placeholder="e.g. Twice daily"
                           className="w-full px-2 py-1 glass-panel border border-outline-variant rounded-lg text-[10px] text-on-surface outline-none"
@@ -1164,10 +1427,12 @@ export default function ConsultationWorkspaceClient({
                       </div>
                       <div className="col-span-4">
                         <label className="block text-[9px] font-bold text-on-surface-variant/40 uppercase mb-1">
-                          Duration
+                          <RequiredLabel>Duration</RequiredLabel>
                         </label>
                         <input
                           type="text"
+                          data-soap-tab="Rx"
+                          data-soap-field="prescription-duration"
                           {...register(`prescriptionItems.${idx}.duration`)}
                           placeholder="e.g. 7 days"
                           className="w-full px-2 py-1 glass-panel border border-outline-variant rounded-lg text-[10px] text-on-surface outline-none"
@@ -1201,8 +1466,10 @@ export default function ConsultationWorkspaceClient({
               </div>
             ) : (
               <p className="text-xs text-on-surface-variant/50 italic text-center py-4 bg-surface-container/10 rounded-xl border border-outline-variant/20">
-                No items prescribed. Click "Add Medicine" to prescribe items.
+                No items prescribed. Click &quot;Add Medicine&quot; to prescribe items.
               </p>
+            )}
+            </>
             )}
           </div>
           )}

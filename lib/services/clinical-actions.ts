@@ -9,6 +9,8 @@ import {
 import { writeAuditLog } from '@/lib/services/audit';
 import { CompleteConsultationSchema, EntityIdSchema } from '@/lib/validations/schemas';
 import { z } from 'zod';
+import type { FollowUpScheduleInput } from '@/lib/consultation/follow-up-schedule';
+import { followUpPreviewsToDates, computeFollowUpPreviews } from '@/lib/consultation/follow-up-schedule';
 
 const ConsultationDraftSchema = z.record(z.string(), z.unknown());
 
@@ -76,16 +78,6 @@ export async function saveConsultationDraftAction(visitId: string, draft: unknow
   }
 }
 
-function addDays(base: Date, days: number): Date {
-  const d = new Date(base);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
-function formatDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
 function formatTime(d: Date): string {
   return d.toTimeString().slice(0, 8);
 }
@@ -102,11 +94,13 @@ async function createFollowUpAppointments(
     checked_in_at: string;
     appointment_id: string | null;
   },
-  followUpDays: number[],
+  schedule: FollowUpScheduleInput,
   followUpNote: string | null,
   diagnosis: string
 ) {
-  if (!followUpDays.length) return;
+  const baseDate = visit.checked_in_at.slice(0, 10);
+  const previews = computeFollowUpPreviews(schedule, baseDate);
+  if (!previews.length) return;
 
   const { data: patient } = await supabase
     .from('patients')
@@ -147,9 +141,7 @@ async function createFollowUpAppointments(
       .map((a) => a.preferred_date as string)
   );
 
-  const desiredDates = new Set(
-    followUpDays.map((days) => formatDate(addDays(new Date(), days)))
-  );
+  const desiredDates = new Set(followUpPreviewsToDates(previews));
 
   // Cancel stale requested follow-ups that are no longer selected
   for (const appt of existingFollowUps || []) {
@@ -158,14 +150,13 @@ async function createFollowUpAppointments(
     }
   }
 
-  for (const days of followUpDays) {
-    const followDate = addDays(new Date(), days);
-    const preferredDate = formatDate(followDate);
+  for (const preview of previews) {
+    const preferredDate = preview.preferredDate;
     if (existingDates.has(preferredDate)) continue;
 
     const reason = followUpNote?.trim()
-      ? `Follow-up (${days}d): ${followUpNote}`
-      : `Follow-up check (${days} days) — ${diagnosis}`;
+      ? `${preview.label}: ${followUpNote}`
+      : `${preview.label} — ${diagnosis}`;
 
     const { data: appt, error } = await supabase.from('appointments').insert({
       organization_id: ctx.organizationId,
@@ -198,7 +189,7 @@ async function createFollowUpAppointments(
         action: 'APPOINTMENT_CREATED',
         resourceType: 'APPOINTMENT',
         resourceId: appt.id,
-        afterData: { status: 'requested', follow_up_of_visit_id: visit.id, days },
+        afterData: { status: 'requested', follow_up_of_visit_id: visit.id, date: preferredDate },
       });
     }
   }
@@ -256,7 +247,12 @@ export async function completeConsultationAction(payload: unknown) {
       post_op_medication: parsed.postOpMedication || null,
       internal_notes: parsed.internalNotes || null,
       follow_up_recommendation: parsed.followUpRecommendation || null,
-      follow_up_days: parsed.followUpDays?.length ? parsed.followUpDays : null,
+      follow_up_days:
+        parsed.followUpMode === 'offset' && (parsed.followUpOffsetDays?.length ?? 0) > 0
+          ? parsed.followUpOffsetDays
+          : parsed.followUpDays?.length
+            ? parsed.followUpDays
+            : null,
       temperature_c: numOrNull(parsed.temperatureC),
       heart_rate_bpm: numOrNull(parsed.heartRateBpm),
       respiratory_rate: numOrNull(parsed.respiratoryRate),
@@ -372,12 +368,26 @@ export async function completeConsultationAction(payload: unknown) {
     }
 
     // Auto-create follow-up appointments
-    if (parsed.followUpDays && parsed.followUpDays.length > 0) {
+    if (parsed.followUpMode && parsed.followUpMode !== 'none') {
+      const schedule: FollowUpScheduleInput = {
+        mode: parsed.followUpMode,
+        offsetDays: parsed.followUpOffsetDays ?? [],
+        consecutive: parsed.followUpConsecutive,
+      };
       await createFollowUpAppointments(
         supabase,
         ctx,
         visit,
-        parsed.followUpDays,
+        schedule,
+        parsed.followUpRecommendation || null,
+        parsed.diagnosis
+      );
+    } else if (parsed.followUpDays && parsed.followUpDays.length > 0) {
+      await createFollowUpAppointments(
+        supabase,
+        ctx,
+        visit,
+        { mode: 'offset', offsetDays: parsed.followUpDays },
         parsed.followUpRecommendation || null,
         parsed.diagnosis
       );
