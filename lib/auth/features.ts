@@ -85,6 +85,7 @@ export function isCameraFeedEnabled(
 /** Nav route → required feature (undefined = no feature gate) */
 export const ROUTE_FEATURES: Record<string, Feature | undefined> = {
   '/dashboard/appointments': 'appointments',
+  '/dashboard/schedule': 'appointments',
   '/dashboard/walk-ins': 'appointments',
   '/dashboard/inventory': 'inventory',
   '/dashboard/invoices': 'sales',

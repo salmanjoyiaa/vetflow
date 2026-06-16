@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   confirmAppointmentAction,
@@ -24,8 +24,10 @@ import {
   User,
   RotateCcw,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
+import DateRangeQuickFilter from '@/components/dashboard/DateRangeQuickFilter';
+import { resolveDateFromParam } from '@/lib/utils/date-filters';
 
 interface Doctor {
   id: string;
@@ -473,12 +475,16 @@ export default function AppointmentsListClient({
   userRole,
 }: AppointmentsListClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   useVisibilityPolling(20000, true);
   const [activeTab, setActiveTab] = useState<TabKey>('upcoming');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [selectedDoctorMap, setSelectedDoctorMap] = useState<Record<string, string>>({});
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState('');
+  const urlDate = searchParams.get('date');
+  const [dateFilter, setDateFilter] = useState(() =>
+    urlDate ? resolveDateFromParam(urlDate) : ''
+  );
   const [search, setSearch] = useState('');
   const [rescheduleId, setRescheduleId] = useState<string | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState('');
@@ -489,6 +495,12 @@ export default function AppointmentsListClient({
   const [editTime, setEditTime] = useState('');
   const [checkInNotice, setCheckInNotice] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (urlDate) {
+      setDateFilter(resolveDateFromParam(urlDate));
+    }
+  }, [urlDate]);
 
   const tabCounts = useMemo(() => ({
     upcoming: initialAppointments.filter((a) => UPCOMING_STATUSES.includes(a.status)).length,
@@ -635,12 +647,16 @@ export default function AppointmentsListClient({
               </option>
             ))}
           </select>
-          <input
-            type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="px-3 py-2 bg-surface-container/40 border border-outline-variant/60 rounded-xl text-xs"
-          />
+          <DateRangeQuickFilter showWeek={false} className="flex-1" />
+          {dateFilter && (
+            <button
+              type="button"
+              onClick={() => setDateFilter('')}
+              className="text-[10px] font-bold text-on-surface-variant underline"
+            >
+              Clear date
+            </button>
+          )}
         </div>
       </div>
 

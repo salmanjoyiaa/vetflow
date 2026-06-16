@@ -34,6 +34,10 @@ export const metadata: Metadata = {
     description:
       'Secure multi-tenant clinic platform — appointments, consult, billing, and inventory for modern care teams.',
   },
+  icons: {
+    icon: '/icon',
+    apple: '/apple-icon',
+  },
 };
 
 export default function RootLayout({

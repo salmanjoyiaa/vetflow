@@ -18,6 +18,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
+import DateRangeQuickFilter from '@/components/dashboard/DateRangeQuickFilter';
 import VisitStatusBadge from '@/components/dashboard/VisitStatusBadge';
 import { isConsultPaused } from '@/lib/utils/visit-status';
 
@@ -104,6 +105,8 @@ export default function ReceptionistHomeClient({
 
   return (
     <div className="space-y-6">
+      <DateRangeQuickFilter showWeek={false} />
+
       {readyForCheckout > 0 && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
           <div>

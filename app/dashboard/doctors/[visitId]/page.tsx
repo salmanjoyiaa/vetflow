@@ -40,6 +40,7 @@ export default async function ConsultationRoomPage({
       consult_paused_at,
       consult_pause_reason,
       consult_pause_accumulated_sec,
+      consult_draft,
       pet_id:patient_id,
       is_emergency,
       triage_notes,
@@ -254,6 +255,7 @@ export default async function ConsultationRoomPage({
         consultPausedAt={visit.consult_paused_at as string | null}
         consultPauseReason={visit.consult_pause_reason as string | null}
         consultPauseAccumulatedSec={(visit.consult_pause_accumulated_sec as number) ?? 0}
+        initialDraft={(visit.consult_draft as import('@/lib/validations/schemas').CompleteConsultationInput | null) ?? null}
       />
 
     </div>

@@ -11,12 +11,15 @@ import { globalClinicSearchAction } from '@/lib/services/search-actions';
 import LogoutButton from '@/components/ui/premium/LogoutButton';
 import ImpersonationBanner from '@/components/layout/ImpersonationBanner';
 import DashboardPageTransition from '@/components/layout/DashboardPageTransition';
+import DashboardNavLink from '@/components/layout/DashboardNavLink';
+import NavigationLoadingOverlay from '@/components/layout/NavigationLoadingOverlay';
 import { CurrencyProvider } from '@/lib/context/CurrencyContext';
 import type { LucideIcon } from 'lucide-react';
 import {
   Stethoscope,
   LayoutDashboard,
   Calendar,
+  CalendarDays,
   ClipboardList,
   Users,
   FileText,
@@ -46,6 +49,7 @@ interface NavItem {
 const ALL_NAV_ITEMS: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
+  { name: 'Schedule', href: '/dashboard/schedule', icon: CalendarDays },
   { name: 'Walk-ins', href: '/dashboard/walk-ins', icon: ClipboardList },
   { name: 'Customers', href: '/dashboard/customers', icon: Users },
   { name: 'Pets', href: '/dashboard/pets', icon: Heart },
@@ -237,7 +241,7 @@ export default function DashboardShellClient({
                   <ul className="divide-y divide-outline-variant/50">
                     {searchResults?.map((r) => (
                       <li key={`${r.type}-${r.id}`}>
-                        <Link
+                        <DashboardNavLink
                           href={r.href}
                           onClick={() => setIsSearchOpen(false)}
                           className="block px-3 py-2.5 hover:bg-surface-container-high rounded-lg"
@@ -253,7 +257,7 @@ export default function DashboardShellClient({
                           >
                             {r.phoneMatch ? `Phone match: ${r.subtitle}` : r.subtitle}
                           </p>
-                        </Link>
+                        </DashboardNavLink>
                       </li>
                     ))}
                   </ul>
@@ -284,20 +288,20 @@ export default function DashboardShellClient({
               const isActive = isNavActive(pathname, item.href);
               const Icon = item.icon;
               return (
-                <Link key={item.name} href={item.href} className={`${navLinkClass(isActive)} relative`}>
+                <DashboardNavLink key={item.name} href={item.href} className={`${navLinkClass(isActive)} relative`}>
                   {isActive && (
                     <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full" />
                   )}
                   <Icon className="w-4 h-4" />
                   {item.name}
-                </Link>
+                </DashboardNavLink>
               );
             })}
           </nav>
 
           <div className="p-4 border-t border-outline-variant">
             <div className="flex items-center justify-between gap-2">
-              <Link href="/dashboard/profile" className="flex items-center gap-3 min-w-0 hover:opacity-90 transition-opacity">
+              <DashboardNavLink href="/dashboard/profile" className="flex items-center gap-3 min-w-0 hover:opacity-90 transition-opacity">
                 <UserAvatar hasAvatar={session.hasAvatar} initial={avatarInitial} />
                 <div className="min-w-0">
                   <span className="text-[11px] font-bold text-on-surface block truncate">
@@ -307,7 +311,7 @@ export default function DashboardShellClient({
                     {formatRoleLabel(session.role)}
                   </span>
                 </div>
-              </Link>
+              </DashboardNavLink>
               <LogoutButton className="text-on-surface-variant hover:text-destructive p-1.5 rounded-lg hover:bg-surface-container-high transition-colors" />
             </div>
           </div>
@@ -340,7 +344,7 @@ export default function DashboardShellClient({
                   const isActive = isNavActive(pathname, item.href);
                   const Icon = item.icon;
                   return (
-                    <Link
+                    <DashboardNavLink
                       key={item.name}
                       href={item.href}
                       className={navLinkClass(isActive)}
@@ -348,14 +352,14 @@ export default function DashboardShellClient({
                     >
                       <Icon className="w-4 h-4" />
                       {item.name}
-                    </Link>
+                    </DashboardNavLink>
                   );
                 })}
               </nav>
 
               <div className="p-4 border-t border-outline-variant">
                 <div className="flex items-center justify-between gap-2">
-                  <Link href="/dashboard/profile" className="flex items-center gap-3 min-w-0" onClick={() => setIsMobileMenuOpen(false)}>
+                  <DashboardNavLink href="/dashboard/profile" className="flex items-center gap-3 min-w-0" onClick={() => setIsMobileMenuOpen(false)}>
                     <UserAvatar hasAvatar={session.hasAvatar} initial={avatarInitial} />
                     <div className="min-w-0">
                       <span className="text-[11px] font-bold text-on-surface block truncate">
@@ -365,7 +369,7 @@ export default function DashboardShellClient({
                         {formatRoleLabel(session.role)}
                       </span>
                     </div>
-                  </Link>
+                  </DashboardNavLink>
                   <LogoutButton className="text-on-surface-variant hover:text-destructive p-1.5 rounded-lg hover:bg-surface-container-high transition-colors" />
                 </div>
               </div>
@@ -448,7 +452,8 @@ export default function DashboardShellClient({
             </div>
           </header>
 
-          <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
+          <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto relative">
+            <NavigationLoadingOverlay />
             <CurrencyProvider currency={session.currency}>
               <DashboardPageTransition>{children}</DashboardPageTransition>
             </CurrencyProvider>

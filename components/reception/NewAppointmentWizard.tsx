@@ -36,6 +36,9 @@ export interface NewAppointmentWizardProps {
   initialPhone?: string;
   initialCustomerId?: string;
   initialPetId?: string;
+  initialPreferredDate?: string;
+  initialPreferredTime?: string;
+  initialDoctorId?: string;
 }
 
 export default function NewAppointmentWizard({
@@ -46,6 +49,9 @@ export default function NewAppointmentWizard({
   initialPhone = '',
   initialCustomerId,
   initialPetId,
+  initialPreferredDate = '',
+  initialPreferredTime = '',
+  initialDoctorId,
 }: NewAppointmentWizardProps) {
   const router = useRouter();
   const lookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,9 +70,9 @@ export default function NewAppointmentWizard({
   const [petSpecies, setPetSpecies] = useState('Dog');
   const [petBreed, setPetBreed] = useState('');
 
-  const [preferredDate, setPreferredDate] = useState('');
-  const [preferredTime, setPreferredTime] = useState('');
-  const [doctorId, setDoctorId] = useState(doctors[0]?.id || '');
+  const [preferredDate, setPreferredDate] = useState(initialPreferredDate);
+  const [preferredTime, setPreferredTime] = useState(initialPreferredTime);
+  const [doctorId, setDoctorId] = useState(initialDoctorId || doctors[0]?.id || '');
   const [reason, setReason] = useState('');
   const [intakeNotes, setIntakeNotes] = useState('');
   const [isEmergency, setIsEmergency] = useState(false);
@@ -142,8 +148,12 @@ export default function NewAppointmentWizard({
   useEffect(() => {
     if (!isOpen) {
       setPrefillDone(false);
+      return;
     }
-  }, [isOpen]);
+    if (initialPreferredDate) setPreferredDate(initialPreferredDate);
+    if (initialPreferredTime) setPreferredTime(initialPreferredTime);
+    if (initialDoctorId) setDoctorId(initialDoctorId);
+  }, [isOpen, initialPreferredDate, initialPreferredTime, initialDoctorId]);
 
   const handlePhoneChange = (val: string) => {
     setPhone(val);

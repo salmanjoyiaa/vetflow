@@ -58,6 +58,7 @@ import {
 import type { UserSessionDetails } from '@/lib/services/auth';
 import { getTimeGreeting } from '@/lib/utils/greeting';
 import { normalizeOneToOne } from '@/lib/supabase/embed';
+import { resolveDateFromParam } from '@/lib/utils/date-filters';
 import DashboardQabShell from '@/components/dashboard/DashboardQabShell';
 import StaffDashboardGate from '@/components/dashboard/StaffDashboardGate';
 import StaffAttendanceOverviewPanel, {
@@ -81,7 +82,13 @@ type VisitRow = {
   customers: { first_name: string; last_name: string } | null;
 };
 
-export default async function DashboardOverview() {
+export default async function DashboardOverview({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
+  const { date: dateParam } = await searchParams;
+  const filterDate = resolveDateFromParam(dateParam);
   const ctx = await resolveServerAuthContext();
   if (!ctx) redirect('/login');
   if (ctx.isSuperAdmin && !ctx.isImpersonating) redirect('/super-admin/dashboard');
@@ -121,7 +128,7 @@ export default async function DashboardOverview() {
     );
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = filterDate;
 
   let todayAppointments = 0;
   let waitingWalkIns = 0;

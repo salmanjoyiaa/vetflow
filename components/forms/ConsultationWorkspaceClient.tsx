@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CompleteConsultationSchema, type CompleteConsultationInput } from '@/lib/validations/schemas';
-import { completeConsultationAction } from '@/lib/services/clinical-actions';
+import { completeConsultationAction, saveConsultationDraftAction } from '@/lib/services/clinical-actions';
 import { pauseConsultationAction, resumeConsultationAction } from '@/lib/services/visit-actions';
 import ConsultationLabsDocsPanel from '@/components/forms/ConsultationLabsDocsPanel';
 import { SoapTabBar, SOAP_TAB_ORDER, getSoapTabTitle, type SoapTab } from '@/components/consultation/SoapTabBar';
@@ -104,6 +104,7 @@ interface ConsultationWorkspaceClientProps {
   consultPausedAt?: string | null;
   consultPauseReason?: string | null;
   consultPauseAccumulatedSec?: number;
+  initialDraft?: Partial<CompleteConsultationInput> | null;
 }
 
 export default function ConsultationWorkspaceClient({
@@ -125,11 +126,34 @@ export default function ConsultationWorkspaceClient({
   consultPausedAt: initialPausedAt = null,
   consultPauseReason: initialPauseReason = null,
   consultPauseAccumulatedSec = 0,
+  initialDraft = null,
 }: ConsultationWorkspaceClientProps) {
   const router = useRouter();
   const [activeSoapTab, setActiveSoapTab] = useState<SoapTab>('S');
+  const [maxUnlockedIndex, setMaxUnlockedIndex] = useState(() => {
+    if (!initialDraft) return 0;
+    let max = 0;
+    if ((initialDraft.chiefComplaint?.trim().length ?? 0) >= 3) max = 1;
+    if (
+      max >= 1 &&
+      (Boolean(initialDraft.examinationFindings?.trim()) ||
+        initialDraft.temperatureC != null ||
+        initialDraft.heartRateBpm != null)
+    ) {
+      max = 2;
+    }
+    if (max >= 2 && (initialDraft.diagnosis?.trim().length ?? 0) >= 3) max = 3;
+    if (max >= 3 && (initialDraft.treatmentPlan?.trim().length ?? 0) >= 3) max = 4;
+    if (max >= 4) max = 5;
+    return Math.min(max, SOAP_TAB_ORDER.length - 1);
+  });
+  const [tabError, setTabError] = useState<string | null>(null);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [visitType, setVisitType] = useState<'standard' | 'lab' | 'surgery'>('standard');
+  const [visitType, setVisitType] = useState<'standard' | 'lab' | 'surgery'>(
+    initialDraft?.visitType ?? 'standard'
+  );
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [followUpDays, setFollowUpDays] = useState<number[]>([]);
@@ -146,26 +170,31 @@ export default function ConsultationWorkspaceClient({
     handleSubmit,
     setValue,
     watch,
+    getValues,
     formState: { errors },
   } = useForm<CompleteConsultationInput>({
     resolver: zodResolver(CompleteConsultationSchema),
     defaultValues: {
       visitId,
-      visitType: 'standard',
-      chiefComplaint: visitReason,
-      history: '',
-      examinationFindings: '',
-      diagnosis: '',
-      treatmentPlan: '',
-      internalNotes: '',
-      followUpRecommendation: '',
-      followUpDays: [],
-      temperatureC: undefined,
-      heartRateBpm: undefined,
-      respiratoryRate: undefined,
-      weightKg: pet.weightKg ?? undefined,
-      prescriptionItems: [],
-      serviceItems: catalogServices.length > 0
+      visitType: initialDraft?.visitType ?? 'standard',
+      chiefComplaint: initialDraft?.chiefComplaint ?? visitReason,
+      history: initialDraft?.history ?? '',
+      examinationFindings: initialDraft?.examinationFindings ?? '',
+      diagnosis: initialDraft?.diagnosis ?? '',
+      treatmentPlan: initialDraft?.treatmentPlan ?? '',
+      internalNotes: initialDraft?.internalNotes ?? '',
+      followUpRecommendation: initialDraft?.followUpRecommendation ?? '',
+      followUpDays: initialDraft?.followUpDays ?? [],
+      procedureNotes: initialDraft?.procedureNotes ?? '',
+      postOpMedication: initialDraft?.postOpMedication ?? '',
+      temperatureC: initialDraft?.temperatureC ?? undefined,
+      heartRateBpm: initialDraft?.heartRateBpm ?? undefined,
+      respiratoryRate: initialDraft?.respiratoryRate ?? undefined,
+      weightKg: initialDraft?.weightKg ?? pet.weightKg ?? undefined,
+      prescriptionItems: initialDraft?.prescriptionItems ?? [],
+      serviceItems: initialDraft?.serviceItems?.length
+        ? initialDraft.serviceItems
+        : catalogServices.length > 0
         ? [{
             serviceId: catalogServices.find((s) => s.name.toLowerCase().includes('consult'))?.id || catalogServices[0].id,
             name: catalogServices.find((s) => s.name.toLowerCase().includes('consult'))?.name || catalogServices[0].name,
@@ -205,18 +234,96 @@ export default function ConsultationWorkspaceClient({
     Rx: prescriptionItemsWatch.length > 0,
   };
 
-  const goToNextSoapTab = () => {
+  const goToNextSoapTab = async () => {
     const idx = SOAP_TAB_ORDER.indexOf(activeSoapTab);
-    if (idx < SOAP_TAB_ORDER.length - 1) {
-      setActiveSoapTab(SOAP_TAB_ORDER[idx + 1]);
-    }
+    if (idx >= SOAP_TAB_ORDER.length - 1) return;
+    await validateAndAdvanceTab(SOAP_TAB_ORDER[idx + 1]);
   };
 
   const goToPrevSoapTab = () => {
     const idx = SOAP_TAB_ORDER.indexOf(activeSoapTab);
     if (idx > 0) {
+      setTabError(null);
       setActiveSoapTab(SOAP_TAB_ORDER[idx - 1]);
     }
+  };
+
+  const validateTab = (tab: SoapTab): string | null => {
+    const values = getValues();
+    switch (tab) {
+      case 'S':
+        if (!values.chiefComplaint?.trim() || values.chiefComplaint.trim().length < 3) {
+          return 'Enter a chief complaint (at least 3 characters) before continuing.';
+        }
+        return null;
+      case 'O': {
+        const hasExam = Boolean(values.examinationFindings?.trim());
+        const hasVital =
+          values.temperatureC != null ||
+          values.heartRateBpm != null ||
+          values.respiratoryRate != null ||
+          values.weightKg != null;
+        if (!hasExam && !hasVital) {
+          return 'Add examination findings or at least one vital before continuing.';
+        }
+        return null;
+      }
+      case 'A':
+        if (!values.diagnosis?.trim() || values.diagnosis.trim().length < 3) {
+          return 'Enter a diagnosis (at least 3 characters) before continuing.';
+        }
+        return null;
+      case 'P':
+        if (!values.treatmentPlan?.trim() || values.treatmentPlan.trim().length < 3) {
+          return 'Enter a treatment plan (at least 3 characters) before continuing.';
+        }
+        return null;
+      case 'D':
+        if (visitType === 'lab' && labOrders.length === 0) {
+          return 'Lab-focused visit: order at least one lab test before continuing.';
+        }
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const validateAndAdvanceTab = async (targetTab: SoapTab) => {
+    const currentIdx = SOAP_TAB_ORDER.indexOf(activeSoapTab);
+    const targetIdx = SOAP_TAB_ORDER.indexOf(targetTab);
+
+    if (targetIdx <= currentIdx) {
+      setTabError(null);
+      setActiveSoapTab(targetTab);
+      return;
+    }
+    if (targetIdx > maxUnlockedIndex + 1) return;
+
+    const err = validateTab(activeSoapTab);
+    if (err) {
+      setTabError(err);
+      return;
+    }
+
+    setSavingDraft(true);
+    setTabError(null);
+    const res = await saveConsultationDraftAction(visitId, getValues());
+    setSavingDraft(false);
+
+    if (!res.success) {
+      setTabError(res.error || 'Failed to save draft.');
+      return;
+    }
+
+    setDraftSaved(true);
+    setTimeout(() => setDraftSaved(false), 2500);
+    const nextUnlocked = Math.max(maxUnlockedIndex, currentIdx + 1);
+    setMaxUnlockedIndex(nextUnlocked);
+    setActiveSoapTab(targetIdx <= nextUnlocked ? targetTab : SOAP_TAB_ORDER[nextUnlocked]);
+  };
+
+  const handleSoapTabChange = (tab: SoapTab) => {
+    void validateAndAdvanceTab(tab);
   };
 
   const jumpToErrorTab = () => {
@@ -583,7 +690,19 @@ export default function ConsultationWorkspaceClient({
           </div>
 
           {/* SOAPDRx TAB BAR */}
-          <SoapTabBar active={activeSoapTab} onChange={setActiveSoapTab} completed={soapCompleted} />
+          <SoapTabBar
+            active={activeSoapTab}
+            onChange={handleSoapTabChange}
+            completed={soapCompleted}
+            maxUnlockedIndex={maxUnlockedIndex}
+            draftSaved={draftSaved}
+          />
+
+          {tabError && (
+            <div className="p-3 bg-destructive/10 border border-destructive/30 text-destructive text-xs rounded-xl">
+              {tabError}
+            </div>
+          )}
 
           {/* S — Subjective */}
           {activeSoapTab === 'S' && (
@@ -1093,8 +1212,8 @@ export default function ConsultationWorkspaceClient({
                 </span>
                 <button
                   type="button"
-                  onClick={goToNextSoapTab}
-                  disabled={activeSoapTab === 'Rx'}
+                  onClick={() => void goToNextSoapTab()}
+                  disabled={activeSoapTab === 'Rx' || savingDraft}
                   className="px-4 py-2 rounded-xl text-xs font-bold border border-outline-variant text-on-surface disabled:opacity-40"
                 >
                   Next

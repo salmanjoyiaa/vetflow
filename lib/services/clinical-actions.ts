@@ -7,7 +7,74 @@ import {
   resolveServerAuthContext,
 } from '@/lib/auth/context';
 import { writeAuditLog } from '@/lib/services/audit';
-import { CompleteConsultationSchema } from '@/lib/validations/schemas';
+import { CompleteConsultationSchema, EntityIdSchema } from '@/lib/validations/schemas';
+import { z } from 'zod';
+
+const ConsultationDraftSchema = z.record(z.string(), z.unknown());
+
+/**
+ * Persists in-progress SOAP form state on visits.consult_draft for resume.
+ */
+export async function saveConsultationDraftAction(visitId: string, draft: unknown) {
+  try {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
+    }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'clinical_queue');
+
+    const parsedVisitId = EntityIdSchema.parse(visitId);
+    const parsedDraft = ConsultationDraftSchema.parse(draft);
+
+    const supabase = await createClient();
+
+    const { data: visit, error: visitError } = await supabase
+      .from('visits')
+      .select(`
+        id,
+        status,
+        branch_id,
+        visit_assignments!inner ( doctor_id )
+      `)
+      .eq('id', parsedVisitId)
+      .eq('organization_id', ctx.organizationId)
+      .eq('visit_assignments.doctor_id', ctx.userId)
+      .single();
+
+    if (visitError || !visit) {
+      throw new Error('Visit not found or you are not the assigned doctor.');
+    }
+    if (visit.status !== 'consulting') {
+      throw new Error('Draft can only be saved during an active consultation.');
+    }
+
+    const { error } = await supabase
+      .from('visits')
+      .update({ consult_draft: parsedDraft })
+      .eq('id', parsedVisitId);
+
+    if (error) {
+      throw new Error(error.message || 'Failed to save draft.');
+    }
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId!,
+      branchId: visit.branch_id,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'doctor',
+      action: 'CLINICAL_NOTE_UPDATED',
+      resourceType: 'VISIT',
+      resourceId: parsedVisitId,
+      afterData: { consult_draft_saved: true },
+    });
+
+    return { success: true as const };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to save draft.';
+    return { success: false as const, error: message };
+  }
+}
 
 function addDays(base: Date, days: number): Date {
   const d = new Date(base);

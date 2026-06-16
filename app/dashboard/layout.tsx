@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { resolveServerAuthContext } from '@/lib/auth/context';
 import DashboardShellClient from '@/components/layout/DashboardShellClient';
+import { NavigationLoadingProvider } from '@/components/layout/NavigationLoadingProvider';
+import FaviconLoadingIndicator from '@/components/layout/FaviconLoadingIndicator';
 
 export default async function DashboardLayout({
   children,
@@ -22,12 +24,15 @@ export default async function DashboardLayout({
   }
 
   return (
-    <DashboardShellClient
-      session={ctx}
-      activeBranchId={ctx.activeBranchId ?? undefined}
-    >
-      {children}
-    </DashboardShellClient>
+    <NavigationLoadingProvider>
+      <FaviconLoadingIndicator />
+      <DashboardShellClient
+        session={ctx}
+        activeBranchId={ctx.activeBranchId ?? undefined}
+      >
+        {children}
+      </DashboardShellClient>
+    </NavigationLoadingProvider>
   );
 }
 
