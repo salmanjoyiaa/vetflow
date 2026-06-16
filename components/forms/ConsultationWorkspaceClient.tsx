@@ -7,6 +7,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CompleteConsultationSchema, type CompleteConsultationInput } from '@/lib/validations/schemas';
 import { completeConsultationAction } from '@/lib/services/clinical-actions';
+import { pauseConsultationAction, resumeConsultationAction } from '@/lib/services/visit-actions';
 import ConsultationLabsDocsPanel from '@/components/forms/ConsultationLabsDocsPanel';
 import { SoapTabBar, SOAP_TAB_ORDER, getSoapTabTitle, type SoapTab } from '@/components/consultation/SoapTabBar';
 import {
@@ -24,6 +25,8 @@ import {
   History,
   CheckCircle,
   X,
+  Pause,
+  Play,
 } from 'lucide-react';
 
 interface Product {
@@ -97,6 +100,10 @@ interface ConsultationWorkspaceClientProps {
   labOrders: LabOrder[];
   documents: DocumentItem[];
   previousDocuments?: DocumentItem[];
+  consultStartedAt?: string | null;
+  consultPausedAt?: string | null;
+  consultPauseReason?: string | null;
+  consultPauseAccumulatedSec?: number;
 }
 
 export default function ConsultationWorkspaceClient({
@@ -114,6 +121,10 @@ export default function ConsultationWorkspaceClient({
   labOrders,
   documents,
   previousDocuments = [],
+  consultStartedAt = null,
+  consultPausedAt: initialPausedAt = null,
+  consultPauseReason: initialPauseReason = null,
+  consultPauseAccumulatedSec = 0,
 }: ConsultationWorkspaceClientProps) {
   const router = useRouter();
   const [activeSoapTab, setActiveSoapTab] = useState<SoapTab>('S');
@@ -123,6 +134,11 @@ export default function ConsultationWorkspaceClient({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [followUpDays, setFollowUpDays] = useState<number[]>([]);
   const [customFollowUpDay, setCustomFollowUpDay] = useState('');
+  const [consultPausedAt, setConsultPausedAt] = useState<string | null>(initialPausedAt);
+  const [consultPauseReason, setConsultPauseReason] = useState<string | null>(initialPauseReason);
+  const [showPauseModal, setShowPauseModal] = useState(false);
+  const [pauseReasonInput, setPauseReasonInput] = useState('');
+  const [pauseLoading, setPauseLoading] = useState(false);
 
   const {
     register,
@@ -279,6 +295,10 @@ export default function ConsultationWorkspaceClient({
   };
 
   const onSubmit = async (data: CompleteConsultationInput) => {
+    if (consultPausedAt) {
+      setError('Resume the consultation before completing.');
+      return;
+    }
     if (visitType === 'lab' && labOrders.length === 0) {
       setError('Lab-focused visit: order at least one lab test before completing.');
       setActiveSoapTab('D');
@@ -300,6 +320,36 @@ export default function ConsultationWorkspaceClient({
     }
   };
 
+  const handlePauseConsult = async () => {
+    setPauseLoading(true);
+    setError(null);
+    const res = await pauseConsultationAction(visitId, pauseReasonInput);
+    if (res.success) {
+      setConsultPausedAt(new Date().toISOString());
+      setConsultPauseReason(pauseReasonInput.trim());
+      setShowPauseModal(false);
+      setPauseReasonInput('');
+      router.refresh();
+    } else {
+      setError(res.error || 'Failed to pause consultation.');
+    }
+    setPauseLoading(false);
+  };
+
+  const handleResumeConsult = async () => {
+    setPauseLoading(true);
+    setError(null);
+    const res = await resumeConsultationAction(visitId);
+    if (res.success) {
+      setConsultPausedAt(null);
+      setConsultPauseReason(null);
+      router.refresh();
+    } else {
+      setError(res.error || 'Failed to resume consultation.');
+    }
+    setPauseLoading(false);
+  };
+
   return (
     <div className="space-y-6">
       {isEmergency && (
@@ -319,6 +369,51 @@ export default function ConsultationWorkspaceClient({
             <h3 className="text-sm font-bold text-on-surface">Intake / initial history</h3>
           </div>
           <p className="text-xs text-on-surface-variant/80 whitespace-pre-wrap">{triageNotes}</p>
+        </div>
+      )}
+
+      {consultPausedAt && (
+        <div className="p-4 bg-violet-500/10 border border-violet-500/30 rounded-2xl flex items-start gap-3">
+          <Pause className="w-5 h-5 text-violet-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-black text-violet-300 uppercase tracking-wide">Consultation paused</p>
+            <p className="text-xs text-violet-200/80 mt-1">{consultPauseReason}</p>
+            <p className="text-[10px] text-on-surface-variant/60 mt-1">Reception can see this status. Resume when ready to continue charting.</p>
+          </div>
+        </div>
+      )}
+
+      {showPauseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 max-w-md w-full shadow-premium space-y-4">
+            <h3 className="text-sm font-bold text-on-surface">Pause consultation</h3>
+            <p className="text-xs text-on-surface-variant">Reception and clinic admin will see the paused status and your reason.</p>
+            <textarea
+              value={pauseReasonInput}
+              onChange={(e) => setPauseReasonInput(e.target.value)}
+              placeholder="e.g. Waiting for lab results, owner stepped out..."
+              rows={3}
+              className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant rounded-xl text-sm outline-none focus:border-primary"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPauseModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold border border-outline-variant"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handlePauseConsult}
+                disabled={pauseLoading || pauseReasonInput.trim().length < 3}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-violet-600 text-white disabled:opacity-50 flex items-center gap-2"
+              >
+                {pauseLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Pause
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1005,9 +1100,31 @@ export default function ConsultationWorkspaceClient({
                   Next
                 </button>
               </div>
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                {consultPausedAt ? (
+                  <button
+                    type="button"
+                    onClick={handleResumeConsult}
+                    disabled={pauseLoading || isSubmitting}
+                    className="border border-emerald-500/40 text-emerald-400 py-2.5 px-4 rounded-2xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-500/10 disabled:opacity-60"
+                  >
+                    {pauseLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                    Resume
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowPauseModal(true)}
+                    disabled={pauseLoading || isSubmitting}
+                    className="border border-violet-500/40 text-violet-300 py-2.5 px-4 rounded-2xl font-bold text-sm flex items-center gap-2 hover:bg-violet-500/10 disabled:opacity-60"
+                  >
+                    <Pause className="w-4 h-4" />
+                    Pause
+                  </button>
+                )}
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || Boolean(consultPausedAt)}
                 className="bg-primary hover:opacity-90 text-white py-2.5 px-6 rounded-2xl font-bold text-sm shadow-premium flex items-center gap-2 transition-all disabled:opacity-75"
               >
                 {isSubmitting ? (
@@ -1022,6 +1139,7 @@ export default function ConsultationWorkspaceClient({
                   </>
                 )}
               </button>
+              </div>
             </div>
           </div>
 

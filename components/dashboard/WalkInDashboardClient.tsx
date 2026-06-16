@@ -13,11 +13,11 @@ import {
   Clock,
   UserCheck,
   BriefcaseMedical,
-  Play,
   ClipboardList,
   AlertTriangle,
   Receipt,
 } from 'lucide-react';
+import VisitStatusBadge from '@/components/dashboard/VisitStatusBadge';
 
 interface Doctor {
   id: string;
@@ -30,6 +30,8 @@ interface Visit {
   reason: string;
   status: string;
   checkedInAt: string;
+  consultPausedAt?: string | null;
+  consultPauseReason?: string | null;
   isEmergency?: boolean;
   triageNotes?: string | null;
   pet: { id: string; name: string; species: string; breed: string | null };
@@ -406,10 +408,14 @@ export default function WalkInDashboardClient({
                       {v.reason}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full text-[10px] font-bold">
-                        <Play className="w-2.5 h-2.5 fill-current" />
-                        In Consult
-                      </span>
+                      <VisitStatusBadge
+                        status={v.status}
+                        pause={{
+                          consultPausedAt: v.consultPausedAt,
+                          consultPauseReason: v.consultPauseReason,
+                        }}
+                        showPauseReason
+                      />
                     </td>
                   </tr>
                 ))}

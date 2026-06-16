@@ -34,6 +34,7 @@ import {
   Sparkles,
   Bot,
   Share2,
+  UserCircle,
 } from 'lucide-react';
 
 interface NavItem {
@@ -57,6 +58,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { name: 'Social', href: '/dashboard/social', icon: Share2 },
   { name: 'Branches', href: '/dashboard/branches', icon: MapPin },
   { name: 'Staff', href: '/dashboard/staff', icon: Users },
+  { name: 'My Profile', href: '/dashboard/profile', icon: UserCircle },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   { name: 'Upgrade', href: '/dashboard/upgrade', icon: Sparkles },
 ];
@@ -69,6 +71,32 @@ function buildNavItems(session: ServerAuthContext): NavItem[] {
   );
 }
 
+function UserAvatar({
+  hasAvatar,
+  initial,
+  className = 'w-8 h-8 rounded-xl',
+}: {
+  hasAvatar: boolean;
+  initial: string;
+  className?: string;
+}) {
+  if (hasAvatar) {
+    return (
+      <img
+        src="/api/profile/photo"
+        alt=""
+        className={`${className} object-cover bg-primary/15 border border-outline-variant/30`}
+      />
+    );
+  }
+  return (
+    <div
+      className={`${className} bg-primary/15 text-primary flex items-center justify-center font-bold text-xs border border-outline-variant/30`}
+    >
+      {initial}
+    </div>
+  );
+}
 function formatRoleLabel(role: string | null | undefined): string {
   switch (role) {
     case 'clinic_admin':
@@ -269,10 +297,8 @@ export default function DashboardShellClient({
 
           <div className="p-4 border-t border-outline-variant">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center font-bold text-xs">
-                  {avatarInitial}
-                </div>
+              <Link href="/dashboard/profile" className="flex items-center gap-3 min-w-0 hover:opacity-90 transition-opacity">
+                <UserAvatar hasAvatar={session.hasAvatar} initial={avatarInitial} />
                 <div className="min-w-0">
                   <span className="text-[11px] font-bold text-on-surface block truncate">
                     {displayName}
@@ -281,7 +307,7 @@ export default function DashboardShellClient({
                     {formatRoleLabel(session.role)}
                   </span>
                 </div>
-              </div>
+              </Link>
               <LogoutButton className="text-on-surface-variant hover:text-destructive p-1.5 rounded-lg hover:bg-surface-container-high transition-colors" />
             </div>
           </div>
@@ -329,10 +355,8 @@ export default function DashboardShellClient({
 
               <div className="p-4 border-t border-outline-variant">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center font-bold text-xs">
-                      {avatarInitial}
-                    </div>
+                  <Link href="/dashboard/profile" className="flex items-center gap-3 min-w-0" onClick={() => setIsMobileMenuOpen(false)}>
+                    <UserAvatar hasAvatar={session.hasAvatar} initial={avatarInitial} />
                     <div className="min-w-0">
                       <span className="text-[11px] font-bold text-on-surface block truncate">
                         {displayName}
@@ -341,7 +365,7 @@ export default function DashboardShellClient({
                         {formatRoleLabel(session.role)}
                       </span>
                     </div>
-                  </div>
+                  </Link>
                   <LogoutButton className="text-on-surface-variant hover:text-destructive p-1.5 rounded-lg hover:bg-surface-container-high transition-colors" />
                 </div>
               </div>

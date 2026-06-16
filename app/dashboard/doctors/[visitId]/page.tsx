@@ -36,6 +36,10 @@ export default async function ConsultationRoomPage({
       reason,
       status,
       branch_id,
+      consult_started_at,
+      consult_paused_at,
+      consult_pause_reason,
+      consult_pause_accumulated_sec,
       pet_id:patient_id,
       is_emergency,
       triage_notes,
@@ -246,6 +250,10 @@ export default async function ConsultationRoomPage({
         labOrders={labOrders}
         documents={documents}
         previousDocuments={previousDocuments}
+        consultStartedAt={visit.consult_started_at as string | null}
+        consultPausedAt={visit.consult_paused_at as string | null}
+        consultPauseReason={visit.consult_pause_reason as string | null}
+        consultPauseAccumulatedSec={(visit.consult_pause_accumulated_sec as number) ?? 0}
       />
 
     </div>

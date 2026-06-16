@@ -81,6 +81,8 @@ export default async function WalkInsPage({
       reason,
       status,
       checked_in_at,
+      consult_paused_at,
+      consult_pause_reason,
       is_emergency,
       triage_notes,
       pets:patients ( id, name, species, breed ),
@@ -114,6 +116,8 @@ export default async function WalkInsPage({
       reason: v.reason,
       status: v.status,
       checkedInAt: v.checked_in_at,
+      consultPausedAt: v.consult_paused_at as string | null,
+      consultPauseReason: v.consult_pause_reason as string | null,
       isEmergency: v.is_emergency ?? false,
       triageNotes: v.triage_notes,
       pet: {

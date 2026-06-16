@@ -110,6 +110,7 @@ async function resolveImpersonatedClinicSession(
     email: session.email,
     firstName: session.firstName,
     lastName: session.lastName,
+    hasAvatar: session.hasAvatar,
     isSuperAdmin: true,
     role,
     organizationId: org?.id ?? targetOrgId,

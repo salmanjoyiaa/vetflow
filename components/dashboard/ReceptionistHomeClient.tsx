@@ -18,6 +18,8 @@ import {
   FileText,
 } from 'lucide-react';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
+import VisitStatusBadge from '@/components/dashboard/VisitStatusBadge';
+import { isConsultPaused } from '@/lib/utils/visit-status';
 
 export type ReceptionistAppointmentRow = {
   id: string;
@@ -35,6 +37,8 @@ export type ReceptionistVisitRow = {
   reason: string;
   status: string;
   doctorName?: string;
+  consultPausedAt?: string | null;
+  consultPauseReason?: string | null;
 };
 
 export type VisitRecordRow = {
@@ -127,13 +131,26 @@ export default function ReceptionistHomeClient({
             Consultations in progress
           </h3>
           {consultingVisits.map((v) => (
-            <div key={v.id} className="flex items-center justify-between text-xs">
+            <div key={v.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs py-1">
               <span className="font-bold text-on-surface">
                 {v.petName} — {v.customerName}
               </span>
-              <span className="text-blue-400 font-semibold">
-                {v.doctorName || 'Doctor'} consulting
-              </span>
+              <div className="flex flex-col items-start sm:items-end gap-1">
+                <VisitStatusBadge
+                  status={v.status}
+                  pause={{
+                    consultPausedAt: v.consultPausedAt,
+                    consultPauseReason: v.consultPauseReason,
+                  }}
+                />
+                <span className="text-[10px] text-on-surface-variant">
+                  {v.doctorName || 'Doctor'}
+                  {isConsultPaused(v) ? ' — paused' : ' — consulting'}
+                </span>
+                {v.consultPauseReason && isConsultPaused(v) && (
+                  <span className="text-[10px] text-violet-300/90 max-w-xs text-right">{v.consultPauseReason}</span>
+                )}
+              </div>
             </div>
           ))}
         </div>

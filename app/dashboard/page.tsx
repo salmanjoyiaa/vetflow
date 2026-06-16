@@ -298,7 +298,7 @@ export default async function DashboardOverview() {
         supabase
           .from('visits')
           .select(`
-            id, reason, status, checked_in_at, consult_started_at, is_emergency, triage_notes,
+            id, reason, status, checked_in_at, consult_started_at, consult_paused_at, consult_pause_reason, consult_pause_accumulated_sec, is_emergency, triage_notes,
             pets:patients ( id, name, species, breed ),
             customers ( first_name, last_name ),
             visit_assignments!inner ( doctor_id )
@@ -315,6 +315,9 @@ export default async function DashboardOverview() {
                 status: v.status,
                 checkedInAt: v.checked_in_at as string,
                 consultStartedAt: v.consult_started_at as string | null,
+                consultPausedAt: v.consult_paused_at as string | null,
+                consultPauseReason: v.consult_pause_reason as string | null,
+                consultPauseAccumulatedSec: (v.consult_pause_accumulated_sec as number) ?? 0,
                 isEmergency: v.is_emergency ?? false,
                 triageNotes: v.triage_notes as string | null,
                 pet: {
@@ -450,7 +453,7 @@ export default async function DashboardOverview() {
         supabase
           .from('visits')
           .select(`
-            id, reason, status,
+            id, reason, status, consult_paused_at, consult_pause_reason,
             pets:patients(name),
             customers(first_name, last_name),
             visit_assignments(user_profiles(first_name, last_name))
@@ -462,10 +465,18 @@ export default async function DashboardOverview() {
           .then((r) => {
             receptionistConsulting = (r.data || []).map((v) => {
               const base = mapVisit(v);
-              const doc = (v.visit_assignments as Array<{ user_profiles: { first_name: string; last_name: string } | null }> | null)?.[0]?.user_profiles;
+              const assignment = normalizeOneToOne(
+                v.visit_assignments as
+                  | { user_profiles: { first_name: string; last_name: string } | null }
+                  | { user_profiles: { first_name: string; last_name: string } | null }[]
+                  | null
+              );
+              const doc = normalizeOneToOne(assignment?.user_profiles ?? null);
               return {
                 ...base,
                 doctorName: doc ? `Dr. ${doc.first_name} ${doc.last_name}` : undefined,
+                consultPausedAt: v.consult_paused_at as string | null,
+                consultPauseReason: v.consult_pause_reason as string | null,
               };
             });
           })
@@ -544,6 +555,9 @@ export default async function DashboardOverview() {
         status: string;
         reason: string;
         consult_started_at: string | null;
+        consult_paused_at: string | null;
+        consult_pause_reason: string | null;
+        consult_pause_accumulated_sec: number;
         checked_in_at: string;
         is_emergency: boolean;
         pets: { name: string; species: string } | { name: string; species: string }[] | null;
@@ -559,6 +573,9 @@ export default async function DashboardOverview() {
           status: v.status,
           reason: v.reason,
           consultStartedAt: v.consult_started_at,
+          consultPausedAt: v.consult_paused_at,
+          consultPauseReason: v.consult_pause_reason,
+          consultPauseAccumulatedSec: v.consult_pause_accumulated_sec ?? 0,
           checkedInAt: v.checked_in_at,
           petName: pet?.name || 'Unknown',
           petSpecies: pet?.species || 'N/A',
@@ -572,7 +589,7 @@ export default async function DashboardOverview() {
         supabase
           .from('visits')
           .select(`
-            id, reason, status, consult_started_at, checked_in_at, is_emergency,
+            id, reason, status, consult_started_at, consult_paused_at, consult_pause_reason, consult_pause_accumulated_sec, checked_in_at, is_emergency,
             pets:patients ( name, species ),
             customers ( first_name, last_name ),
             visit_assignments ( user_profiles ( first_name, last_name ) )
@@ -589,7 +606,7 @@ export default async function DashboardOverview() {
         supabase
           .from('visits')
           .select(`
-            id, reason, status, consult_started_at, checked_in_at, is_emergency,
+            id, reason, status, consult_started_at, consult_paused_at, consult_pause_reason, consult_pause_accumulated_sec, checked_in_at, is_emergency,
             pets:patients ( name, species ),
             customers ( first_name, last_name ),
             visit_assignments ( user_profiles ( first_name, last_name ) )
@@ -1350,6 +1367,8 @@ function getStatusBadge(status: string) {
       return 'bg-amber-500/15 text-amber-400';
     case 'consulting':
       return 'bg-blue-500/15 text-blue-400';
+    case 'consult_paused':
+      return 'bg-violet-500/15 text-violet-400';
     case 'ready_for_checkout':
       return 'bg-emerald-500/15 text-emerald-400';
     case 'completed':

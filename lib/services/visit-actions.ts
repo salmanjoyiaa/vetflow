@@ -120,3 +120,154 @@ export async function startConsultationAction(visitId: string) {
     return { success: false, error: err.message || 'An unexpected error occurred.' };
   }
 }
+
+async function assertAssignedDoctorVisit(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  visitId: string,
+  organizationId: string,
+  doctorId: string
+) {
+  const { data: visit, error } = await supabase
+    .from('visits')
+    .select(`
+      id,
+      status,
+      branch_id,
+      consult_paused_at,
+      consult_pause_accumulated_sec,
+      visit_assignments!inner ( doctor_id )
+    `)
+    .eq('id', visitId)
+    .eq('organization_id', organizationId)
+    .eq('visit_assignments.doctor_id', doctorId)
+    .single();
+
+  if (error || !visit) {
+    throw new Error('Visit not found or you are not the assigned doctor.');
+  }
+  if (visit.status !== 'consulting') {
+    throw new Error('Only active consultations can be paused or resumed.');
+  }
+  return visit;
+}
+
+/**
+ * Pauses an in-progress consultation (timer frozen, visit stays assigned).
+ */
+export async function pauseConsultationAction(visitId: string, reason: string) {
+  try {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
+    }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'clinical_queue');
+
+    const trimmed = reason?.trim();
+    if (!trimmed || trimmed.length < 3) {
+      throw new Error('Please provide a pause reason (at least 3 characters).');
+    }
+
+    const supabase = await createClient();
+    const visit = await assertAssignedDoctorVisit(
+      supabase,
+      visitId,
+      ctx.organizationId!,
+      ctx.userId
+    );
+
+    if (visit.consult_paused_at) {
+      throw new Error('Consultation is already paused.');
+    }
+
+    const pausedAt = new Date().toISOString();
+    const { error } = await supabase
+      .from('visits')
+      .update({
+        consult_paused_at: pausedAt,
+        consult_pause_reason: trimmed,
+      })
+      .eq('id', visitId);
+
+    if (error) {
+      throw new Error(error.message || 'Failed to pause consultation.');
+    }
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId!,
+      branchId: visit.branch_id,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'doctor',
+      action: 'CONSULT_PAUSED',
+      resourceType: 'VISIT',
+      resourceId: visitId,
+      afterData: { reason: trimmed, paused_at: pausedAt },
+    });
+
+    return { success: true as const };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+    return { success: false as const, error: message };
+  }
+}
+
+/**
+ * Resumes a paused consultation and accumulates paused duration for the timer.
+ */
+export async function resumeConsultationAction(visitId: string) {
+  try {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
+    }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'clinical_queue');
+
+    const supabase = await createClient();
+    const visit = await assertAssignedDoctorVisit(
+      supabase,
+      visitId,
+      ctx.organizationId!,
+      ctx.userId
+    );
+
+    if (!visit.consult_paused_at) {
+      throw new Error('Consultation is not paused.');
+    }
+
+    const pausedMs =
+      Date.now() - new Date(visit.consult_paused_at as string).getTime();
+    const addedSec = Math.max(0, Math.floor(pausedMs / 1000));
+    const accumulated =
+      (visit.consult_pause_accumulated_sec as number) + addedSec;
+
+    const { error } = await supabase
+      .from('visits')
+      .update({
+        consult_paused_at: null,
+        consult_pause_reason: null,
+        consult_pause_accumulated_sec: accumulated,
+      })
+      .eq('id', visitId);
+
+    if (error) {
+      throw new Error(error.message || 'Failed to resume consultation.');
+    }
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId!,
+      branchId: visit.branch_id,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'doctor',
+      action: 'CONSULT_RESUMED',
+      resourceType: 'VISIT',
+      resourceId: visitId,
+      afterData: { accumulated_pause_sec: accumulated },
+    });
+
+    return { success: true as const };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+    return { success: false as const, error: message };
+  }
+}
