@@ -283,9 +283,10 @@ export default function PrescriptionPdfDocument({
         </View>
 
         {/* RX HEADER */}
-        <Text style={styles.rxHeader}>Rx Medication List</Text>
+        <Text style={styles.rxHeader}>List Prescribed Medicines</Text>
 
         {/* PRESCRIBED MEDICINES TABLE */}
+        {items.length > 0 ? (
         <View style={styles.table}>
           {/* Header Row */}
           <View style={[styles.tableRow, { backgroundColor: '#F7FAFC' }]}>
@@ -314,6 +315,11 @@ export default function PrescriptionPdfDocument({
             </View>
           ))}
         </View>
+        ) : (
+          <Text style={{ fontSize: 10, color: '#718096', marginBottom: 16 }}>
+            No prescribed medicines recorded.
+          </Text>
+        )}
 
         {/* SIGNATURE BLOCK */}
         <View style={styles.signatureArea}>

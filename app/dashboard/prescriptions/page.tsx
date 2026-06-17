@@ -5,7 +5,11 @@ import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import PageHeader from '@/components/ui/premium/PageHeader';
-import { FileText, Download, ExternalLink, AlertTriangle } from 'lucide-react';
+import PrescriptionsListClient, {
+  type PrescriptionListRow,
+} from '@/components/prescriptions/PrescriptionsListClient';
+import { FileText } from 'lucide-react';
+import { normalizeOneToOne } from '@/lib/supabase/embed';
 
 export const metadata = {
   title: 'Prescriptions',
@@ -65,6 +69,29 @@ export default async function PrescriptionsPage() {
     );
   }
 
+  const rows: PrescriptionListRow[] = (prescriptions ?? []).map((rx) => {
+    const pet = normalizeOneToOne(rx.pets as { id: string; name: string; species: string } | null);
+    const visit = normalizeOneToOne(
+      rx.visits as { reason: string | null; is_emergency: boolean } | null
+    );
+    const doctor = normalizeOneToOne(
+      rx.user_profiles as { first_name: string; last_name: string } | null
+    );
+    return {
+      id: rx.id,
+      revisionNumber: rx.revision_number,
+      isFinalized: rx.is_finalized,
+      createdAt: rx.created_at,
+      petId: pet?.id ?? null,
+      petName: pet?.name || 'Unknown patient',
+      petSpecies: pet?.species || 'N/A',
+      doctorFirstName: doctor?.first_name ?? null,
+      doctorLastName: doctor?.last_name ?? null,
+      visitReason: visit?.reason ?? null,
+      isEmergency: visit?.is_emergency ?? false,
+    };
+  });
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -74,76 +101,14 @@ export default async function PrescriptionsPage() {
       />
 
       <div className="glass-panel rounded-2xl border border-outline-variant/40 shadow-premium overflow-hidden">
-        {prescriptions && prescriptions.length > 0 ? (
-          <div className="divide-y divide-border/20">
-            {prescriptions.map((rx: any) => (
-              <div
-                key={rx.id}
-                className="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-container/30 transition-colors"
-              >
-                <div>
-                  <span className="text-xs font-bold text-on-surface block flex items-center gap-2 flex-wrap">
-                    {rx.pets?.name || 'Unknown patient'}{' '}
-                    <span className="text-on-surface-variant/40 font-normal">
-                      ({rx.pets?.species || 'N/A'})
-                    </span>
-                    {rx.visits?.is_emergency && (
-                      <span className="text-[9px] font-bold text-destructive inline-flex items-center gap-0.5 bg-destructive/10 border border-destructive/20 px-1.5 py-0.5 rounded-full">
-                        <AlertTriangle className="w-2.5 h-2.5" />
-                        Emergency
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-[10px] text-on-surface-variant block mt-0.5">
-                    Dr. {rx.user_profiles?.first_name} {rx.user_profiles?.last_name} • Rev{' '}
-                    {rx.revision_number} •{' '}
-                    {new Date(rx.created_at).toLocaleDateString()}
-                  </span>
-                  {rx.visits?.reason && (
-                    <span className="text-[10px] text-on-surface-variant/40 block mt-0.5">
-                      Visit: {rx.visits.reason.substring(0, 60)}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      rx.is_finalized
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                    }`}
-                  >
-                    {rx.is_finalized ? 'Finalized' : 'Draft'}
-                  </span>
-                  {rx.pets?.id && (
-                    <Link
-                      href={
-                        session.role === 'doctor'
-                          ? `/dashboard/doctors/patients/${rx.pets.id}`
-                          : `/dashboard/pets/${rx.pets.id}`
-                      }
-                      className="text-[10px] font-semibold text-primary flex items-center gap-1 hover:underline"
-                    >
-                      Medical file <ExternalLink className="w-3 h-3" />
-                    </Link>
-                  )}
-                  <a
-                    href={`/api/prescriptions/${rx.id}/pdf`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] font-semibold text-on-surface bg-surface-container border border-outline-variant/40 px-2.5 py-1 rounded-lg flex items-center gap-1 hover:border-primary-teal transition-colors"
-                  >
-                    <Download className="w-3 h-3" />
-                    PDF
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
+        {rows.length > 0 ? (
+          <PrescriptionsListClient prescriptions={rows} userRole={session.role} />
         ) : (
           <div className="p-10 text-center">
             <FileText className="w-8 h-8 text-on-surface-variant/20 mx-auto mb-3" />
-            <p className="text-xs text-on-surface-variant/40">No prescriptions recorded for this branch yet.</p>
+            <p className="text-xs text-on-surface-variant/40">
+              No prescriptions recorded for this branch yet.
+            </p>
             <Link
               href="/dashboard/doctors"
               className="text-xs text-primary font-semibold mt-2 inline-block hover:underline"
@@ -156,4 +121,3 @@ export default async function PrescriptionsPage() {
     </div>
   );
 }
-

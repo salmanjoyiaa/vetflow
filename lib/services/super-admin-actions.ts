@@ -174,6 +174,22 @@ export async function provisionClinicAction(payload: unknown) {
       currency: 'USD',
     });
 
+    // Default lab test catalog for new clinics
+    const defaultLabTests = [
+      { name: 'Complete Blood Count', description: 'CBC panel', price: 25.0 },
+      { name: 'Skin Scrape Cytology', description: 'Dermatology cytology', price: 18.0 },
+      { name: 'Urinalysis', description: 'Routine urinalysis', price: 20.0 },
+    ];
+    await adminClient.from('lab_tests').insert(
+      defaultLabTests.map((t) => ({
+        organization_id: orgId,
+        name: t.name,
+        description: t.description,
+        price: t.price,
+        is_active: true,
+      }))
+    );
+
     // 9. Compliance audit (actor = super admin)
     await writeAuditLog({
       organizationId: orgId,

@@ -72,36 +72,58 @@ export const StaffSchema = z.object({
 
 // --- LAB ORDERS (per visit) ---
 export const LabOrderSchema = z.object({
-  visitId: z.string().uuid(),
-  labTestId: z.string().uuid().nullable().optional(),
+  visitId: EntityIdSchema,
+  labTestId: EntityIdSchema.nullable().optional(),
   testName: z.string().min(1, { message: 'Test name is required' }),
   notes: z.string().max(500).optional().or(z.literal('')),
 });
 export type LabOrderInput = z.infer<typeof LabOrderSchema>;
 
 export const LabResultSchema = z.object({
-  labOrderId: z.string().uuid(),
+  labOrderId: EntityIdSchema,
   status: z.enum(['ordered', 'in_progress', 'completed', 'cancelled']),
   resultText: z.string().max(4000).optional().or(z.literal('')),
-  resultDocumentId: z.string().uuid().nullable().optional(),
+  resultDocumentId: EntityIdSchema.nullable().optional(),
 });
 export type LabResultInput = z.infer<typeof LabResultSchema>;
 
+export const DocumentCategorySchema = z.enum([
+  'lab_result',
+  'imaging',
+  'xray',
+  'prescription',
+  'discharge',
+  'vaccine',
+  'consent',
+  'referral',
+  'other',
+]);
+
 // --- DOCUMENT METADATA (file upload handled via FormData) ---
 export const DocumentMetaSchema = z.object({
-  visitId: z.string().uuid().nullable().optional(),
-  patientId: z.string().uuid().nullable().optional(),
-  category: z
-    .enum(['lab_result', 'imaging', 'consent', 'referral', 'other'])
-    .default('other'),
+  visitId: EntityIdSchema.nullable().optional(),
+  patientId: EntityIdSchema.nullable().optional(),
+  category: DocumentCategorySchema.default('other'),
   description: z.string().max(500).optional().or(z.literal('')),
 });
 export type DocumentMetaInput = z.infer<typeof DocumentMetaSchema>;
 
+export const UpdateDocumentSchema = z.object({
+  documentId: EntityIdSchema,
+  fileName: z.string().min(1, { message: 'File title is required' }).max(255),
+  category: DocumentCategorySchema,
+  description: z.string().max(500).optional().or(z.literal('')),
+});
+export type UpdateDocumentInput = z.infer<typeof UpdateDocumentSchema>;
+
 // --- CLINIC / APP SETTINGS ---
 export const SettingsSchema = z.object({
   timezone: z.string().min(1, { message: 'Timezone is required' }),
-  currency: z.string().min(1, { message: 'Currency is required' }),
+  currency: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{3}$/, { message: 'Currency must be a 3-letter ISO code (e.g. PKR, USD)' }),
   isTaxEnabled: z.boolean(),
   taxName: z.string().min(1, { message: 'Tax name is required' }),
   taxPercentage: z.number().min(0).max(100),
@@ -161,15 +183,51 @@ export const CheckoutSchema = z
     }
   });
 
-export const StockIntakeLineSchema = z.object({
+export const RetailSaleLineSchema = z.object({
+  productId: z.string().uuid().nullable().optional(),
+  serviceId: z.string().uuid().nullable().optional(),
   name: z.string().min(1),
-  sku: z.string().optional().or(z.literal('')),
   quantity: z.number().int().positive(),
   unitPrice: z.number().nonnegative(),
-  unit: z.string().optional().or(z.literal('')),
-  productId: z.string().uuid().nullable().optional(),
-  createNew: z.boolean().optional(),
+  lineType: z.enum(['product', 'service']),
 });
+
+export const RetailSaleSchema = z.object({
+  branchId: EntityIdSchema,
+  customerId: z.string().uuid().optional(),
+  customerFirstName: z.string().min(1, { message: 'First name is required' }),
+  customerLastName: z.string().min(1, { message: 'Last name is required' }),
+  customerPhone: z.string().min(5, { message: 'Phone number is required' }),
+  customerEmail: z.string().email().optional().or(z.literal('')),
+  lineItems: z.array(RetailSaleLineSchema).min(1, { message: 'Add at least one item' }),
+  discount: z.number().nonnegative().default(0),
+  paymentMethod: z.enum(['cash', 'card', 'bank_transfer']),
+  paymentReference: z.string().optional().or(z.literal('')),
+  notes: z.string().optional().or(z.literal('')),
+  sendEmailReceipt: z.boolean().optional(),
+});
+
+export const StockIntakeLineSchema = z
+  .object({
+    name: z.string().min(1),
+    sku: z.string().optional().or(z.literal('')),
+    quantity: z.number().int().positive(),
+    unitPrice: z.number().nonnegative(),
+    unit: z.string().optional().or(z.literal('')),
+    productId: z.string().uuid().nullable().optional(),
+    createNew: z.boolean().optional(),
+    type: z.enum(['medicine', 'food', 'treats', 'accessory']).optional(),
+    categoryName: z.string().max(100).optional().or(z.literal('')),
+  })
+  .superRefine((line, ctx) => {
+    if (line.createNew && !line.productId && !line.type) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Product type is required for new catalog items',
+        path: ['type'],
+      });
+    }
+  });
 
 export const ConfirmStockIntakeSchema = z.object({
   branchId: z.string().uuid(),
@@ -204,26 +262,59 @@ export const VisitServiceItemSchema = z.object({
   quantity: z.number().int().positive(),
 });
 
-export const CompleteConsultationSchema = z.object({
-  visitId: EntityIdSchema,
-  visitType: z.enum(['standard', 'lab', 'surgery']),
-  chiefComplaint: z.string().min(1, { message: 'Chief complaint is required' }),
-  history: z.string().optional().or(z.literal('')),
-  examinationFindings: z.string().optional().or(z.literal('')),
-  diagnosis: z.string().min(1, { message: 'Diagnosis is required' }),
-  treatmentPlan: z.string().optional().or(z.literal('')),
-  procedureNotes: z.string().optional().or(z.literal('')),
-  postOpMedication: z.string().optional().or(z.literal('')),
-  internalNotes: z.string().optional().or(z.literal('')),
-  followUpRecommendation: z.string().optional().or(z.literal('')),
-  followUpDays: z.array(z.number().int().positive()),
-  temperatureC: z.number().nonnegative().optional().or(z.nan()),
-  heartRateBpm: z.number().int().nonnegative().optional().or(z.nan()),
-  respiratoryRate: z.number().int().nonnegative().optional().or(z.nan()),
-  weightKg: z.number().nonnegative().optional().or(z.nan()),
-  prescriptionItems: z.array(PrescriptionItemSchema),
-  serviceItems: z.array(VisitServiceItemSchema),
+export const FollowUpConsecutiveSchema = z.object({
+  count: z.number().int().positive(),
+  startDate: z.string().min(1),
 });
+
+export const CompleteConsultationSchema = z
+  .object({
+    visitId: EntityIdSchema,
+    visitType: z.enum(['standard', 'lab', 'surgery']),
+    chiefComplaint: z.string().min(1, { message: 'Chief complaint is required' }),
+    history: z.string().optional().or(z.literal('')),
+    examinationFindings: z.string().optional().or(z.literal('')),
+    diagnosis: z.string().min(1, { message: 'Diagnosis is required' }),
+    treatmentPlan: z.string().optional().or(z.literal('')),
+    procedureNotes: z.string().optional().or(z.literal('')),
+    postOpMedication: z.string().optional().or(z.literal('')),
+    internalNotes: z.string().optional().or(z.literal('')),
+    followUpRecommendation: z.string().optional().or(z.literal('')),
+    followUpDays: z.array(z.number().int().positive()).optional(),
+    followUpMode: z.enum(['none', 'offset', 'consecutive']).optional(),
+    followUpOffsetDays: z.array(z.number().int().positive()).optional(),
+    followUpConsecutive: FollowUpConsecutiveSchema.optional(),
+    noPrescriptionNeeded: z.boolean().optional(),
+    temperatureC: z.number().nonnegative().optional().or(z.nan()),
+    heartRateBpm: z.number().int().nonnegative().optional().or(z.nan()),
+    respiratoryRate: z.number().int().nonnegative().optional().or(z.nan()),
+    weightKg: z.number().nonnegative().optional().or(z.nan()),
+    prescriptionItems: z.array(PrescriptionItemSchema),
+    serviceItems: z.array(VisitServiceItemSchema),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.noPrescriptionNeeded && (data.prescriptionItems?.length ?? 0) === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Add at least one prescription or mark "No prescription needed".',
+        path: ['prescriptionItems'],
+      });
+    }
+    if (data.followUpMode === 'offset' && (data.followUpOffsetDays?.length ?? 0) === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Select at least one offset day for follow-up.',
+        path: ['followUpOffsetDays'],
+      });
+    }
+    if (data.followUpMode === 'consecutive' && !data.followUpConsecutive) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Enter consecutive follow-up days and start date.',
+        path: ['followUpConsecutive'],
+      });
+    }
+  });
 
 export const RescheduleAppointmentSchema = z.object({
   appointmentId: z.string().uuid(),
@@ -323,6 +414,50 @@ export const WalkInSchema = z.object({
   triageNotes: z.string().optional().or(z.literal('')),
 });
 
+export const UpdateClinicalNoteSchema = z.object({
+  visitId: EntityIdSchema,
+  visitType: z.enum(['standard', 'lab', 'surgery']).optional(),
+  chiefComplaint: z.string().min(1, { message: 'Chief complaint is required' }),
+  history: z.string().optional().or(z.literal('')),
+  examinationFindings: z.string().optional().or(z.literal('')),
+  diagnosis: z.string().min(1, { message: 'Diagnosis is required' }),
+  treatmentPlan: z.string().optional().or(z.literal('')),
+  procedureNotes: z.string().optional().or(z.literal('')),
+  postOpMedication: z.string().optional().or(z.literal('')),
+  internalNotes: z.string().optional().or(z.literal('')),
+  followUpRecommendation: z.string().optional().or(z.literal('')),
+  followUpDays: z.array(z.number().int().positive()).optional(),
+  temperatureC: z.number().nonnegative().optional().or(z.nan()),
+  heartRateBpm: z.number().int().nonnegative().optional().or(z.nan()),
+  respiratoryRate: z.number().int().nonnegative().optional().or(z.nan()),
+  weightKg: z.number().nonnegative().optional().or(z.nan()),
+});
+
+export const UpdatePatientCareNotesSchema = z.object({
+  patientId: EntityIdSchema,
+  allergies: z.string().optional().or(z.literal('')),
+  medicalNotes: z.string().optional().or(z.literal('')),
+  weightKg: z.number().nonnegative().optional().or(z.nan()),
+});
+
+export const PrescriptionItemEditSchema = z.object({
+  medicineName: z.string().min(1, { message: 'Medicine name is required' }),
+  dosage: z.string().min(1, { message: 'Dosage is required' }),
+  frequency: z.string().min(1, { message: 'Frequency is required' }),
+  duration: z.string().min(1, { message: 'Duration is required' }),
+  instructions: z.string().optional().or(z.literal('')),
+  quantityRequested: z.number().int().positive().default(1),
+});
+
+export const PrescriptionEditSchema = z.object({
+  notes: z.string().optional().or(z.literal('')),
+  items: z.array(PrescriptionItemEditSchema).min(1, { message: 'At least one item is required' }),
+});
+
+export const ClinicResetSchema = z.object({
+  confirmationPhrase: z.string().min(1, { message: 'Confirmation phrase is required' }),
+});
+
 // --- TYPE INFERENCES ---
 export type ProductInput = z.infer<typeof ProductSchema>;
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
@@ -334,7 +469,12 @@ export type SettingsInput = z.infer<typeof SettingsSchema>;
 export type BranchInput = z.infer<typeof BranchSchema>;
 export type SubscriptionInput = z.infer<typeof SubscriptionSchema>;
 export type CheckoutInput = z.infer<typeof CheckoutSchema>;
+export type RetailSaleInput = z.infer<typeof RetailSaleSchema>;
 export type CompleteConsultationInput = z.infer<typeof CompleteConsultationSchema>;
+export type UpdateClinicalNoteInput = z.infer<typeof UpdateClinicalNoteSchema>;
+export type UpdatePatientCareNotesInput = z.infer<typeof UpdatePatientCareNotesSchema>;
+export type PrescriptionEditInput = z.infer<typeof PrescriptionEditSchema>;
+export type ClinicResetInput = z.infer<typeof ClinicResetSchema>;
 export type AppointmentRequestInput = z.infer<typeof AppointmentRequestSchema>;
 export type WalkInInput = z.infer<typeof WalkInSchema>;
 export type StaffAppointmentInput = z.infer<typeof StaffAppointmentSchema>;

@@ -11,6 +11,7 @@ function demoUserToSession(demo: DemoUser): UserSessionDetails {
     email: demo.email,
     firstName: demo.firstName,
     lastName: demo.lastName,
+    hasAvatar: false,
     isSuperAdmin: demo.isSuperAdmin,
     role: demo.role === 'super_admin' ? 'super_admin' : demo.role,
     organizationId: demo.organizationId,
@@ -24,6 +25,7 @@ export interface UserSessionDetails {
   email: string;
   firstName: string;
   lastName: string;
+  hasAvatar: boolean;
   isSuperAdmin: boolean;
   role: 'super_admin' | 'clinic_admin' | 'doctor' | 'receptionist' | null;
   organizationId: string | null;
@@ -35,6 +37,7 @@ interface UserProfileRow {
   first_name: string | null;
   last_name: string | null;
   is_super_admin: boolean;
+  avatar_url?: string | null;
 }
 
 export type ProfileBootstrapStatus =
@@ -83,7 +86,7 @@ async function ensureUserProfile(user: User): Promise<ProfileBootstrapResult> {
 
   const { data: existing } = await supabase
     .from('user_profiles')
-    .select('first_name, last_name, is_super_admin')
+    .select('first_name, last_name, is_super_admin, avatar_url')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -105,7 +108,7 @@ async function ensureUserProfile(user: User): Promise<ProfileBootstrapResult> {
   if (!isServiceRoleConfigured()) {
     const { data: retried } = await supabase
       .from('user_profiles')
-      .select('first_name, last_name, is_super_admin')
+      .select('first_name, last_name, is_super_admin, avatar_url')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -120,7 +123,7 @@ async function ensureUserProfile(user: User): Promise<ProfileBootstrapResult> {
     const { data: created, error } = await adminClient
       .from('user_profiles')
       .upsert(profilePayload, { onConflict: 'id' })
-      .select('first_name, last_name, is_super_admin')
+      .select('first_name, last_name, is_super_admin, avatar_url')
       .single();
 
     if (!error && created) {
@@ -132,7 +135,7 @@ async function ensureUserProfile(user: User): Promise<ProfileBootstrapResult> {
 
   const { data: retried } = await supabase
     .from('user_profiles')
-    .select('first_name, last_name, is_super_admin')
+    .select('first_name, last_name, is_super_admin, avatar_url')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -195,6 +198,7 @@ export async function resolveServerSession(): Promise<UserSessionDetails | null>
       email: user.email || '',
       firstName: profile.first_name || '',
       lastName: profile.last_name || '',
+      hasAvatar: Boolean(profile.avatar_url),
       isSuperAdmin: true,
       role: 'super_admin',
       organizationId: null,
@@ -223,6 +227,7 @@ export async function resolveServerSession(): Promise<UserSessionDetails | null>
       email: user.email || '',
       firstName: profile.first_name || '',
       lastName: profile.last_name || '',
+      hasAvatar: Boolean(profile.avatar_url),
       isSuperAdmin: false,
       role: null,
       organizationId: null,
@@ -251,6 +256,7 @@ export async function resolveServerSession(): Promise<UserSessionDetails | null>
         email: user.email || '',
         firstName: profile.first_name || '',
         lastName: profile.last_name || '',
+        hasAvatar: Boolean(profile.avatar_url),
         isSuperAdmin: false,
         role: membership.role as UserSessionDetails['role'],
         organizationId: membership.organization_id,
@@ -270,6 +276,7 @@ export async function resolveServerSession(): Promise<UserSessionDetails | null>
     email: user.email || '',
     firstName: profile.first_name || '',
     lastName: profile.last_name || '',
+    hasAvatar: Boolean(profile.avatar_url),
     isSuperAdmin: false,
     role: membership.role as UserSessionDetails['role'],
     organizationId: membership.organization_id,

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
+import Select from '@/components/ui/premium/Select';
 import { createWalkInVisitAction } from '@/lib/services/visit-actions';
 import PatientLookupPanel, {
   type SelectedPatient,
@@ -13,11 +14,11 @@ import {
   Clock,
   UserCheck,
   BriefcaseMedical,
-  Play,
   ClipboardList,
   AlertTriangle,
   Receipt,
 } from 'lucide-react';
+import VisitStatusBadge from '@/components/dashboard/VisitStatusBadge';
 
 interface Doctor {
   id: string;
@@ -30,6 +31,8 @@ interface Visit {
   reason: string;
   status: string;
   checkedInAt: string;
+  consultPausedAt?: string | null;
+  consultPauseReason?: string | null;
   isEmergency?: boolean;
   triageNotes?: string | null;
   pet: { id: string; name: string; species: string; breed: string | null };
@@ -226,21 +229,17 @@ export default function WalkInDashboardClient({
               </label>
 
               <div>
-                <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                  Assign Attending Vet
-                </label>
-                <select
-                  className="w-full px-3 py-2 bg-surface-container/20 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs text-on-surface font-semibold outline-none"
+                <Select
+                  label="Assign Attending Vet"
                   value={doctorId}
-                  onChange={(e) => setDoctorId(e.target.value)}
-                  required
-                >
-                  {doctors.map((doc) => (
-                    <option key={doc.id} value={doc.id}>
-                      Dr. {doc.firstName} {doc.lastName}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setDoctorId}
+                  options={doctors.map((doc) => ({
+                    value: doc.id,
+                    label: `Dr. ${doc.firstName} ${doc.lastName}`,
+                  }))}
+                  onAddNew={() => router.push('/dashboard/staff')}
+                  addNewLabel="Add staff member"
+                />
               </div>
 
               <button
@@ -406,10 +405,14 @@ export default function WalkInDashboardClient({
                       {v.reason}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full text-[10px] font-bold">
-                        <Play className="w-2.5 h-2.5 fill-current" />
-                        In Consult
-                      </span>
+                      <VisitStatusBadge
+                        status={v.status}
+                        pause={{
+                          consultPausedAt: v.consultPausedAt,
+                          consultPauseReason: v.consultPauseReason,
+                        }}
+                        showPauseReason
+                      />
                     </td>
                   </tr>
                 ))}

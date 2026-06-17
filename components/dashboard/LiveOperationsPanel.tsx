@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 import ConsultTimer from '@/components/dashboard/ConsultTimer';
+import VisitStatusBadge from '@/components/dashboard/VisitStatusBadge';
+import { isConsultPaused } from '@/lib/utils/visit-status';
 import { Stethoscope, User, AlertTriangle, BadgeCheck } from 'lucide-react';
 
 export type LiveConsultRow = {
@@ -10,6 +12,9 @@ export type LiveConsultRow = {
   status: string;
   reason: string;
   consultStartedAt: string | null;
+  consultPausedAt?: string | null;
+  consultPauseReason?: string | null;
+  consultPauseAccumulatedSec?: number;
   checkedInAt: string;
   petName: string;
   petSpecies: string;
@@ -24,7 +29,10 @@ interface LiveOperationsPanelProps {
   showConsultTimer: boolean;
 }
 
-function statusLabel(status: string) {
+function statusLabel(status: string, pause?: { consultPausedAt?: string | null }) {
+  if (status === 'consulting' && isConsultPaused(pause ?? {})) {
+    return 'Consultation paused';
+  }
   switch (status) {
     case 'consulting':
       return 'Consultation in progress';
@@ -76,14 +84,30 @@ export default function LiveOperationsPanel({
                     </span>
                   )}
                   {showConsultTimer && v.consultStartedAt && v.status === 'consulting' && (
-                    <ConsultTimer startedAt={v.consultStartedAt} />
+                    <ConsultTimer
+                      startedAt={v.consultStartedAt}
+                      pausedAt={v.consultPausedAt}
+                      accumulatedPauseSec={v.consultPauseAccumulatedSec ?? 0}
+                    />
                   )}
+                  <VisitStatusBadge
+                    status={v.status}
+                    pause={{
+                      consultPausedAt: v.consultPausedAt,
+                      consultPauseReason: v.consultPauseReason,
+                    }}
+                  />
                 </div>
                 <p className="text-[10px] text-on-surface-variant">
                   <User className="w-3 h-3 inline mr-1" />
                   {v.customerName} · {v.doctorName}
                 </p>
-                <p className="text-[10px] text-blue-400 font-semibold">{statusLabel(v.status)}</p>
+                {v.consultPauseReason && isConsultPaused(v) && (
+                  <p className="text-[10px] text-violet-300/90 max-w-md">{v.consultPauseReason}</p>
+                )}
+                <p className="text-[10px] text-blue-400 font-semibold">
+                  {statusLabel(v.status, { consultPausedAt: v.consultPausedAt })}
+                </p>
               </div>
               {v.status === 'consulting' && (
                 <Link

@@ -21,6 +21,7 @@ import {
   compileThankYouTemplate,
 } from '@/lib/email';
 import { compileVisitBillingItems } from '@/lib/billing/compile-visit-billing';
+import { formatMoney } from '@/lib/utils/currency';
 
 /**
  * Executes checkout transaction on the server.
@@ -299,7 +300,7 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
         html: compileInvoiceDeliveryTemplate(
           ctx.organizationName || 'ClinixDev',
           invoiceNumber,
-          total.toFixed(2)
+          formatMoney(total, ctx.currency)
         ),
       });
     }
@@ -312,7 +313,7 @@ export async function createInvoiceFromVisitAction(payload: unknown) {
         html: compileThankYouTemplate(
           ctx.organizationName || 'ClinixDev',
           invoiceNumber,
-          total.toFixed(2),
+          formatMoney(total, ctx.currency),
           [customer.first_name, customer.last_name].filter(Boolean).join(' ') || undefined
         ),
       });
@@ -375,7 +376,7 @@ export async function updateInvoicePaymentStatusAction(payload: unknown) {
 
     const payAmount = parsed.amount ?? remaining;
     if (payAmount <= 0 || payAmount > remaining) {
-      throw new Error(`Payment amount must be between 0 and ${remaining.toFixed(2)}.`);
+      throw new Error(`Payment amount must be between 0 and ${formatMoney(remaining, ctx.currency)}.`);
     }
 
     const { error: payErr } = await adminClient.from('payments').insert({
@@ -431,7 +432,7 @@ export async function updateInvoicePaymentStatusAction(payload: unknown) {
         html: compileThankYouTemplate(
           ctx.organizationName || 'ClinixDev',
           invoice.invoice_number,
-          total.toFixed(2),
+          formatMoney(total, ctx.currency),
           [customer.first_name, customer.last_name].filter(Boolean).join(' ') || undefined
         ),
       });
@@ -480,7 +481,7 @@ export async function resendInvoiceEmailAction(invoiceId: string) {
       html: compileInvoiceDeliveryTemplate(
         ctx.organizationName || 'ClinixDev',
         invoice.invoice_number,
-        Number(invoice.total).toFixed(2)
+        formatMoney(Number(invoice.total), ctx.currency)
       ),
     });
 

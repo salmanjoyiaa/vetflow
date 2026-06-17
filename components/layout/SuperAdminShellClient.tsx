@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import DashboardNavLink from '@/components/layout/DashboardNavLink';
+import NavigationLoadingOverlay from '@/components/layout/NavigationLoadingOverlay';
 import LogoutButton from '@/components/ui/premium/LogoutButton';
 import { platformTenantSearchAction } from '@/lib/services/super-admin-actions';
 import type { LucideIcon } from 'lucide-react';
@@ -155,7 +156,7 @@ export default function SuperAdminShellClient({
                   <ul className="divide-y divide-outline-variant/50">
                     {searchResults?.map((r) => (
                       <li key={r.id}>
-                        <Link
+                        <DashboardNavLink
                           href={r.href}
                           onClick={() => setIsSearchOpen(false)}
                           className="block px-3 py-2.5 hover:bg-surface-container-high rounded-lg"
@@ -165,7 +166,7 @@ export default function SuperAdminShellClient({
                           </span>
                           <p className="text-xs font-semibold text-on-surface">{r.title}</p>
                           <p className="text-[10px] text-on-surface-variant">{r.subtitle}</p>
-                        </Link>
+                        </DashboardNavLink>
                       </li>
                     ))}
                   </ul>
@@ -183,7 +184,7 @@ export default function SuperAdminShellClient({
               const isActive = isNavActive(pathname, item.href);
               const Icon = item.icon;
               return (
-                <Link
+                <DashboardNavLink
                   key={item.name}
                   href={item.href}
                   className={`${navLinkClass(isActive)} relative`}
@@ -193,7 +194,7 @@ export default function SuperAdminShellClient({
                   )}
                   <Icon className="w-4 h-4" />
                   {item.name}
-                </Link>
+                </DashboardNavLink>
               );
             })}
           </nav>
@@ -234,7 +235,7 @@ export default function SuperAdminShellClient({
                 {NAV_ITEMS.map((item) => {
                   const Icon = item.icon;
                   return (
-                    <Link
+                    <DashboardNavLink
                       key={item.name}
                       href={item.href}
                       className={navLinkClass(isNavActive(pathname, item.href))}
@@ -242,7 +243,7 @@ export default function SuperAdminShellClient({
                     >
                       <Icon className="w-4 h-4" />
                       {item.name}
-                    </Link>
+                    </DashboardNavLink>
                   );
                 })}
               </nav>
@@ -283,7 +284,10 @@ export default function SuperAdminShellClient({
               </div>
             </div>
           </header>
-          <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">{children}</main>
+          <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto relative">
+            <NavigationLoadingOverlay />
+            {children}
+          </main>
         </div>
       </div>
     </div>

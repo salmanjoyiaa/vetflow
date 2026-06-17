@@ -4,9 +4,12 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Phone, Mail, ChevronRight, Heart, Calendar, Search } from 'lucide-react';
 import { normalizePhoneInput, looksLikePhone } from '@/lib/reception/phone';
+import CustomerForm, { CustomerDeleteButton } from '@/components/forms/CustomerForm';
+import type { CustomerInput } from '@/lib/validations/schemas';
 
 export type CustomerRow = {
   id: string;
+  branch_id: string;
   first_name: string;
   last_name: string;
   email: string | null;
@@ -19,12 +22,18 @@ interface CustomersListClientProps {
   customers: CustomerRow[];
   initialPhone?: string;
   focusPhone?: boolean;
+  isAdmin?: boolean;
+  branches?: { id: string; name: string }[];
+  activeBranchId?: string;
 }
 
 export default function CustomersListClient({
   customers,
   initialPhone = '',
   focusPhone = false,
+  isAdmin = false,
+  branches = [],
+  activeBranchId,
 }: CustomersListClientProps) {
   const [search, setSearch] = useState(initialPhone);
 
@@ -112,21 +121,46 @@ export default function CustomersListClient({
                   )}
                   <span className="text-on-surface-variant/60">{cust.address || '—'}</span>
                 </td>
-                <td className="px-6 py-4 text-right space-x-2">
-                  <Link
-                    href={`/dashboard/appointments?new=1&customerId=${cust.id}`}
-                    className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline border border-primary/20 px-2 py-1 rounded-lg"
-                  >
-                    <Calendar className="w-3 h-3" />
-                    Book
-                  </Link>
-                  <Link
-                    href={`/dashboard/customers/${cust.id}`}
-                    className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline"
-                  >
-                    Profile
-                    <ChevronRight className="w-3 h-3" />
-                  </Link>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex flex-wrap justify-end items-center gap-2">
+                    <Link
+                      href={`/dashboard/appointments?new=1&customerId=${cust.id}`}
+                      className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline border border-primary/20 px-2 py-1 rounded-lg"
+                    >
+                      <Calendar className="w-3 h-3" />
+                      Book
+                    </Link>
+                    <Link
+                      href={`/dashboard/customers/${cust.id}`}
+                      className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline"
+                    >
+                      Profile
+                      <ChevronRight className="w-3 h-3" />
+                    </Link>
+                    {isAdmin && (
+                      <>
+                        <CustomerForm
+                          mode="edit"
+                          customerId={cust.id}
+                          initialValues={{
+                            branchId: cust.branch_id,
+                            firstName: cust.first_name,
+                            lastName: cust.last_name,
+                            email: cust.email || '',
+                            phone: cust.phone,
+                            address: cust.address || '',
+                          } satisfies CustomerInput}
+                          branches={branches}
+                          activeBranchId={activeBranchId || cust.branch_id}
+                          trigger="edit"
+                        />
+                        <CustomerDeleteButton
+                          customerId={cust.id}
+                          customerName={`${cust.first_name} ${cust.last_name}`}
+                        />
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

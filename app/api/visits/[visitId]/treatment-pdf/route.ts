@@ -3,6 +3,7 @@ import TreatmentPdfDocument from '@/components/pdf/TreatmentPdfDocument';
 import { createClient } from '@/lib/supabase/server';
 import { assertCapability, resolveServerAuthContext } from '@/lib/auth/context';
 import { getPdfBranding } from '@/lib/services/branding';
+import { formatAttendingDoctor } from '@/lib/utils/doctor-display';
 import React from 'react';
 
 export async function GET(
@@ -35,6 +36,7 @@ export async function GET(
         reason,
         completed_at,
         checked_in_at,
+        doctor_id,
         clinical_notes (
           chief_complaint,
           history,
@@ -68,10 +70,28 @@ export async function GET(
       return new Response('No clinical notes for this visit', { status: 404 });
     }
 
+    let doctorProfile = visit.doctor as { first_name?: string; last_name?: string } | null;
+    if (!doctorProfile?.first_name && !doctorProfile?.last_name) {
+      const { data: assignment } = await supabase
+        .from('visit_assignments')
+        .select('doctor:user_profiles!visit_assignments_doctor_id_fkey ( first_name, last_name )')
+        .eq('visit_id', visitId)
+        .maybeSingle();
+      doctorProfile = (assignment?.doctor as { first_name?: string; last_name?: string } | null) ?? null;
+    }
+
+    const { data: prescription } = await supabase
+      .from('prescriptions')
+      .select('id, prescription_items ( medicine_name, dosage, frequency, duration, quantity_requested, instructions )')
+      .eq('visit_id', visitId)
+      .eq('organization_id', ctx.organizationId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     const pet = visit.patients as { name?: string; species?: string } | null;
     const customer = visit.customers as { first_name?: string; last_name?: string } | null;
     const branch = visit.branches as { name?: string; address?: string; phone?: string } | null;
-    const doctor = visit.doctor as { first_name?: string; last_name?: string } | null;
 
     const clinicName = ctx.organizationName || 'Clinic';
     const branding = await getPdfBranding(supabase, ctx.organizationId!, clinicName);
@@ -85,7 +105,7 @@ export async function GET(
         branchPhone: branding.phone || branch?.phone || '',
         footerText: branding.footerText,
         accentColor: branding.accentColor,
-        doctorName: `Dr. ${doctor?.first_name || 'Attending'} ${doctor?.last_name || 'Doctor'}`,
+        doctorName: formatAttendingDoctor(doctorProfile),
         customerName: customer
           ? `${customer.first_name} ${customer.last_name}`.trim()
           : 'Pet Parent',
@@ -105,6 +125,14 @@ export async function GET(
         heartRateBpm: notes.heart_rate_bpm != null ? Number(notes.heart_rate_bpm) : null,
         respiratoryRate: notes.respiratory_rate != null ? Number(notes.respiratory_rate) : null,
         weightKg: notes.weight_kg != null ? Number(notes.weight_kg) : null,
+        prescriptionItems: (prescription?.prescription_items as Array<{
+          medicine_name: string;
+          dosage: string;
+          frequency: string;
+          duration: string;
+          quantity_requested: number;
+          instructions?: string | null;
+        }>) || [],
       }) as any
     );
 

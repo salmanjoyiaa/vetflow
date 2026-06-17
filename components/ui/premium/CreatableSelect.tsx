@@ -20,6 +20,9 @@ interface CreatableSelectProps {
   allowCreate?: boolean;
   onCreateOption?: (label: string) => void | Promise<void>;
   createLabel?: (query: string) => string;
+  showAddButton?: boolean;
+  addButtonLabel?: string;
+  size?: 'default' | 'compact';
 }
 
 export default function CreatableSelect({
@@ -35,12 +38,16 @@ export default function CreatableSelect({
   allowCreate = true,
   onCreateOption,
   createLabel = (q) => `Create "${q}"`,
+  showAddButton = true,
+  addButtonLabel = 'Add new…',
+  size = 'default',
 }: CreatableSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const selected = options.find((o) => o.value === value);
   const displayLabel = selected?.label || value || placeholder;
@@ -57,6 +64,8 @@ export default function CreatableSelect({
     allowCreate &&
     query.trim().length > 0 &&
     !options.some((o) => o.label.toLowerCase() === query.trim().toLowerCase());
+
+  const isCompact = size === 'compact';
 
   useEffect(() => {
     if (!open || !triggerRef.current) return;
@@ -101,10 +110,21 @@ export default function CreatableSelect({
     pick(labelText, labelText);
   };
 
+  const focusSearch = () => {
+    setQuery('');
+    requestAnimationFrame(() => searchRef.current?.focus());
+  };
+
   return (
     <div className={cn('space-y-1.5', className)}>
       {label && (
-        <label htmlFor={id} className="block text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">
+        <label
+          htmlFor={id}
+          className={cn(
+            'block font-semibold text-on-surface-variant uppercase tracking-wider',
+            isCompact ? 'text-[9px]' : 'text-[10px]'
+          )}
+        >
           {label}
         </label>
       )}
@@ -115,8 +135,9 @@ export default function CreatableSelect({
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-xs text-left transition-colors',
+          'w-full flex items-center justify-between gap-2 rounded-xl border text-left transition-colors',
           'bg-surface-container/30 border-outline-variant hover:border-primary/40',
+          isCompact ? 'px-2 py-1 text-[10px]' : 'px-3 py-2 text-xs',
           disabled && 'opacity-50 cursor-not-allowed',
           error && 'border-destructive/50'
         )}
@@ -135,6 +156,7 @@ export default function CreatableSelect({
           >
             <div className="p-2 border-b border-outline-variant/40">
               <input
+                ref={searchRef}
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -148,7 +170,10 @@ export default function CreatableSelect({
                   key={o.value}
                   type="button"
                   onClick={() => pick(o.value, o.label)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-primary/5 text-on-surface"
+                  className={cn(
+                    'w-full flex items-center justify-between hover:bg-primary/5 text-on-surface',
+                    isCompact ? 'px-2 py-1.5 text-[10px]' : 'px-3 py-2 text-xs'
+                  )}
                 >
                   <span>{o.label}</span>
                   {value === o.value && <Check className="w-3.5 h-3.5 text-primary" />}
@@ -158,7 +183,10 @@ export default function CreatableSelect({
                 <button
                   type="button"
                   onClick={handleCreate}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-primary hover:bg-primary/5 font-semibold border-t border-outline-variant/30"
+                  className={cn(
+                    'w-full flex items-center gap-2 text-primary hover:bg-primary/5 font-semibold border-t border-outline-variant/30',
+                    isCompact ? 'px-2 py-1.5 text-[10px]' : 'px-3 py-2 text-xs'
+                  )}
                 >
                   <Plus className="w-3.5 h-3.5" />
                   {createLabel(query.trim())}
@@ -168,6 +196,19 @@ export default function CreatableSelect({
                 <p className="px-3 py-4 text-xs text-on-surface-variant text-center">No matches</p>
               )}
             </div>
+            {allowCreate && showAddButton && (
+              <button
+                type="button"
+                onClick={focusSearch}
+                className={cn(
+                  'w-full flex items-center gap-2 text-primary hover:bg-primary/5 font-semibold border-t border-outline-variant/40',
+                  isCompact ? 'px-2 py-1.5 text-[10px]' : 'px-3 py-2 text-xs'
+                )}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {addButtonLabel}
+              </button>
+            )}
           </div>,
           document.body
         )}

@@ -7,7 +7,8 @@ import {
   resolveServerAuthContext,
 } from '@/lib/auth/context';
 import { writeAuditLog } from '@/lib/services/audit';
-import { DocumentMetaSchema } from '@/lib/validations/schemas';
+import { DocumentMetaSchema, UpdateDocumentSchema } from '@/lib/validations/schemas';
+import { ZodError } from 'zod';
 
 const DOCUMENTS_BUCKET = 'clinic-documents';
 const MAX_FILE_BYTES = 15 * 1024 * 1024; // 15 MB
@@ -18,10 +19,41 @@ const ALLOWED_MIME = new Set([
   'image/webp',
   'image/heic',
   'text/plain',
+  'application/octet-stream',
 ]);
+const ALLOWED_EXTENSIONS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp', '.heic', '.txt']);
 
 function sanitizeFileName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120);
+}
+
+function fileExtension(name: string): string {
+  const dot = name.lastIndexOf('.');
+  return dot >= 0 ? name.slice(dot).toLowerCase() : '';
+}
+
+function isAllowedFile(file: File): boolean {
+  if (file.type && ALLOWED_MIME.has(file.type)) {
+    if (file.type === 'application/octet-stream') {
+      return ALLOWED_EXTENSIONS.has(fileExtension(file.name));
+    }
+    return true;
+  }
+  return ALLOWED_EXTENSIONS.has(fileExtension(file.name));
+}
+
+function formatZodError(err: ZodError): string {
+  const first = err.issues[0];
+  return first?.message || 'Invalid input.';
+}
+
+function canEditDocument(
+  ctx: NonNullable<Awaited<ReturnType<typeof resolveServerAuthContext>>>,
+  doc: { uploaded_by: string | null }
+): boolean {
+  if (ctx.role === 'clinic_admin' || ctx.role === 'doctor') return true;
+  if (ctx.role === 'receptionist') return doc.uploaded_by === ctx.userId;
+  return false;
 }
 
 /**
@@ -43,21 +75,25 @@ export async function uploadVisitDocumentAction(formData: FormData) {
     if (file.size > MAX_FILE_BYTES) {
       throw new Error('File exceeds the 15 MB limit.');
     }
-    if (file.type && !ALLOWED_MIME.has(file.type)) {
-      throw new Error('Unsupported file type.');
+    if (!isAllowedFile(file)) {
+      throw new Error('Unsupported file type. Use PDF, JPG, PNG, or text.');
     }
 
-    const meta = DocumentMetaSchema.parse({
-      visitId: (formData.get('visitId') as string) || null,
-      patientId: (formData.get('patientId') as string) || null,
-      category: (formData.get('category') as string) || 'other',
-      description: (formData.get('description') as string) || '',
-    });
+    let meta;
+    try {
+      meta = DocumentMetaSchema.parse({
+        visitId: (formData.get('visitId') as string) || null,
+        patientId: (formData.get('patientId') as string) || null,
+        category: (formData.get('category') as string) || 'other',
+        description: (formData.get('description') as string) || '',
+      });
+    } catch (err) {
+      if (err instanceof ZodError) throw new Error(formatZodError(err));
+      throw err;
+    }
 
     const supabase = await createClient();
 
-    // If a visit is supplied, confirm it belongs to the caller's org and derive
-    // branch + patient so the row is correctly scoped.
     let branchId: string | null = ctx.activeBranchId;
     let patientId: string | null = meta.patientId ?? null;
     if (meta.visitId) {
@@ -78,10 +114,17 @@ export async function uploadVisitDocumentAction(formData: FormData) {
     const storagePath = `${ctx.organizationId}/${meta.visitId || 'general'}/${Date.now()}-${safeName}`;
 
     const arrayBuffer = await file.arrayBuffer();
+    const contentType =
+      file.type && file.type !== 'application/octet-stream'
+        ? file.type
+        : fileExtension(safeName) === '.pdf'
+          ? 'application/pdf'
+          : file.type || 'application/octet-stream';
+
     const { error: uploadError } = await supabase.storage
       .from(DOCUMENTS_BUCKET)
       .upload(storagePath, arrayBuffer, {
-        contentType: file.type || 'application/octet-stream',
+        contentType,
         upsert: false,
       });
 
@@ -99,7 +142,7 @@ export async function uploadVisitDocumentAction(formData: FormData) {
         bucket_id: DOCUMENTS_BUCKET,
         storage_path: storagePath,
         file_name: safeName,
-        mime_type: file.type || null,
+        mime_type: contentType,
         size_bytes: file.size,
         category: meta.category,
         description: meta.description || null,
@@ -109,7 +152,6 @@ export async function uploadVisitDocumentAction(formData: FormData) {
       .single();
 
     if (docError || !doc) {
-      // Roll back the orphaned storage object on metadata failure.
       await supabase.storage.from(DOCUMENTS_BUCKET).remove([storagePath]);
       throw new Error(docError?.message || 'Failed to record document.');
     }
@@ -126,7 +168,93 @@ export async function uploadVisitDocumentAction(formData: FormData) {
       afterData: { file_name: safeName, category: meta.category, visit_id: meta.visitId },
     });
 
-    return { success: true, document: doc };
+    return {
+      success: true,
+      document: {
+        id: doc.id,
+        fileName: doc.file_name,
+        category: doc.category,
+        mimeType: doc.mime_type,
+        sizeBytes: doc.size_bytes,
+        createdAt: doc.created_at,
+        description: doc.description,
+      },
+    };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'An unexpected error occurred.' };
+  }
+}
+
+/**
+ * Updates safe metadata fields on a document (title, category, notes).
+ */
+export async function updateDocumentAction(payload: unknown) {
+  try {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) throw new Error('Unauthorized: Session is invalid.');
+    assertOrganization(ctx);
+
+    let parsed;
+    try {
+      parsed = UpdateDocumentSchema.parse(payload);
+    } catch (err) {
+      if (err instanceof ZodError) throw new Error(formatZodError(err));
+      throw err;
+    }
+
+    const supabase = await createClient();
+    const { data: doc, error: docError } = await supabase
+      .from('documents')
+      .select('id, organization_id, branch_id, file_name, category, description, uploaded_by')
+      .eq('id', parsed.documentId)
+      .eq('organization_id', ctx.organizationId)
+      .is('deleted_at', null)
+      .single();
+
+    if (docError || !doc) {
+      throw new Error('Document not found or access denied.');
+    }
+
+    if (!canEditDocument(ctx, doc)) {
+      throw new Error('You do not have permission to edit this document.');
+    }
+
+    const safeName = sanitizeFileName(parsed.fileName);
+    const { error: updateError } = await supabase
+      .from('documents')
+      .update({
+        file_name: safeName,
+        category: parsed.category,
+        description: parsed.description || null,
+      })
+      .eq('id', doc.id);
+
+    if (updateError) {
+      throw new Error(updateError.message || 'Failed to update document.');
+    }
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId,
+      branchId: doc.branch_id,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'doctor',
+      action: 'DOCUMENT_UPDATED',
+      resourceType: 'DOCUMENT',
+      resourceId: doc.id,
+      category: 'data',
+      beforeData: {
+        file_name: doc.file_name,
+        category: doc.category,
+        description: doc.description,
+      },
+      afterData: {
+        file_name: safeName,
+        category: parsed.category,
+        description: parsed.description || null,
+      },
+    });
+
+    return { success: true };
   } catch (err: unknown) {
     return { success: false, error: err instanceof Error ? err.message : 'An unexpected error occurred.' };
   }

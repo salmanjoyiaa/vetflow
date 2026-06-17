@@ -3,8 +3,9 @@ import { resolveServerAuthContext } from '@/lib/auth/context';
 import { guardRoute } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import PetForm from '@/components/forms/PetForm';
+import CustomerDetailAdminBar, { PetRowAdminActions } from '@/components/dashboard/CustomerDetailAdminBar';
 import PageHeader from '@/components/ui/premium/PageHeader';
-import Link from 'next/link';
+import { formatMoney } from '@/lib/utils/currency';
 import { 
   User, 
   Phone, 
@@ -15,7 +16,9 @@ import {
   ArrowLeft,
   Calendar,
   Weight,
-  AlertTriangle
+  AlertTriangle,
+  Receipt,
+  Printer,
 } from 'lucide-react';
 
 export const metadata = {
@@ -44,6 +47,7 @@ export default async function CustomerDetailPage({
     .select('*')
     .eq('id', customerId)
     .eq('organization_id', session.organizationId)
+    .is('deleted_at', null)
     .single();
 
   if (customerError || !customer) {
@@ -60,7 +64,37 @@ export default async function CustomerDetailPage({
     .select('*')
     .eq('customer_id', customerId)
     .eq('organization_id', session.organizationId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
+
+  const isAdmin = session.role === 'clinic_admin';
+
+  const { data: purchaseInvoices } = await supabase
+    .from('invoices')
+    .select(`
+      id,
+      invoice_number,
+      sale_type,
+      total,
+      created_at,
+      invoice_items ( id )
+    `)
+    .eq('customer_id', customerId)
+    .eq('organization_id', session.organizationId!)
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  const purchaseHistory = (purchaseInvoices || []).map((inv) => {
+    const items = inv.invoice_items as { id: string }[] | null;
+    return {
+      id: inv.id,
+      invoiceNumber: inv.invoice_number,
+      saleType: (inv.sale_type as 'clinical' | 'retail') || 'clinical',
+      total: Number(inv.total),
+      createdAt: inv.created_at,
+      itemCount: items?.length || 0,
+    };
+  });
 
   return (
     <div className="space-y-8">
@@ -76,7 +110,18 @@ export default async function CustomerDetailPage({
       <PageHeader
         title="Customer Profile"
         icon={User}
-        actions={<PetForm customerId={customer.id} />}
+        actions={
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <CustomerDetailAdminBar
+                isAdmin={isAdmin}
+                branches={session.branches}
+                customer={customer}
+              />
+            )}
+            <PetForm customerId={customer.id} />
+          </div>
+        }
       />
 
       {/* CORE DETAILS MATRIX */}
@@ -190,6 +235,7 @@ export default async function CustomerDetailPage({
                       Medical file
                       <ChevronRight className="w-3 h-3" />
                     </Link>
+                    <PetRowAdminActions isAdmin={isAdmin} pet={pet} />
                   </div>
                 </div>
               ))}
@@ -203,6 +249,78 @@ export default async function CustomerDetailPage({
           )}
         </div>
 
+      </div>
+
+      {/* PURCHASE HISTORY */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">
+          Purchase history
+        </h3>
+        {purchaseHistory.length > 0 ? (
+          <div className="glass-panel rounded-2xl border border-outline-variant/40 overflow-hidden">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-surface-container/40 border-b border-outline-variant/30 text-[10px] uppercase text-on-surface-variant">
+                  <th className="px-5 py-3">Date</th>
+                  <th className="px-5 py-3">Invoice</th>
+                  <th className="px-5 py-3">Type</th>
+                  <th className="px-5 py-3">Items</th>
+                  <th className="px-5 py-3 text-right">Total</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/20">
+                {purchaseHistory.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-surface-container/20">
+                    <td className="px-5 py-3 text-on-surface-variant">
+                      {new Date(inv.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-5 py-3 font-mono font-bold">{inv.invoiceNumber}</td>
+                    <td className="px-5 py-3">
+                      <span
+                        className={`inline-flex px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                          inv.saleType === 'retail'
+                            ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
+                            : 'bg-primary/10 text-primary border border-primary/20'
+                        }`}
+                      >
+                        {inv.saleType}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-on-surface-variant">{inv.itemCount}</td>
+                    <td className="px-5 py-3 text-right font-bold">
+                      {formatMoney(inv.total, session.currency)}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <div className="flex justify-end gap-2">
+                        <Link
+                          href={`/dashboard/invoices/${inv.id}`}
+                          className="inline-flex items-center gap-1 text-primary font-bold hover:underline"
+                        >
+                          <Receipt className="w-3 h-3" />
+                          View
+                        </Link>
+                        <a
+                          href={`/api/invoices/${inv.id}/pdf`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-on-surface-variant hover:text-primary"
+                          title="Print PDF"
+                        >
+                          <Printer className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="glass-panel p-8 text-center text-xs text-on-surface-variant/60 italic">
+            No invoices on file for this customer yet.
+          </div>
+        )}
       </div>
 
     </div>

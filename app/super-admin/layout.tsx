@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { resolveServerSession } from '@/lib/services/auth';
 import SuperAdminShellClient from '@/components/layout/SuperAdminShellClient';
+import { NavigationLoadingProvider } from '@/components/layout/NavigationLoadingProvider';
+import FaviconLoadingIndicator from '@/components/layout/FaviconLoadingIndicator';
 
 export default async function SuperAdminLayout({
   children,
@@ -17,8 +19,11 @@ export default async function SuperAdminLayout({
   const avatarInitial = (session.firstName?.charAt(0) || session.email?.charAt(0) || 'U').toUpperCase();
 
   return (
-    <SuperAdminShellClient displayName={displayName} avatarInitial={avatarInitial}>
-      {children}
-    </SuperAdminShellClient>
+    <NavigationLoadingProvider>
+      <FaviconLoadingIndicator />
+      <SuperAdminShellClient displayName={displayName} avatarInitial={avatarInitial}>
+        {children}
+      </SuperAdminShellClient>
+    </NavigationLoadingProvider>
   );
 }

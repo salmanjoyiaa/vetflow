@@ -97,6 +97,7 @@ export function hasCapability(
 export const ROUTE_CAPABILITIES: Record<string, Capability | undefined> = {
   '/dashboard': 'view_dashboard',
   '/dashboard/appointments': 'manage_appointments',
+  '/dashboard/schedule': 'manage_appointments',
   '/dashboard/walk-ins': 'manage_walk_ins',
   '/dashboard/customers': 'manage_customers',
   '/dashboard/pets': 'manage_pets',
@@ -104,6 +105,8 @@ export const ROUTE_CAPABILITIES: Record<string, Capability | undefined> = {
   '/dashboard/doctors/patients': 'view_patient_history',
   '/dashboard/prescriptions': 'manage_prescriptions',
   '/dashboard/invoices': 'billing_checkout',
+  '/dashboard/sales': 'billing_checkout',
+  '/dashboard/sales/new': 'billing_checkout',
   '/dashboard/inventory': 'manage_inventory',
   '/dashboard/reports': 'view_reports',
   '/dashboard/branches': 'manage_branches',

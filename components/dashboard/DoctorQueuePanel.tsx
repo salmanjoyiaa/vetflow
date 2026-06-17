@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 import ConsultTimer from '@/components/dashboard/ConsultTimer';
+import VisitStatusBadge from '@/components/dashboard/VisitStatusBadge';
 import {
   Play,
   ClipboardList,
@@ -16,6 +17,9 @@ export type DoctorQueueVisit = {
   status: string;
   checkedInAt: string;
   consultStartedAt?: string | null;
+  consultPausedAt?: string | null;
+  consultPauseReason?: string | null;
+  consultPauseAccumulatedSec?: number;
   isEmergency: boolean;
   triageNotes: string | null;
   pet: { id: string; name: string; species: string; breed: string | null };
@@ -106,16 +110,20 @@ export default function DoctorQueuePanel({
                       {fmtTime(v.checkedInAt)}
                     </td>
                     <td className="px-5 py-3">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          consulting
-                            ? 'bg-blue-500/10 text-blue-500'
-                            : 'bg-amber-500/10 text-amber-600'
-                        }`}
-                      >
-                        {consulting ? 'Consulting' : 'Waiting'}
+                      <span className="inline-flex items-center gap-1.5 flex-wrap">
+                        <VisitStatusBadge
+                          status={v.status}
+                          pause={{
+                            consultPausedAt: v.consultPausedAt,
+                            consultPauseReason: v.consultPauseReason,
+                          }}
+                        />
                         {consulting && showConsultTimer && v.consultStartedAt && (
-                          <ConsultTimer startedAt={v.consultStartedAt} />
+                          <ConsultTimer
+                            startedAt={v.consultStartedAt}
+                            pausedAt={v.consultPausedAt}
+                            accumulatedPauseSec={v.consultPauseAccumulatedSec ?? 0}
+                          />
                         )}
                       </span>
                     </td>

@@ -10,6 +10,9 @@ import {
 import { createAppointmentWithPatientAction } from '@/lib/services/appointment-actions';
 import { normalizePhoneInput, looksLikePhone } from '@/lib/reception/phone';
 import Select from '@/components/ui/premium/Select';
+import CreatableSelect from '@/components/ui/premium/CreatableSelect';
+import { SPECIES_OPTIONS } from '@/lib/pets/species-options';
+import { useCreatableOptions } from '@/lib/hooks/useCreatableOptions';
 import {
   X,
   Loader2,
@@ -36,6 +39,9 @@ export interface NewAppointmentWizardProps {
   initialPhone?: string;
   initialCustomerId?: string;
   initialPetId?: string;
+  initialPreferredDate?: string;
+  initialPreferredTime?: string;
+  initialDoctorId?: string;
 }
 
 export default function NewAppointmentWizard({
@@ -46,6 +52,9 @@ export default function NewAppointmentWizard({
   initialPhone = '',
   initialCustomerId,
   initialPetId,
+  initialPreferredDate = '',
+  initialPreferredTime = '',
+  initialDoctorId,
 }: NewAppointmentWizardProps) {
   const router = useRouter();
   const lookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,9 +73,15 @@ export default function NewAppointmentWizard({
   const [petSpecies, setPetSpecies] = useState('Dog');
   const [petBreed, setPetBreed] = useState('');
 
-  const [preferredDate, setPreferredDate] = useState('');
-  const [preferredTime, setPreferredTime] = useState('');
-  const [doctorId, setDoctorId] = useState(doctors[0]?.id || '');
+  const { options: speciesOptions, handleCreate: handleCreateSpecies } = useCreatableOptions(
+    SPECIES_OPTIONS,
+    undefined,
+    { refreshOnCreate: false }
+  );
+
+  const [preferredDate, setPreferredDate] = useState(initialPreferredDate);
+  const [preferredTime, setPreferredTime] = useState(initialPreferredTime);
+  const [doctorId, setDoctorId] = useState(initialDoctorId || doctors[0]?.id || '');
   const [reason, setReason] = useState('');
   const [intakeNotes, setIntakeNotes] = useState('');
   const [isEmergency, setIsEmergency] = useState(false);
@@ -142,8 +157,12 @@ export default function NewAppointmentWizard({
   useEffect(() => {
     if (!isOpen) {
       setPrefillDone(false);
+      return;
     }
-  }, [isOpen]);
+    if (initialPreferredDate) setPreferredDate(initialPreferredDate);
+    if (initialPreferredTime) setPreferredTime(initialPreferredTime);
+    if (initialDoctorId) setDoctorId(initialDoctorId);
+  }, [isOpen, initialPreferredDate, initialPreferredTime, initialDoctorId]);
 
   const handlePhoneChange = (val: string) => {
     setPhone(val);
@@ -425,16 +444,14 @@ export default function NewAppointmentWizard({
                     className="w-full px-3 py-2 bg-surface-container border border-outline-variant rounded-xl text-xs"
                   />
                   <div className="grid grid-cols-2 gap-2">
-                    <select
+                    <CreatableSelect
+                      size="compact"
                       value={petSpecies}
-                      onChange={(e) => setPetSpecies(e.target.value)}
-                      className="px-3 py-2 bg-surface-container border border-outline-variant rounded-xl text-xs"
-                    >
-                      <option>Dog</option>
-                      <option>Cat</option>
-                      <option>Bird</option>
-                      <option>Other</option>
-                    </select>
+                      onChange={setPetSpecies}
+                      options={speciesOptions}
+                      onCreateOption={handleCreateSpecies}
+                      placeholder="Species…"
+                    />
                     <input
                       type="text"
                       placeholder="Breed (optional)"

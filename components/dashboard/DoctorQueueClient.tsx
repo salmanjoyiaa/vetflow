@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 import { globalClinicSearchAction } from '@/lib/services/search-actions';
 import ConsultTimer from '@/components/dashboard/ConsultTimer';
+import VisitStatusBadge from '@/components/dashboard/VisitStatusBadge';
 import {
   BriefcaseMedical,
   Play,
@@ -21,6 +22,9 @@ interface Visit {
   status: string;
   checkedInAt: string;
   consultStartedAt?: string | null;
+  consultPausedAt?: string | null;
+  consultPauseReason?: string | null;
+  consultPauseAccumulatedSec?: number;
   isEmergency: boolean;
   triageNotes: string | null;
   pet: { id: string; name: string; species: string; breed: string | null; gender: string };
@@ -126,11 +130,20 @@ export default function DoctorQueueClient({
                           </span>
                         )}
                         {showConsultTimer && v.consultStartedAt && (
-                          <ConsultTimer startedAt={v.consultStartedAt} />
+                          <ConsultTimer
+                            startedAt={v.consultStartedAt}
+                            pausedAt={v.consultPausedAt}
+                            accumulatedPauseSec={v.consultPauseAccumulatedSec ?? 0}
+                          />
                         )}
-                        <span className="bg-blue-500/10 text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                          Consultation in progress
-                        </span>
+                        <VisitStatusBadge
+                          status={v.status}
+                          pause={{
+                            consultPausedAt: v.consultPausedAt,
+                            consultPauseReason: v.consultPauseReason,
+                          }}
+                          showPauseReason
+                        />
                       </div>
                       {v.triageNotes && (
                         <p className="text-[11px] text-on-surface-variant/80 bg-surface-container/40 rounded-lg px-2 py-1.5 line-clamp-2">

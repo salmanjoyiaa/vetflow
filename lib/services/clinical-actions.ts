@@ -7,16 +7,75 @@ import {
   resolveServerAuthContext,
 } from '@/lib/auth/context';
 import { writeAuditLog } from '@/lib/services/audit';
-import { CompleteConsultationSchema } from '@/lib/validations/schemas';
+import { CompleteConsultationSchema, EntityIdSchema } from '@/lib/validations/schemas';
+import { z } from 'zod';
+import type { FollowUpScheduleInput } from '@/lib/consultation/follow-up-schedule';
+import { followUpPreviewsToDates, computeFollowUpPreviews } from '@/lib/consultation/follow-up-schedule';
 
-function addDays(base: Date, days: number): Date {
-  const d = new Date(base);
-  d.setDate(d.getDate() + days);
-  return d;
-}
+const ConsultationDraftSchema = z.record(z.string(), z.unknown());
 
-function formatDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+/**
+ * Persists in-progress SOAP form state on visits.consult_draft for resume.
+ */
+export async function saveConsultationDraftAction(visitId: string, draft: unknown) {
+  try {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
+    }
+    assertOrganization(ctx);
+    assertCapability(ctx, 'clinical_queue');
+
+    const parsedVisitId = EntityIdSchema.parse(visitId);
+    const parsedDraft = ConsultationDraftSchema.parse(draft);
+
+    const supabase = await createClient();
+
+    const { data: visit, error: visitError } = await supabase
+      .from('visits')
+      .select(`
+        id,
+        status,
+        branch_id,
+        visit_assignments!inner ( doctor_id )
+      `)
+      .eq('id', parsedVisitId)
+      .eq('organization_id', ctx.organizationId)
+      .eq('visit_assignments.doctor_id', ctx.userId)
+      .single();
+
+    if (visitError || !visit) {
+      throw new Error('Visit not found or you are not the assigned doctor.');
+    }
+    if (visit.status !== 'consulting') {
+      throw new Error('Draft can only be saved during an active consultation.');
+    }
+
+    const { error } = await supabase
+      .from('visits')
+      .update({ consult_draft: parsedDraft })
+      .eq('id', parsedVisitId);
+
+    if (error) {
+      throw new Error(error.message || 'Failed to save draft.');
+    }
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId!,
+      branchId: visit.branch_id,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'doctor',
+      action: 'CLINICAL_NOTE_UPDATED',
+      resourceType: 'VISIT',
+      resourceId: parsedVisitId,
+      afterData: { consult_draft_saved: true },
+    });
+
+    return { success: true as const };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to save draft.';
+    return { success: false as const, error: message };
+  }
 }
 
 function formatTime(d: Date): string {
@@ -35,11 +94,13 @@ async function createFollowUpAppointments(
     checked_in_at: string;
     appointment_id: string | null;
   },
-  followUpDays: number[],
+  schedule: FollowUpScheduleInput,
   followUpNote: string | null,
   diagnosis: string
 ) {
-  if (!followUpDays.length) return;
+  const baseDate = visit.checked_in_at.slice(0, 10);
+  const previews = computeFollowUpPreviews(schedule, baseDate);
+  if (!previews.length) return;
 
   const { data: patient } = await supabase
     .from('patients')
@@ -68,11 +129,34 @@ async function createFollowUpAppointments(
   const baseTime = new Date(visit.checked_in_at);
   const customerName = `${customer.first_name} ${customer.last_name}`.trim();
 
-  for (const days of followUpDays) {
-    const followDate = addDays(new Date(), days);
+  const { data: existingFollowUps } = await supabase
+    .from('appointments')
+    .select('id, preferred_date, status')
+    .eq('follow_up_of_visit_id', visit.id)
+    .eq('organization_id', ctx.organizationId);
+
+  const existingDates = new Set(
+    (existingFollowUps || [])
+      .filter((a) => a.status === 'requested')
+      .map((a) => a.preferred_date as string)
+  );
+
+  const desiredDates = new Set(followUpPreviewsToDates(previews));
+
+  // Cancel stale requested follow-ups that are no longer selected
+  for (const appt of existingFollowUps || []) {
+    if (appt.status === 'requested' && !desiredDates.has(appt.preferred_date as string)) {
+      await supabase.from('appointments').update({ status: 'cancelled' }).eq('id', appt.id);
+    }
+  }
+
+  for (const preview of previews) {
+    const preferredDate = preview.preferredDate;
+    if (existingDates.has(preferredDate)) continue;
+
     const reason = followUpNote?.trim()
-      ? `Follow-up (${days}d): ${followUpNote}`
-      : `Follow-up check (${days} days) — ${diagnosis}`;
+      ? `${preview.label}: ${followUpNote}`
+      : `${preview.label} — ${diagnosis}`;
 
     const { data: appt, error } = await supabase.from('appointments').insert({
       organization_id: ctx.organizationId,
@@ -84,7 +168,7 @@ async function createFollowUpAppointments(
       customer_phone: customer.phone || '',
       patient_name: patient.name,
       patient_species: patient.species,
-      preferred_date: formatDate(followDate),
+      preferred_date: preferredDate,
       preferred_time: formatTime(baseTime),
       reason,
       status: 'requested',
@@ -105,7 +189,7 @@ async function createFollowUpAppointments(
         action: 'APPOINTMENT_CREATED',
         resourceType: 'APPOINTMENT',
         resourceId: appt.id,
-        afterData: { status: 'requested', follow_up_of_visit_id: visit.id, days },
+        afterData: { status: 'requested', follow_up_of_visit_id: visit.id, date: preferredDate },
       });
     }
   }
@@ -163,7 +247,12 @@ export async function completeConsultationAction(payload: unknown) {
       post_op_medication: parsed.postOpMedication || null,
       internal_notes: parsed.internalNotes || null,
       follow_up_recommendation: parsed.followUpRecommendation || null,
-      follow_up_days: parsed.followUpDays?.length ? parsed.followUpDays : null,
+      follow_up_days:
+        parsed.followUpMode === 'offset' && (parsed.followUpOffsetDays?.length ?? 0) > 0
+          ? parsed.followUpOffsetDays
+          : parsed.followUpDays?.length
+            ? parsed.followUpDays
+            : null,
       temperature_c: numOrNull(parsed.temperatureC),
       heart_rate_bpm: numOrNull(parsed.heartRateBpm),
       respiratory_rate: numOrNull(parsed.respiratoryRate),
@@ -279,12 +368,26 @@ export async function completeConsultationAction(payload: unknown) {
     }
 
     // Auto-create follow-up appointments
-    if (parsed.followUpDays && parsed.followUpDays.length > 0) {
+    if (parsed.followUpMode && parsed.followUpMode !== 'none') {
+      const schedule: FollowUpScheduleInput = {
+        mode: parsed.followUpMode,
+        offsetDays: parsed.followUpOffsetDays ?? [],
+        consecutive: parsed.followUpConsecutive,
+      };
       await createFollowUpAppointments(
         supabase,
         ctx,
         visit,
-        parsed.followUpDays,
+        schedule,
+        parsed.followUpRecommendation || null,
+        parsed.diagnosis
+      );
+    } else if (parsed.followUpDays && parsed.followUpDays.length > 0) {
+      await createFollowUpAppointments(
+        supabase,
+        ctx,
+        visit,
+        { mode: 'offset', offsetDays: parsed.followUpDays },
         parsed.followUpRecommendation || null,
         parsed.diagnosis
       );

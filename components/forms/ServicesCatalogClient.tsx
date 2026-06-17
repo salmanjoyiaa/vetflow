@@ -8,6 +8,7 @@ import {
   deleteServiceAction,
 } from '@/lib/services/service-catalog-actions';
 import { Plus, Trash2, Loader2, Stethoscope, Pencil } from 'lucide-react';
+import { useCurrency } from '@/lib/context/CurrencyContext';
 
 export interface ServiceRow {
   id: string;
@@ -23,6 +24,7 @@ interface ServicesCatalogClientProps {
 
 export default function ServicesCatalogClient({ initialServices }: ServicesCatalogClientProps) {
   const router = useRouter();
+  const { formatCurrency } = useCurrency();
   const [services, setServices] = useState(initialServices);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -156,7 +158,7 @@ export default function ServicesCatalogClient({ initialServices }: ServicesCatal
               )}
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-primary">${Number(svc.price).toFixed(2)}</span>
+              <span className="text-xs font-bold text-primary">{formatCurrency(Number(svc.price))}</span>
               <button type="button" onClick={() => startEdit(svc)} className="text-[10px] text-primary font-bold hover:underline">
                 Edit
               </button>

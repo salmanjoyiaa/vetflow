@@ -11,6 +11,7 @@ import {
   generateShiftsFromTemplatesAction,
 } from '@/lib/services/attendance-actions';
 import GlassPanel from '@/components/ui/premium/GlassPanel';
+import Select from '@/components/ui/premium/Select';
 import { tableHeadClass, tableRowClass } from '@/lib/ui/dashboard-classes';
 import {
   CalendarPlus,
@@ -146,9 +147,11 @@ export default function StaffScheduleClient({
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
-    defaultValues: { startTime: '09:00', endTime: '17:00' },
+    defaultValues: { startTime: '09:00', endTime: '17:00', userId: '', branchId: '' },
   });
 
   const present = attendance.filter((a) => a.rosterStatus === 'present' || a.rosterStatus === 'late').length;
@@ -225,6 +228,14 @@ export default function StaffScheduleClient({
 
   const onAssign = handleSubmit(async (data) => {
     setError(null);
+    if (!data.userId) {
+      setError('Select a staff member.');
+      return;
+    }
+    if (!data.branchId) {
+      setError('Select a branch.');
+      return;
+    }
     const res = await assignShiftAction(data);
     if (res.success) {
       reset({ ...data, userId: '', notes: '' });
@@ -291,36 +302,24 @@ export default function StaffScheduleClient({
 
           <div className="grid sm:grid-cols-2 gap-3 text-xs">
             <div>
-              <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                Staff member
-              </label>
-              <select
+              <Select
+                label="Staff member"
                 value={selectedStaffId}
-                onChange={(e) => setSelectedStaffId(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant rounded-xl text-xs text-on-surface outline-none"
-              >
-                {staff.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedStaffId}
+                options={staff.map((s) => ({ value: s.id, label: s.name }))}
+                onAddNew={() => router.push('/dashboard/staff')}
+                addNewLabel="Add staff member"
+              />
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                Branch
-              </label>
-              <select
+              <Select
+                label="Branch"
                 value={selectedBranchId}
-                onChange={(e) => setSelectedBranchId(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant rounded-xl text-xs text-on-surface outline-none"
-              >
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedBranchId}
+                options={branches.map((b) => ({ value: b.id, label: b.name }))}
+                onAddNew={() => router.push('/dashboard/branches')}
+                addNewLabel="Add branch"
+              />
             </div>
           </div>
 
@@ -427,39 +426,33 @@ export default function StaffScheduleClient({
           </h3>
           <form onSubmit={onAssign} className="space-y-3 text-xs">
             <div>
-              <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                Staff member
-              </label>
-              <select
-                {...register('userId', { required: 'Select a staff member' })}
-                className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary rounded-xl text-xs text-on-surface outline-none"
-              >
-                <option value="">Select staff…</option>
-                {staff.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+              <Select
+                label="Staff member"
+                value={watch('userId') || ''}
+                onChange={(v) => setValue('userId', v, { shouldValidate: true })}
+                options={[
+                  { value: '', label: 'Select staff…' },
+                  ...staff.map((s) => ({ value: s.id, label: s.name })),
+                ]}
+                onAddNew={() => router.push('/dashboard/staff')}
+                addNewLabel="Add staff member"
+              />
               {errors.userId && (
                 <span className="text-[10px] text-destructive mt-1 block">{errors.userId.message}</span>
               )}
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                Branch
-              </label>
-              <select
-                {...register('branchId', { required: 'Select a branch' })}
-                className="w-full px-3 py-2 bg-surface-container/30 border border-outline-variant focus:border-primary rounded-xl text-xs text-on-surface outline-none"
-              >
-                <option value="">Select branch…</option>
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+              <Select
+                label="Branch"
+                value={watch('branchId') || ''}
+                onChange={(v) => setValue('branchId', v, { shouldValidate: true })}
+                options={[
+                  { value: '', label: 'Select branch…' },
+                  ...branches.map((b) => ({ value: b.id, label: b.name })),
+                ]}
+                onAddNew={() => router.push('/dashboard/branches')}
+                addNewLabel="Add branch"
+              />
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">

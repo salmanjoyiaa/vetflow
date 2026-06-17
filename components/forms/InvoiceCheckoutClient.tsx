@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createInvoiceFromVisitAction } from '@/lib/services/billing-actions';
+import { useCurrency } from '@/lib/context/CurrencyContext';
 import { CheckoutSchema, type CheckoutInput } from '@/lib/validations/schemas';
 import {
   User,
@@ -51,6 +52,7 @@ export default function InvoiceCheckoutClient({
   prescriptionId,
 }: InvoiceCheckoutClientProps) {
   const router = useRouter();
+  const { formatCurrency } = useCurrency();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completed, setCompleted] = useState<{
@@ -118,7 +120,7 @@ export default function InvoiceCheckoutClient({
           invoiceId: res.invoiceId,
           prescriptionId: res.prescriptionId || prescriptionId || null,
         });
-        router.refresh();
+        router.replace(`/dashboard/invoices/${res.invoiceId}`);
       } else {
         setError(res.error || 'Failed to complete billing transaction.');
       }
@@ -230,10 +232,10 @@ export default function InvoiceCheckoutClient({
                   <td className="px-6 py-4 font-bold text-on-surface">{item.name}</td>
                   <td className="px-6 py-4 text-on-surface-variant/60">{item.quantity}</td>
                   <td className="px-6 py-4 text-on-surface-variant/60">
-                    ${item.unitPrice.toFixed(2)}
+                    {formatCurrency(item.unitPrice)}
                   </td>
                   <td className="px-6 py-4 text-right font-semibold text-on-surface">
-                    ${item.total.toFixed(2)}
+                    {formatCurrency(item.total)}
                   </td>
                 </tr>
               ))}
@@ -313,7 +315,7 @@ export default function InvoiceCheckoutClient({
             {paymentStatusWatch === 'partial' && (
               <div>
                 <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                  Amount paid now (${total.toFixed(2)} total)
+                  Amount paid now ({formatCurrency(total)} total)
                 </label>
                 <input
                   type="number"
@@ -325,7 +327,7 @@ export default function InvoiceCheckoutClient({
                 />
                 {amountPaidWatch > 0 && amountPaidWatch < total && (
                   <p className="text-[10px] text-on-surface-variant mt-1">
-                    Remaining balance: ${(total - amountPaidWatch).toFixed(2)}
+                    Remaining balance: {formatCurrency(total - amountPaidWatch)}
                   </p>
                 )}
               </div>
@@ -345,7 +347,7 @@ export default function InvoiceCheckoutClient({
 
             <div>
               <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
-                Discount ($)
+                Discount
               </label>
               <input
                 type="number"
@@ -361,12 +363,12 @@ export default function InvoiceCheckoutClient({
             <div className="pt-4 border-t border-outline-variant/40 space-y-2 text-xs">
               <div className="flex justify-between text-on-surface-variant/60">
                 <span>Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>{formatCurrency(subtotal)}</span>
               </div>
               {discountWatch > 0 && (
                 <div className="flex justify-between text-destructive font-semibold">
                   <span>Discount</span>
-                  <span>-${Number(discountWatch).toFixed(2)}</span>
+                  <span>-{formatCurrency(Number(discountWatch))}</span>
                 </div>
               )}
               {taxPercentage > 0 && (
@@ -374,12 +376,12 @@ export default function InvoiceCheckoutClient({
                   <span>
                     {taxName} ({taxPercentage}%)
                   </span>
-                  <span>${taxAmountTotal.toFixed(2)}</span>
+                  <span>{formatCurrency(taxAmountTotal)}</span>
                 </div>
               )}
               <div className="flex justify-between text-base font-black text-on-surface pt-2 border-t border-outline-variant/20">
                 <span>Total due</span>
-                <span className="text-primary">${total.toFixed(2)}</span>
+                <span className="text-primary">{formatCurrency(total)}</span>
               </div>
             </div>
 
@@ -402,7 +404,7 @@ export default function InvoiceCheckoutClient({
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Processing...
+                  Processing…
                 </>
               ) : (
                 <>

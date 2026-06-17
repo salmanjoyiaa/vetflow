@@ -6,7 +6,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { updateSettingsAction } from '@/lib/services/settings-actions';
 import { SettingsSchema, type SettingsInput } from '@/lib/validations/schemas';
+import { normalizeCurrencyCode } from '@/lib/utils/currency';
 import { Loader2, Save } from 'lucide-react';
+
+const PRESET_CURRENCIES = ['USD', 'PKR', 'EUR', 'GBP', 'AED', 'SAR', 'INR'] as const;
+
+function isPresetCurrency(code: string): boolean {
+  return PRESET_CURRENCIES.includes(normalizeCurrencyCode(code) as (typeof PRESET_CURRENCIES)[number]);
+}
 
 interface SettingsFormProps {
   defaultValues: SettingsInput;
@@ -17,16 +24,26 @@ export default function SettingsForm({ defaultValues, brandedPdfsAllowed = false
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [currencyMode, setCurrencyMode] = useState<'preset' | 'other'>(() =>
+    isPresetCurrency(defaultValues.currency) ? 'preset' : 'other'
+  );
+  const [otherCurrency, setOtherCurrency] = useState(() =>
+    isPresetCurrency(defaultValues.currency) ? '' : normalizeCurrencyCode(defaultValues.currency)
+  );
   const router = useRouter();
 
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<SettingsInput>({
     resolver: zodResolver(SettingsSchema),
     defaultValues,
   });
+
+  const currencyValue = watch('currency');
 
   const onSubmit = async (data: SettingsInput) => {
     setIsLoading(true);
@@ -79,10 +96,46 @@ export default function SettingsForm({ defaultValues, brandedPdfsAllowed = false
             <label className="block text-[10px] font-semibold text-on-surface/80 uppercase tracking-wider mb-1.5">
               Currency
             </label>
-            <input
-              {...register('currency')}
+            <select
+              value={currencyMode === 'other' ? 'OTHER' : normalizeCurrencyCode(currencyValue)}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (next === 'OTHER') {
+                  setCurrencyMode('other');
+                  setValue('currency', normalizeCurrencyCode(otherCurrency || 'USD'), {
+                    shouldValidate: true,
+                  });
+                } else {
+                  setCurrencyMode('preset');
+                  setValue('currency', next, { shouldValidate: true });
+                }
+              }}
               className="w-full px-4 py-2.5 bg-surface-container/30 border border-outline-variant/80 rounded-xl text-sm text-on-surface outline-none focus:border-primary"
-            />
+            >
+              {PRESET_CURRENCIES.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+              <option value="OTHER">Other (ISO code)</option>
+            </select>
+            {currencyMode === 'other' && (
+              <input
+                type="text"
+                maxLength={3}
+                value={otherCurrency}
+                onChange={(e) => {
+                  const next = e.target.value.toUpperCase().replace(/[^A-Z]/g, '');
+                  setOtherCurrency(next);
+                  if (next.length === 3) {
+                    setValue('currency', next, { shouldValidate: true });
+                  }
+                }}
+                placeholder="e.g. JPY"
+                className="mt-2 w-full px-4 py-2.5 bg-surface-container/30 border border-outline-variant/80 rounded-xl text-sm text-on-surface outline-none focus:border-primary uppercase"
+              />
+            )}
+            <input type="hidden" {...register('currency')} />
             {errors.currency && (
               <span className="text-xs text-destructive mt-1 block">{errors.currency.message}</span>
             )}

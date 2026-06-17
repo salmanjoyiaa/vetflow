@@ -45,6 +45,7 @@ export async function loginAction(payload: unknown): Promise<ActionResponse> {
         email: demoUser.email,
         firstName: demoUser.firstName,
         lastName: demoUser.lastName,
+        hasAvatar: false,
         isSuperAdmin: demoUser.isSuperAdmin,
         role: demoUser.role === 'super_admin' ? 'super_admin' : demoUser.role,
         organizationId: demoUser.organizationId,

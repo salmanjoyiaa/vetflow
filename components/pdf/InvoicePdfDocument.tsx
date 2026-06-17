@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { formatMoney } from '@/lib/utils/currency';
 
 const styles = StyleSheet.create({
   page: { 
@@ -188,6 +189,7 @@ interface InvoicePdfProps {
   taxAmount: number;
   total: number;
   paymentMethod: string;
+  currency?: string;
   brandName?: string;
   accentColor?: string;
   footerText?: string;
@@ -210,10 +212,12 @@ export default function InvoicePdfDocument({
   taxAmount,
   total,
   paymentMethod,
+  currency = 'USD',
   brandName,
   accentColor = '#0F172A',
   footerText,
 }: InvoicePdfProps) {
+  const fmt = (amount: number) => formatMoney(amount, currency);
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -269,8 +273,8 @@ export default function InvoicePdfDocument({
             <View key={idx} style={styles.tableRow}>
               <Text style={[styles.tableCol, styles.colDesc]}>{item.name}</Text>
               <Text style={[styles.tableCol, styles.colQty]}>{item.quantity}</Text>
-              <Text style={[styles.tableCol, styles.colPrice]}>${Number(item.unit_price).toFixed(2)}</Text>
-              <Text style={[styles.tableCol, styles.colTotal]}>${Number(item.total).toFixed(2)}</Text>
+              <Text style={[styles.tableCol, styles.colPrice]}>{fmt(Number(item.unit_price))}</Text>
+              <Text style={[styles.tableCol, styles.colTotal]}>{fmt(Number(item.total))}</Text>
             </View>
           ))}
         </View>
@@ -279,23 +283,23 @@ export default function InvoicePdfDocument({
         <View style={styles.totalSection}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal:</Text>
-            <Text style={styles.totalVal}>${subtotal.toFixed(2)}</Text>
+            <Text style={styles.totalVal}>{fmt(subtotal)}</Text>
           </View>
           {discount > 0 && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Discount:</Text>
-              <Text style={[styles.totalVal, { color: '#E53E3E' }]}>-${discount.toFixed(2)}</Text>
+              <Text style={[styles.totalVal, { color: '#E53E3E' }]}>-{fmt(discount)}</Text>
             </View>
           )}
           {taxAmount > 0 && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tax ({taxPercentage}%):</Text>
-              <Text style={styles.totalVal}>${taxAmount.toFixed(2)}</Text>
+              <Text style={styles.totalVal}>{fmt(taxAmount)}</Text>
             </View>
           )}
           <View style={styles.grandTotalRow}>
             <Text style={styles.grandTotalLabel}>Total Paid:</Text>
-            <Text style={styles.grandTotalVal}>${total.toFixed(2)}</Text>
+            <Text style={styles.grandTotalVal}>{fmt(total)}</Text>
           </View>
         </View>
 

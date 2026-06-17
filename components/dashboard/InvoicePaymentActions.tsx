@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateInvoicePaymentStatusAction } from '@/lib/services/billing-actions';
+import { useCurrency } from '@/lib/context/CurrencyContext';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 
 interface InvoicePaymentActionsProps {
@@ -19,6 +20,7 @@ export default function InvoicePaymentActions({
   paymentStatus,
 }: InvoicePaymentActionsProps) {
   const router = useRouter();
+  const { formatCurrency } = useCurrency();
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'bank_transfer'>('cash');
   const [message, setMessage] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export default function InvoicePaymentActions({
   const handlePay = () => {
     const payAmount = amount ? parseFloat(amount) : remaining;
     if (!payAmount || payAmount <= 0 || payAmount > remaining + 0.001) {
-      setMessage(`Enter an amount between $0.01 and $${remaining.toFixed(2)}`);
+      setMessage(`Enter an amount between ${formatCurrency(0.01)} and ${formatCurrency(remaining)}`);
       return;
     }
     setMessage(null);
@@ -57,7 +59,7 @@ export default function InvoicePaymentActions({
     <div className="glass-panel p-6 space-y-4">
       <h3 className="text-sm font-bold text-on-surface">Record payment</h3>
       <p className="text-xs text-on-surface-variant">
-        Remaining balance: <span className="font-bold text-amber-400">${remaining.toFixed(2)}</span>
+        Remaining balance: <span className="font-bold text-amber-400">{formatCurrency(remaining)}</span>
       </p>
       {message && (
         <p className="text-xs text-destructive">{message}</p>
@@ -65,7 +67,7 @@ export default function InvoicePaymentActions({
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-[10px] font-semibold text-on-surface-variant uppercase mb-1">
-            Amount ($)
+            Amount
           </label>
           <input
             type="number"
@@ -99,8 +101,17 @@ export default function InvoicePaymentActions({
         disabled={isPending}
         className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-xs font-bold disabled:opacity-60"
       >
-        {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-        {amount ? 'Record partial payment' : 'Pay remaining balance'}
+        {isPending ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Processing…
+          </>
+        ) : (
+          <>
+            <CheckCircle2 className="w-4 h-4" />
+            {amount ? 'Record partial payment' : 'Pay remaining balance'}
+          </>
+        )}
       </button>
     </div>
   );

@@ -9,6 +9,7 @@ import {
   assertOrganization,
   resolveServerAuthContext,
 } from '@/lib/auth/context';
+import { formatMoney } from '@/lib/utils/currency';
 
 const SearchSchema = z.object({
   query: z.string().min(2).max(100),
@@ -62,6 +63,7 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
           .select('id, first_name, last_name, phone, email')
           .eq('organization_id', orgId)
           .eq('branch_id', branchId)
+          .is('deleted_at', null)
           .or(
             `first_name.ilike.${pattern},last_name.ilike.${pattern},phone.ilike.${pattern},email.ilike.${pattern}`
           )
@@ -77,6 +79,7 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
           .from('patients')
           .select('id, name, species, customers ( first_name, last_name )')
           .eq('organization_id', orgId)
+          .is('deleted_at', null)
           .ilike('name', pattern)
           .limit(5)
       );
@@ -86,6 +89,7 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
           .from('patients')
           .select('id, name, species, customers ( first_name, last_name )')
           .eq('organization_id', orgId)
+          .is('deleted_at', null)
           .ilike('name', pattern)
           .limit(5)
       );
@@ -179,7 +183,7 @@ export async function globalClinicSearchAction(payload: unknown): Promise<{
           type: 'invoice',
           id: inv.id as string,
           title: inv.invoice_number as string,
-          subtitle: `${inv.payment_status} · $${Number(inv.total).toFixed(2)}`,
+          subtitle: `${inv.payment_status} · ${formatMoney(Number(inv.total), ctx.currency)}`,
           href: `/dashboard/invoices/${inv.id}`,
         });
       }

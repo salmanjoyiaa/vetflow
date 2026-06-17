@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import {
   assertBranchAccess,
   assertCapability,
+  assertClinicAdmin,
   assertOrganization,
   resolveServerAuthContext,
 } from '@/lib/auth/context';
@@ -69,6 +70,7 @@ export async function createCustomerAction(payload: unknown) {
       .select('id, first_name, last_name, phone')
       .eq('organization_id', ctx.organizationId)
       .eq('branch_id', parsed.branchId)
+      .is('deleted_at', null)
       .or(`phone.eq.${parsed.phone},phone.ilike.%${normalizedPhone}%`)
       .maybeSingle();
 
@@ -133,6 +135,18 @@ export async function updateCustomerAction(customerId: string, payload: unknown)
 
     const supabase = await createClient();
 
+    const { data: existing, error: fetchErr } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', customerId)
+      .eq('organization_id', ctx.organizationId)
+      .is('deleted_at', null)
+      .single();
+
+    if (fetchErr || !existing) {
+      throw new Error('Customer not found or access denied.');
+    }
+
     const { data: customer, error } = await supabase
       .from('customers')
       .update({
@@ -152,7 +166,101 @@ export async function updateCustomerAction(customerId: string, payload: unknown)
       throw new Error(error?.message || 'Failed to update customer profile.');
     }
 
+    await writeAuditLog({
+      organizationId: ctx.organizationId,
+      branchId: parsed.branchId,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'receptionist',
+      action: 'CUSTOMER_UPDATED',
+      resourceType: 'CUSTOMER',
+      resourceId: customer.id,
+      beforeData: existing,
+      afterData: customer,
+    });
+
     return { success: true, customer };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'An unexpected error occurred.',
+    };
+  }
+}
+
+export async function deleteCustomerAction(customerId: string) {
+  try {
+    const ctx = await resolveServerAuthContext();
+    if (!ctx) {
+      throw new Error('Unauthorized: Session is invalid.');
+    }
+    assertOrganization(ctx);
+    assertClinicAdmin(ctx);
+    assertCapability(ctx, 'manage_customers');
+
+    const supabase = await createClient();
+
+    const { data: existing, error: fetchErr } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', customerId)
+      .eq('organization_id', ctx.organizationId)
+      .is('deleted_at', null)
+      .single();
+
+    if (fetchErr || !existing) {
+      throw new Error('Customer not found or already deleted.');
+    }
+
+    assertBranchAccess(ctx, existing.branch_id);
+
+    const { data: unpaidInvoices } = await supabase
+      .from('invoices')
+      .select('id')
+      .eq('customer_id', customerId)
+      .eq('organization_id', ctx.organizationId)
+      .in('payment_status', ['unpaid', 'partially_paid'])
+      .limit(1);
+
+    if (unpaidInvoices && unpaidInvoices.length > 0) {
+      throw new Error('Cannot delete customer with unpaid or partially paid invoices.');
+    }
+
+    const now = new Date().toISOString();
+
+    const { error: petsErr } = await supabase
+      .from('patients')
+      .update({ is_active: false, deleted_at: now })
+      .eq('customer_id', customerId)
+      .eq('organization_id', ctx.organizationId)
+      .is('deleted_at', null);
+
+    if (petsErr) {
+      throw new Error(petsErr.message || 'Failed to deactivate linked pets.');
+    }
+
+    const { error: customerErr } = await supabase
+      .from('customers')
+      .update({ deleted_at: now })
+      .eq('id', customerId)
+      .eq('organization_id', ctx.organizationId);
+
+    if (customerErr) {
+      throw new Error(customerErr.message || 'Failed to delete customer.');
+    }
+
+    await writeAuditLog({
+      organizationId: ctx.organizationId,
+      branchId: existing.branch_id,
+      actorUserId: ctx.userId,
+      actorRole: ctx.role || 'clinic_admin',
+      action: 'CUSTOMER_DELETED',
+      resourceType: 'CUSTOMER',
+      resourceId: customerId,
+      severity: 'warning',
+      beforeData: existing,
+    });
+
+    return { success: true };
   } catch (err: unknown) {
     return {
       success: false,
@@ -178,7 +286,8 @@ export async function lookupCustomerByPhoneAction(phone: string) {
     let q = supabase
       .from('customers')
       .select('id, first_name, last_name, phone, email, pets:patients ( id, name, species, breed )')
-      .eq('organization_id', ctx.organizationId);
+      .eq('organization_id', ctx.organizationId)
+      .is('deleted_at', null);
 
     if (ctx.activeBranchId) {
       q = q.eq('branch_id', ctx.activeBranchId);
@@ -219,7 +328,8 @@ export async function getCustomerByIdAction(customerId: string) {
       .from('customers')
       .select('id, first_name, last_name, phone, email, address, pets:patients ( id, name, species, breed )')
       .eq('id', customerId)
-      .eq('organization_id', ctx.organizationId);
+      .eq('organization_id', ctx.organizationId)
+      .is('deleted_at', null);
 
     if (ctx.activeBranchId) {
       q = q.eq('branch_id', ctx.activeBranchId);
@@ -270,6 +380,7 @@ export async function searchCustomersAction(query: string) {
         .from('customers')
         .select(baseSelect)
         .eq('organization_id', ctx.organizationId)
+        .is('deleted_at', null)
         .or(`phone.ilike.%${normalized}%,phone.ilike.%${trimmed}%`)
         .limit(8);
 
@@ -289,6 +400,7 @@ export async function searchCustomersAction(query: string) {
         .from('customers')
         .select(baseSelect)
         .eq('organization_id', ctx.organizationId)
+        .is('deleted_at', null)
         .or(`first_name.ilike.%${trimmed}%,last_name.ilike.%${trimmed}%`)
         .limit(8);
 

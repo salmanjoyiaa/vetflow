@@ -36,6 +36,13 @@ export default async function ConsultationRoomPage({
       reason,
       status,
       branch_id,
+      checked_in_at,
+      appointment_id,
+      consult_started_at,
+      consult_paused_at,
+      consult_pause_reason,
+      consult_pause_accumulated_sec,
+      consult_draft,
       pet_id:patient_id,
       is_emergency,
       triage_notes,
@@ -133,27 +140,47 @@ export default async function ConsultationRoomPage({
     price: Number(s.price),
   }));
 
-  // 5. Lab test catalog (org-scoped), existing lab orders, and documents for this visit
-  const [{ data: labCatalogData }, { data: labOrdersData }, { data: documentsData }] =
-    await Promise.all([
-      supabase
-        .from('lab_tests')
-        .select('id, name')
-        .eq('organization_id', session.organizationId)
-        .eq('is_active', true)
-        .order('name'),
-      supabase
-        .from('lab_orders')
-        .select('id, test_name, status, result_text, result_document_id, created_at')
-        .eq('visit_id', visitId)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('documents')
-        .select('id, file_name, category, mime_type, size_bytes, created_at')
-        .eq('visit_id', visitId)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false }),
-    ]);
+  const { data: categoriesData } = await supabase
+    .from('product_categories')
+    .select('id, name')
+    .eq('organization_id', session.organizationId);
+
+  const categories = categoriesData || [];
+
+  // 5. Lab test catalog, lab orders, current visit docs, and patient history docs
+  const patientIdForDocs = visit.pet_id as string;
+  const [
+    { data: labCatalogData },
+    { data: labOrdersData },
+    { data: documentsData },
+    { data: previousDocsData },
+  ] = await Promise.all([
+    supabase
+      .from('lab_tests')
+      .select('id, name')
+      .eq('organization_id', session.organizationId)
+      .eq('is_active', true)
+      .order('name'),
+    supabase
+      .from('lab_orders')
+      .select('id, test_name, status, result_text, result_document_id, created_at')
+      .eq('visit_id', visitId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('documents')
+      .select('id, file_name, category, mime_type, size_bytes, created_at, description')
+      .eq('visit_id', visitId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('documents')
+      .select('id, file_name, category, mime_type, size_bytes, created_at, description, visit_id')
+      .eq('patient_id', patientIdForDocs)
+      .neq('visit_id', visitId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(20),
+  ]);
 
   const labCatalog = (labCatalogData || []).map((t) => ({ id: t.id, name: t.name }));
   const labOrders = (labOrdersData || []).map((o) => ({
@@ -164,14 +191,43 @@ export default async function ConsultationRoomPage({
     resultDocumentId: o.result_document_id as string | null,
     createdAt: o.created_at as string,
   }));
-  const documents = (documentsData || []).map((d) => ({
+  const mapDoc = (d: {
+    id: string;
+    file_name: string;
+    category: string;
+    mime_type: string | null;
+    size_bytes: number | null;
+    created_at: string;
+    description?: string | null;
+  }) => ({
     id: d.id,
     fileName: d.file_name,
     category: d.category as string,
     mimeType: d.mime_type as string | null,
     sizeBytes: d.size_bytes as number | null,
     createdAt: d.created_at as string,
-  }));
+    description: (d.description as string | null) ?? null,
+  });
+
+  const documents = (documentsData || []).map(mapDoc);
+  const previousDocuments = (previousDocsData || []).map(mapDoc);
+
+  let isFollowUpPatient = history.length > 0;
+  if (visit.appointment_id) {
+    const { data: linkedAppt } = await supabase
+      .from('appointments')
+      .select('follow_up_of_visit_id')
+      .eq('id', visit.appointment_id as string)
+      .maybeSingle();
+    if (linkedAppt?.follow_up_of_visit_id) {
+      isFollowUpPatient = true;
+    }
+  }
+
+  const checkedInAt =
+    (visit.checked_in_at as string | null) ??
+    (visit.consult_started_at as string | null) ??
+    new Date().toISOString();
 
   const petDetails = visit.pets as any;
   const customerDetails = visit.customers as any;
@@ -220,6 +276,16 @@ export default async function ConsultationRoomPage({
         labCatalog={labCatalog}
         labOrders={labOrders}
         documents={documents}
+        previousDocuments={previousDocuments}
+        consultStartedAt={visit.consult_started_at as string | null}
+        consultPausedAt={visit.consult_paused_at as string | null}
+        consultPauseReason={visit.consult_pause_reason as string | null}
+        consultPauseAccumulatedSec={(visit.consult_pause_accumulated_sec as number) ?? 0}
+        initialDraft={(visit.consult_draft as import('@/lib/validations/schemas').CompleteConsultationInput | null) ?? null}
+        activeBranchId={visit.branch_id as string}
+        categories={categories}
+        checkedInAt={checkedInAt}
+        isFollowUpPatient={isFollowUpPatient}
       />
 
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   FlaskConical,
@@ -10,11 +10,15 @@ import {
   Download,
   Trash2,
   Paperclip,
+  Pencil,
+  X,
+  Check,
 } from 'lucide-react';
 import { createLabOrderAction, updateLabOrderResultAction } from '@/lib/services/lab-actions';
 import {
   uploadVisitDocumentAction,
   deleteDocumentAction,
+  updateDocumentAction,
 } from '@/lib/services/document-actions';
 
 interface LabCatalogItem {
@@ -36,6 +40,7 @@ interface DocumentItem {
   mimeType: string | null;
   sizeBytes: number | null;
   createdAt: string;
+  description?: string | null;
 }
 
 interface Props {
@@ -44,9 +49,20 @@ interface Props {
   labCatalog: LabCatalogItem[];
   labOrders: LabOrder[];
   documents: DocumentItem[];
+  previousDocuments?: DocumentItem[];
 }
 
-const DOC_CATEGORIES = ['lab_result', 'imaging', 'consent', 'referral', 'other'] as const;
+const DOC_CATEGORIES = [
+  'lab_result',
+  'imaging',
+  'xray',
+  'prescription',
+  'discharge',
+  'vaccine',
+  'consent',
+  'referral',
+  'other',
+] as const;
 
 function formatBytes(bytes: number | null): string {
   if (!bytes) return '';
@@ -55,23 +71,168 @@ function formatBytes(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function categoryLabel(c: string): string {
+  return c.replace(/_/g, ' ');
+}
+
+function DocumentRow({
+  doc,
+  editable,
+  onDelete,
+}: {
+  doc: DocumentItem;
+  editable: boolean;
+  onDelete: (id: string) => void;
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [fileName, setFileName] = useState(doc.fileName);
+  const [category, setCategory] = useState(doc.category);
+  const [description, setDescription] = useState(doc.description || '');
+
+  const saveEdit = async () => {
+    setSaving(true);
+    setEditError(null);
+    const res = await updateDocumentAction({
+      documentId: doc.id,
+      fileName: fileName.trim(),
+      category,
+      description,
+    });
+    setSaving(false);
+    if (res.success) {
+      setEditing(false);
+      router.refresh();
+    } else {
+      setEditError(res.error || 'Failed to save.');
+    }
+  };
+
+  return (
+    <div className="p-3 bg-surface-container/20 border border-outline-variant/40 rounded-xl space-y-2">
+      {editing ? (
+        <div className="space-y-2">
+          <input
+            value={fileName}
+            onChange={(e) => setFileName(e.target.value)}
+            className="w-full px-2 py-1.5 glass-panel border border-outline-variant rounded-lg text-[11px] text-on-surface outline-none"
+            placeholder="File title"
+          />
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full px-2 py-1.5 glass-panel border border-outline-variant rounded-lg text-[11px] font-bold text-on-surface outline-none capitalize"
+          >
+            {DOC_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {categoryLabel(c)}
+              </option>
+            ))}
+          </select>
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Notes"
+            className="w-full px-2 py-1.5 glass-panel border border-outline-variant rounded-lg text-[11px] text-on-surface outline-none"
+          />
+          {editError && <p className="text-[10px] text-destructive">{editError}</p>}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={saveEdit}
+              disabled={saving}
+              className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-primary px-2 py-1 rounded-lg disabled:opacity-60"
+            >
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(false);
+                setFileName(doc.fileName);
+                setCategory(doc.category);
+                setDescription(doc.description || '');
+                setEditError(null);
+              }}
+              className="text-[10px] font-bold text-on-surface-variant"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-on-surface truncate">{doc.fileName}</p>
+            <p className="text-[10px] text-on-surface-variant/50">
+              <span className="capitalize">{categoryLabel(doc.category)}</span>
+              {doc.sizeBytes ? ` · ${formatBytes(doc.sizeBytes)}` : ''}
+              {doc.description ? ` · ${doc.description}` : ''}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {editable && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="text-on-surface-variant hover:bg-surface-container p-1.5 rounded-lg transition-all"
+                title="Edit details"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            )}
+            <a
+              href={`/api/documents/${doc.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:bg-primary/10 p-1.5 rounded-lg transition-all"
+              title="View / download"
+            >
+              <Download className="w-4 h-4" />
+            </a>
+            {editable && (
+              <button
+                type="button"
+                onClick={() => onDelete(doc.id)}
+                className="text-destructive hover:bg-destructive/5 p-1.5 rounded-lg transition-all"
+                title="Delete"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ConsultationLabsDocsPanel({
   visitId,
   patientId,
   labCatalog,
   labOrders,
-  documents,
+  documents: initialDocuments,
+  previousDocuments = [],
 }: Props) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [localDocuments, setLocalDocuments] = useState(initialDocuments);
 
-  // --- lab order form state ---
+  useEffect(() => {
+    setLocalDocuments(initialDocuments);
+  }, [initialDocuments]);
+
   const [testName, setTestName] = useState('');
   const [labTestId, setLabTestId] = useState('');
   const [labNotes, setLabNotes] = useState('');
   const [orderingLab, setOrderingLab] = useState(false);
+  const [savingLabId, setSavingLabId] = useState<string | null>(null);
 
-  // --- upload state ---
   const fileRef = useRef<HTMLInputElement>(null);
   const [docCategory, setDocCategory] = useState<string>('lab_result');
   const [docDescription, setDocDescription] = useState('');
@@ -81,6 +242,7 @@ export default function ConsultationLabsDocsPanel({
     setLabTestId(id);
     const found = labCatalog.find((l) => l.id === id);
     if (found) setTestName(found.name);
+    else setTestName('');
   };
 
   const submitLabOrder = async () => {
@@ -116,6 +278,7 @@ export default function ConsultationLabsDocsPanel({
     resultDrafts[order.id] ?? order.resultText ?? '';
 
   const saveLabResult = async (order: LabOrder) => {
+    setSavingLabId(order.id);
     setError(null);
     const resultText = getResultDraft(order);
     const status =
@@ -124,26 +287,35 @@ export default function ConsultationLabsDocsPanel({
         : resultText.trim()
           ? 'in_progress'
           : order.status;
-    const res = await updateLabOrderResultAction({
-      labOrderId: order.id,
-      status,
-      resultText,
-      resultDocumentId: order.resultDocumentId || null,
-    });
-    if (res.success) router.refresh();
-    else setError(res.error || 'Failed to save result.');
+    try {
+      const res = await updateLabOrderResultAction({
+        labOrderId: order.id,
+        status,
+        resultText,
+        resultDocumentId: order.resultDocumentId || null,
+      });
+      if (res.success) router.refresh();
+      else setError(res.error || 'Failed to save result.');
+    } finally {
+      setSavingLabId(null);
+    }
   };
 
   const changeLabStatus = async (order: LabOrder, status: string) => {
+    setSavingLabId(order.id);
     setError(null);
-    const res = await updateLabOrderResultAction({
-      labOrderId: order.id,
-      status,
-      resultText: order.resultText || '',
-      resultDocumentId: order.resultDocumentId || null,
-    });
-    if (res.success) router.refresh();
-    else setError(res.error || 'Failed to update lab.');
+    try {
+      const res = await updateLabOrderResultAction({
+        labOrderId: order.id,
+        status,
+        resultText: order.resultText || '',
+        resultDocumentId: order.resultDocumentId || null,
+      });
+      if (res.success) router.refresh();
+      else setError(res.error || 'Failed to update lab.');
+    } finally {
+      setSavingLabId(null);
+    }
   };
 
   const submitUpload = async () => {
@@ -154,6 +326,7 @@ export default function ConsultationLabsDocsPanel({
     }
     setUploading(true);
     setError(null);
+    setUploadSuccess(false);
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -162,9 +335,23 @@ export default function ConsultationLabsDocsPanel({
       fd.append('category', docCategory);
       fd.append('description', docDescription);
       const res = await uploadVisitDocumentAction(fd);
-      if (res.success) {
+      if (res.success && res.document) {
         if (fileRef.current) fileRef.current.value = '';
         setDocDescription('');
+        setUploadSuccess(true);
+        setLocalDocuments((prev) => [
+          {
+            id: res.document.id,
+            fileName: res.document.fileName,
+            category: res.document.category,
+            mimeType: res.document.mimeType,
+            sizeBytes: res.document.sizeBytes,
+            createdAt: res.document.createdAt,
+            description: res.document.description ?? null,
+          },
+          ...prev,
+        ]);
+        setTimeout(() => setUploadSuccess(false), 3000);
         router.refresh();
       } else {
         setError(res.error || 'Upload failed.');
@@ -177,9 +364,15 @@ export default function ConsultationLabsDocsPanel({
   const removeDoc = async (id: string) => {
     setError(null);
     const res = await deleteDocumentAction(id);
-    if (res.success) router.refresh();
-    else setError(res.error || 'Delete failed.');
+    if (res.success) {
+      setLocalDocuments((prev) => prev.filter((d) => d.id !== id));
+      router.refresh();
+    } else {
+      setError(res.error || 'Delete failed.');
+    }
   };
+
+  const displayDocuments = localDocuments.length >= initialDocuments.length ? localDocuments : initialDocuments;
 
   return (
     <div className="space-y-6">
@@ -188,8 +381,12 @@ export default function ConsultationLabsDocsPanel({
           {error}
         </div>
       )}
+      {uploadSuccess && (
+        <div className="p-3 bg-primary/5 border border-primary/20 text-primary text-xs rounded-xl">
+          File uploaded successfully.
+        </div>
+      )}
 
-      {/* LAB ORDERS */}
       <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-4">
         <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5 border-b border-outline-variant/30 pb-4">
           <FlaskConical className="w-4 h-4 text-primary" />
@@ -258,17 +455,13 @@ export default function ConsultationLabsDocsPanel({
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-on-surface truncate">{o.testName}</p>
-                    <p className="text-[10px] text-on-surface-variant/60">
-                      {o.status === 'ordered' && 'Demanded'}
-                      {o.status === 'in_progress' && 'Uploaded'}
-                      {o.status === 'completed' && 'Completed'}
-                      {o.status === 'cancelled' && 'Cancelled'}
-                    </p>
+                    <p className="text-[10px] text-on-surface-variant/60 capitalize">{o.status.replace('_', ' ')}</p>
                   </div>
                   <select
                     value={o.status}
+                    disabled={savingLabId === o.id}
                     onChange={(e) => changeLabStatus(o, e.target.value)}
-                    className="px-2 py-1 glass-panel border border-outline-variant rounded-lg text-[10px] font-bold text-on-surface outline-none capitalize"
+                    className="px-2 py-1 glass-panel border border-outline-variant rounded-lg text-[10px] font-bold text-on-surface outline-none capitalize disabled:opacity-60"
                   >
                     <option value="ordered">Demanded</option>
                     <option value="in_progress">Uploaded</option>
@@ -294,8 +487,12 @@ export default function ConsultationLabsDocsPanel({
                   <button
                     type="button"
                     onClick={() => saveLabResult(o)}
-                    className="text-[10px] font-bold bg-primary text-white px-3 py-1.5 rounded-lg"
+                    disabled={savingLabId === o.id}
+                    className="text-[10px] font-bold bg-primary text-white px-3 py-1.5 rounded-lg inline-flex items-center gap-1 disabled:opacity-60"
                   >
+                    {savingLabId === o.id ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : null}
                     Save result
                   </button>
                   {o.status === 'completed' && (
@@ -319,7 +516,6 @@ export default function ConsultationLabsDocsPanel({
         )}
       </div>
 
-      {/* DOCUMENTS */}
       <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6 shadow-premium space-y-4">
         <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5 border-b border-outline-variant/30 pb-4">
           <Paperclip className="w-4 h-4 text-primary" />
@@ -334,7 +530,7 @@ export default function ConsultationLabsDocsPanel({
             <input
               ref={fileRef}
               type="file"
-              accept=".pdf,image/png,image/jpeg,image/webp,image/heic,text/plain"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.txt,image/*,application/pdf,text/plain"
               className="w-full text-[10px] text-on-surface file:mr-2 file:py-1.5 file:px-2 file:rounded-lg file:border-0 file:bg-primary/10 file:text-primary file:font-bold"
             />
           </div>
@@ -349,7 +545,7 @@ export default function ConsultationLabsDocsPanel({
             >
               {DOC_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
-                  {c.replace('_', ' ')}
+                  {categoryLabel(c)}
                 </option>
               ))}
             </select>
@@ -372,50 +568,49 @@ export default function ConsultationLabsDocsPanel({
               disabled={uploading}
               className="w-full inline-flex items-center justify-center gap-1 text-[10px] font-bold text-white bg-primary px-2 py-2 rounded-lg hover:opacity-90 transition-all disabled:opacity-60"
             >
-              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileUp className="w-3.5 h-3.5" />}
-              Upload
+              {uploading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Uploading…
+                </>
+              ) : (
+                <>
+                  <FileUp className="w-3.5 h-3.5" />
+                  Upload
+                </>
+              )}
             </button>
           </div>
         </div>
 
-        {documents.length > 0 ? (
-          <div className="space-y-2">
-            {documents.map((d) => (
-              <div
-                key={d.id}
-                className="flex items-center justify-between gap-3 p-3 bg-surface-container/20 border border-outline-variant/40 rounded-xl"
-              >
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-on-surface truncate">{d.fileName}</p>
-                  <p className="text-[10px] text-on-surface-variant/50">
-                    <span className="capitalize">{d.category.replace('_', ' ')}</span>
-                    {d.sizeBytes ? ` · ${formatBytes(d.sizeBytes)}` : ''}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <a
-                    href={`/api/documents/${d.id}`}
-                    className="text-primary hover:bg-primary/10 p-1.5 rounded-lg transition-all"
-                    title="Download"
-                  >
-                    <Download className="w-4 h-4" />
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => removeDoc(d.id)}
-                    className="text-destructive hover:bg-destructive/5 p-1.5 rounded-lg transition-all"
-                    title="Delete"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-on-surface-variant/50 italic text-center py-3">
-            No documents uploaded for this visit.
+        <div className="space-y-3">
+          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
+            Current consultation files
           </p>
+          {displayDocuments.length > 0 ? (
+            <div className="space-y-2">
+              {displayDocuments.map((d) => (
+                <DocumentRow key={d.id} doc={d} editable onDelete={removeDoc} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-on-surface-variant/50 italic text-center py-3">
+              No documents uploaded for this visit.
+            </p>
+          )}
+        </div>
+
+        {previousDocuments.length > 0 && (
+          <div className="space-y-3 pt-2 border-t border-outline-variant/30">
+            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
+              Previous medical files
+            </p>
+            <div className="space-y-2">
+              {previousDocuments.map((d) => (
+                <DocumentRow key={d.id} doc={d} editable={false} onDelete={removeDoc} />
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>

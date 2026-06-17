@@ -1,15 +1,20 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { parseStockInvoiceImageAction, type StockInvoiceDraft } from '@/lib/services/stock-invoice-ocr';
-import { confirmStockIntakeAction } from '@/lib/services/inventory-actions';
+import { confirmStockIntakeAction, createCategoryAction } from '@/lib/services/inventory-actions';
+import { STOCK_PRODUCT_TYPE_OPTIONS, type StockProductType } from '@/lib/inventory/product-types';
+import { useCreatableOptions } from '@/lib/hooks/useCreatableOptions';
+import Select from '@/components/ui/premium/Select';
+import CreatableSelect from '@/components/ui/premium/CreatableSelect';
 import { Camera, Loader2, Plus, Trash2, CheckCircle, AlertTriangle, X, ClipboardList } from 'lucide-react';
 
 type CatalogProduct = {
   id: string;
   name: string;
   sku: string | null;
+  type?: string;
 };
 
 type DraftRow = {
@@ -20,12 +25,27 @@ type DraftRow = {
   unit: string;
   productId: string | null;
   createNew: boolean;
+  type: StockProductType;
+  categoryName: string;
 };
 
 interface StockInvoiceIntakeClientProps {
   activeBranchId: string;
   products: CatalogProduct[];
+  categories: { id: string; name: string }[];
 }
+
+const EMPTY_ROW: DraftRow = {
+  name: '',
+  sku: '',
+  quantity: 1,
+  unitPrice: 0,
+  unit: 'pcs',
+  productId: null,
+  createNew: true,
+  type: 'medicine',
+  categoryName: '',
+};
 
 function fuzzyMatch(name: string, sku: string, catalog: CatalogProduct[]): string | null {
   const lower = name.toLowerCase();
@@ -53,6 +73,8 @@ function draftToRows(draft: StockInvoiceDraft, catalog: CatalogProduct[]): Draft
       unit: line.unit || 'pcs',
       productId: matched,
       createNew: !matched,
+      type: 'medicine',
+      categoryName: '',
     };
   });
 }
@@ -60,6 +82,7 @@ function draftToRows(draft: StockInvoiceDraft, catalog: CatalogProduct[]): Draft
 export default function StockInvoiceIntakeClient({
   activeBranchId,
   products,
+  categories,
 }: StockInvoiceIntakeClientProps) {
   const router = useRouter();
   const [supplierName, setSupplierName] = useState('');
@@ -72,6 +95,29 @@ export default function StockInvoiceIntakeClient({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+
+  const onCreateCategory = useCallback(async (label: string) => {
+    const res = await createCategoryAction(label);
+    if (!res.success) throw new Error(res.error);
+    return { name: res.category!.name };
+  }, []);
+
+  const { options: categoryOptions, handleCreate: handleCreateCategory } = useCreatableOptions(
+    categories,
+    onCreateCategory,
+    { refreshOnCreate: true }
+  );
+
+  const catalogOptions = useMemo(
+    () => [
+      { value: '__new__', label: 'Create new product' },
+      ...products.map((p) => ({
+        value: p.id,
+        label: `${p.name}${p.sku ? ` (${p.sku})` : ''}`,
+      })),
+    ],
+    [products]
+  );
 
   const unmatchedCount = useMemo(
     () => rows.filter((r) => !r.productId && r.createNew).length,
@@ -110,23 +156,25 @@ export default function StockInvoiceIntakeClient({
   };
 
   const addRow = () => {
-    setRows((prev) => [
-      ...prev,
-      {
-        name: '',
-        sku: '',
-        quantity: 1,
-        unitPrice: 0,
-        unit: 'pcs',
-        productId: null,
-        createNew: true,
-      },
-    ]);
+    setRows((prev) => [...prev, { ...EMPTY_ROW }]);
+  };
+
+  const handleCatalogMatch = (idx: number, value: string) => {
+    if (value === '__new__') {
+      updateRow(idx, { productId: null, createNew: true, type: 'medicine', categoryName: '' });
+    } else {
+      updateRow(idx, { productId: value, createNew: false });
+    }
   };
 
   const handleConfirm = async () => {
     if (rows.length === 0) {
       setError('Add at least one line item.');
+      return;
+    }
+    const missingType = rows.some((r) => r.createNew && !r.productId && !r.type);
+    if (missingType) {
+      setError('Select a product type for each new catalog item.');
       return;
     }
     setIsSaving(true);
@@ -144,6 +192,8 @@ export default function StockInvoiceIntakeClient({
         unit: r.unit,
         productId: r.productId,
         createNew: r.createNew && !r.productId,
+        type: r.createNew && !r.productId ? r.type : undefined,
+        categoryName: r.createNew && !r.productId ? r.categoryName : undefined,
       })),
     });
     if (res.success) {
@@ -234,7 +284,7 @@ export default function StockInvoiceIntakeClient({
 
       {reviewOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="glass-panel w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-outline-variant/40 shadow-premium relative">
+          <div className="glass-panel w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-2xl border border-outline-variant/40 shadow-premium relative">
             <div className="sticky top-0 z-10 bg-surface-container/95 backdrop-blur-md px-5 py-4 border-b border-outline-variant/40 flex items-center justify-between">
               <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
                 <ClipboardList className="w-4 h-4 text-primary" />
@@ -248,112 +298,133 @@ export default function StockInvoiceIntakeClient({
                 <X className="w-5 h-5" />
               </button>
             </div>
-          <div className="p-4 grid sm:grid-cols-3 gap-3 border-b border-outline-variant/30">
-            <input
-              placeholder="Supplier name"
-              value={supplierName}
-              onChange={(e) => setSupplierName(e.target.value)}
-              className="px-3 py-2 text-xs border border-outline-variant rounded-lg bg-surface-container"
-            />
-            <input
-              placeholder="Invoice number"
-              value={invoiceNumber}
-              onChange={(e) => setInvoiceNumber(e.target.value)}
-              className="px-3 py-2 text-xs border border-outline-variant rounded-lg bg-surface-container"
-            />
-            <input
-              type="date"
-              value={invoiceDate}
-              onChange={(e) => setInvoiceDate(e.target.value)}
-              className="px-3 py-2 text-xs border border-outline-variant rounded-lg bg-surface-container"
-            />
-          </div>
+            <div className="p-4 grid sm:grid-cols-3 gap-3 border-b border-outline-variant/30">
+              <input
+                placeholder="Supplier name"
+                value={supplierName}
+                onChange={(e) => setSupplierName(e.target.value)}
+                className="px-3 py-2 text-xs border border-outline-variant rounded-lg bg-surface-container"
+              />
+              <input
+                placeholder="Invoice number"
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+                className="px-3 py-2 text-xs border border-outline-variant rounded-lg bg-surface-container"
+              />
+              <input
+                type="date"
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+                className="px-3 py-2 text-xs border border-outline-variant rounded-lg bg-surface-container"
+              />
+            </div>
 
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="bg-surface-container/30 text-[9px] uppercase font-bold text-on-surface-variant">
-                <th className="px-4 py-2">Product</th>
-                <th className="px-4 py-2">Qty</th>
-                <th className="px-4 py-2">Unit price</th>
-                <th className="px-4 py-2">Catalog match</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/30">
-              {rows.map((row, idx) => (
-                <tr key={idx}>
-                  <td className="px-4 py-2">
-                    <input
-                      value={row.name}
-                      onChange={(e) => updateRow(idx, { name: e.target.value })}
-                      className="w-full px-2 py-1 border border-outline-variant rounded text-xs"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="number"
-                      min={1}
-                      value={row.quantity}
-                      onChange={(e) => updateRow(idx, { quantity: Number(e.target.value) })}
-                      className="w-16 px-2 py-1 border border-outline-variant rounded text-xs"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={row.unitPrice}
-                      onChange={(e) => updateRow(idx, { unitPrice: Number(e.target.value) })}
-                      className="w-20 px-2 py-1 border border-outline-variant rounded text-xs"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <select
-                      value={row.productId || (row.createNew ? '__new__' : '')}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === '__new__') {
-                          updateRow(idx, { productId: null, createNew: true });
-                        } else {
-                          updateRow(idx, { productId: v, createNew: false });
-                        }
-                      }}
-                      className="w-full px-2 py-1 border border-outline-variant rounded text-xs"
-                    >
-                      <option value="__new__">Create new product</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                          {p.sku ? ` (${p.sku})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-4 py-2">
-                    <button type="button" onClick={() => removeRow(idx)} className="text-destructive">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[720px]">
+                <thead>
+                  <tr className="bg-surface-container/30 text-[9px] uppercase font-bold text-on-surface-variant">
+                    <th className="px-3 py-2">Product</th>
+                    <th className="px-3 py-2">Qty</th>
+                    <th className="px-3 py-2">Unit price</th>
+                    <th className="px-3 py-2">Catalog match</th>
+                    <th className="px-3 py-2">Type</th>
+                    <th className="px-3 py-2">Category</th>
+                    <th className="px-3 py-2" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/30">
+                  {rows.map((row, idx) => {
+                    const isNew = row.createNew && !row.productId;
+                    return (
+                      <tr key={idx}>
+                        <td className="px-3 py-2">
+                          <input
+                            value={row.name}
+                            onChange={(e) => updateRow(idx, { name: e.target.value })}
+                            className="w-full min-w-[120px] px-2 py-1 border border-outline-variant rounded text-xs"
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            min={1}
+                            value={row.quantity}
+                            onChange={(e) => updateRow(idx, { quantity: Number(e.target.value) })}
+                            className="w-16 px-2 py-1 border border-outline-variant rounded text-xs"
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={row.unitPrice}
+                            onChange={(e) => updateRow(idx, { unitPrice: Number(e.target.value) })}
+                            className="w-20 px-2 py-1 border border-outline-variant rounded text-xs"
+                          />
+                        </td>
+                        <td className="px-3 py-2 min-w-[140px]">
+                          <Select
+                            size="compact"
+                            value={row.productId || (row.createNew ? '__new__' : '')}
+                            onChange={(v) => handleCatalogMatch(idx, v)}
+                            options={catalogOptions}
+                            placeholder="Match catalog…"
+                          />
+                        </td>
+                        <td className="px-3 py-2 min-w-[110px]">
+                          {isNew ? (
+                            <Select
+                              size="compact"
+                              value={row.type}
+                              onChange={(v) => updateRow(idx, { type: v as StockProductType })}
+                              options={STOCK_PRODUCT_TYPE_OPTIONS}
+                              placeholder="Type…"
+                            />
+                          ) : (
+                            <span className="text-[10px] text-on-surface-variant">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 min-w-[130px]">
+                          {isNew ? (
+                            <CreatableSelect
+                              size="compact"
+                              value={row.categoryName}
+                              onChange={(v) => updateRow(idx, { categoryName: v })}
+                              options={categoryOptions}
+                              onCreateOption={handleCreateCategory}
+                              placeholder="Category…"
+                            />
+                          ) : (
+                            <span className="text-[10px] text-on-surface-variant">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <button type="button" onClick={() => removeRow(idx)} className="text-destructive">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-          <div className="p-4 flex items-center justify-between border-t border-outline-variant/30">
-            <button
-              type="button"
-              onClick={addRow}
-              className="text-xs font-bold text-primary flex items-center gap-1"
-            >
-              <Plus className="w-3 h-3" />
-              Add row
-            </button>
-            {unmatchedCount > 0 && (
-              <span className="text-[10px] text-amber-600">
-                {unmatchedCount} new product(s) will be created
-              </span>
-            )}
-          </div>
+            <div className="p-4 flex items-center justify-between border-t border-outline-variant/30">
+              <button
+                type="button"
+                onClick={addRow}
+                className="text-xs font-bold text-primary flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" />
+                Add row
+              </button>
+              {unmatchedCount > 0 && (
+                <span className="text-[10px] text-amber-600">
+                  {unmatchedCount} new product(s) will be created
+                </span>
+              )}
+            </div>
 
             {error && (
               <div className="mx-4 mb-4 text-xs text-destructive p-3 bg-destructive/5 rounded-xl border border-destructive/20">

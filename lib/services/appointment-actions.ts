@@ -27,6 +27,31 @@ import {
   StaffAppointmentSchema,
 } from '@/lib/validations/schemas';
 
+async function ensureVisitAssignment(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  visitId: string,
+  doctorId: string
+) {
+  const { data: existing } = await supabase
+    .from('visit_assignments')
+    .select('id')
+    .eq('visit_id', visitId)
+    .maybeSingle();
+
+  if (existing) return;
+
+  const { error } = await supabase.from('visit_assignments').insert({
+    visit_id: visitId,
+    doctor_id: doctorId,
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to bind doctor assignment.');
+  }
+
+  await supabase.from('visits').update({ doctor_id: doctorId }).eq('id', visitId);
+}
+
 /**
  * Creates a public appointment request (open access endpoint for booking widget).
  *
@@ -411,8 +436,8 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
       .eq('organization_id', ctx.organizationId)
       .single();
 
-    if (apptErr || !appt || !['confirmed', 'rescheduled'].includes(appt.status)) {
-      throw new Error('Appointment is not confirmed or not found.');
+    if (apptErr || !appt) {
+      throw new Error('Appointment not found.');
     }
 
     assertBranchAccess(ctx, appt.branch_id);
@@ -420,6 +445,42 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
     const assignedDoctorId = doctorId || appt.doctor_id;
     if (!assignedDoctorId) {
       throw new Error('Select an attending veterinarian before check-in.');
+    }
+
+    // Idempotent: already checked in — return existing visit
+    if (appt.status === 'checked_in') {
+      const { data: existingVisit } = await supabase
+        .from('visits')
+        .select('id')
+        .eq('appointment_id', appointmentId)
+        .eq('organization_id', ctx.organizationId)
+        .maybeSingle();
+      if (existingVisit) {
+        await ensureVisitAssignment(supabase, existingVisit.id, assignedDoctorId);
+        return { success: true, visitId: existingVisit.id, alreadyCheckedIn: true };
+      }
+      throw new Error('Appointment is checked in but no visit was found.');
+    }
+
+    if (!['confirmed', 'rescheduled'].includes(appt.status)) {
+      throw new Error('Appointment is not confirmed or not found.');
+    }
+
+    // Guard against duplicate visit if appointment_id already linked
+    const { data: preExistingVisit } = await supabase
+      .from('visits')
+      .select('id')
+      .eq('appointment_id', appointmentId)
+      .eq('organization_id', ctx.organizationId)
+      .maybeSingle();
+
+    if (preExistingVisit) {
+      await supabase
+        .from('appointments')
+        .update({ status: 'checked_in' })
+        .eq('id', appt.id);
+      await ensureVisitAssignment(supabase, preExistingVisit.id, assignedDoctorId);
+      return { success: true, visitId: preExistingVisit.id, alreadyCheckedIn: true };
     }
 
     // 2. Find or create Customer in the branch scope
@@ -517,19 +578,36 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
         status: 'waiting',
         is_emergency: appt.is_emergency ?? false,
         triage_notes: appt.intake_notes || null,
+        doctor_id: assignedDoctorId,
       })
       .select()
       .single();
 
     if (visitErr || !visit) {
+      // Race: another request may have created the visit
+      const { data: raceVisit } = await supabase
+        .from('visits')
+        .select('id')
+        .eq('appointment_id', appt.id)
+        .eq('organization_id', ctx.organizationId)
+        .maybeSingle();
+      if (raceVisit) {
+        await ensureVisitAssignment(supabase, raceVisit.id, assignedDoctorId);
+        return { success: true, visitId: raceVisit.id, alreadyCheckedIn: true };
+      }
       throw new Error('Failed to check in patient visit queue.');
     }
 
     // 5. Create Vet Assignment
-    await supabase.from('visit_assignments').insert({
+    const { error: assignErr } = await supabase.from('visit_assignments').insert({
       visit_id: visit.id,
       doctor_id: assignedDoctorId,
     });
+
+    if (assignErr) {
+      await supabase.from('visits').delete().eq('id', visit.id);
+      throw new Error(assignErr.message || 'Failed to bind doctor assignment.');
+    }
 
     // 6. Update appointment status to checked_in
     await supabase
@@ -549,9 +627,9 @@ export async function checkInAppointmentAction(appointmentId: string, doctorId: 
       afterData: { status: 'waiting' },
     });
 
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message || 'An unexpected error occurred.' };
+    return { success: true, visitId: visit.id };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'An unexpected error occurred.' };
   }
 }
 

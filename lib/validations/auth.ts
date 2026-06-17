@@ -46,3 +46,22 @@ export const RequestAccessSchema = z.object({
   message: z.string().max(1000).optional().or(z.literal('')),
 });
 export type RequestAccessInput = z.infer<typeof RequestAccessSchema>;
+
+export const UpdateMyProfileSchema = z.object({
+  firstName: z.string().min(1, { message: 'First name is required' }),
+  lastName: z.string().min(1, { message: 'Last name is required' }),
+  phone: z.string().min(5, { message: 'Phone number is required' }).max(50),
+});
+export type UpdateMyProfileInput = z.infer<typeof UpdateMyProfileSchema>;
+
+export const ChangePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(6, { message: 'Current password is required' }),
+    newPassword: z.string().min(8, { message: 'New password must be at least 8 characters' }),
+    confirmPassword: z.string().min(8),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;

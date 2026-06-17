@@ -16,6 +16,7 @@ import {
   type Feature,
 } from '@/lib/auth/features';
 import { createClient } from '@/lib/supabase/server';
+import { normalizeCurrencyCode } from '@/lib/utils/currency';
 
 export const BRANCH_COOKIE_NAME = 'clinix_branch_id';
 
@@ -25,6 +26,7 @@ export interface ServerAuthContext extends UserSessionDetails {
   capabilities: Capability[];
   features: Feature[];
   subscriptionStatus: string | null;
+  currency: string;
   isImpersonating: boolean;
 }
 
@@ -97,11 +99,18 @@ async function resolveImpersonatedClinicSession(
 
   const role = 'clinic_admin' as const;
 
+  const { data: appSettings } = await adminClient
+    .from('app_settings')
+    .select('currency')
+    .eq('organization_id', targetOrgId)
+    .maybeSingle();
+
   return {
     userId: session.userId,
     email: session.email,
     firstName: session.firstName,
     lastName: session.lastName,
+    hasAvatar: session.hasAvatar,
     isSuperAdmin: true,
     role,
     organizationId: org?.id ?? targetOrgId,
@@ -112,6 +121,7 @@ async function resolveImpersonatedClinicSession(
     capabilities: getCapabilitiesForRole(role),
     features: [...ALL_FEATURES],
     subscriptionStatus: 'active',
+    currency: normalizeCurrencyCode(appSettings?.currency),
     isImpersonating: true,
   };
 }
@@ -132,6 +142,17 @@ async function loadOrganizationSubscription(
     ),
     status: data?.status ?? null,
   };
+}
+
+async function loadOrganizationCurrency(organizationId: string): Promise<string> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('app_settings')
+    .select('currency')
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+
+  return normalizeCurrencyCode(data?.currency);
 }
 
 export async function resolveServerAuthContext(): Promise<ServerAuthContext | null> {
@@ -163,11 +184,16 @@ export async function resolveServerAuthContext(): Promise<ServerAuthContext | nu
 
   let features: Feature[] = [...ALL_FEATURES];
   let subscriptionStatus: string | null = null;
+  let currency = 'USD';
 
   if (session.organizationId) {
-    const sub = await loadOrganizationSubscription(session.organizationId);
+    const [sub, orgCurrency] = await Promise.all([
+      loadOrganizationSubscription(session.organizationId),
+      loadOrganizationCurrency(session.organizationId),
+    ]);
     features = sub.features;
     subscriptionStatus = sub.status;
+    currency = orgCurrency;
   }
 
   return {
@@ -177,6 +203,7 @@ export async function resolveServerAuthContext(): Promise<ServerAuthContext | nu
     capabilities: getCapabilitiesForRole(session.role),
     features,
     subscriptionStatus,
+    currency,
     isImpersonating: false,
   };
 }
@@ -247,6 +274,15 @@ export function assertOrganization(
 ): asserts ctx is ServerAuthContext & { organizationId: string } {
   if (!ctx.organizationId) {
     throw new AuthError('Forbidden: No organization context.', 'FORBIDDEN');
+  }
+}
+
+export function assertClinicAdmin(ctx: ServerAuthContext): void {
+  if (ctx.role !== 'clinic_admin') {
+    throw new AuthError(
+      'Forbidden: Only clinic administrators can perform this action.',
+      'FORBIDDEN'
+    );
   }
 }
 

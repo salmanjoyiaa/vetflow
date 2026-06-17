@@ -5,16 +5,23 @@ import { useRouter } from 'next/navigation';
 import StockAdjustmentForm from '@/components/forms/StockAdjustmentForm';
 import ProductEditModal from '@/components/inventory/ProductEditModal';
 import { deleteProductAction } from '@/lib/services/inventory-actions';
+import { useCurrency } from '@/lib/context/CurrencyContext';
 import { ShieldAlert, Trash2, Loader2 } from 'lucide-react';
 import type { UserSessionDetails } from '@/lib/services/auth';
 
+import { PRODUCT_TYPE_OPTIONS } from '@/lib/inventory/product-types';
+
+const TYPE_TAB_LABELS: Record<string, string> = {
+  medicine: 'Medicine',
+  food: 'Food',
+  treats: 'Treats',
+  accessory: 'Accessories',
+  service: 'Services',
+};
+
 const TYPE_TABS = [
   { id: 'all', label: 'All' },
-  { id: 'medicine', label: 'Medicine' },
-  { id: 'food', label: 'Food' },
-  { id: 'treats', label: 'Treats' },
-  { id: 'accessory', label: 'Accessories' },
-  { id: 'service', label: 'Services' },
+  ...PRODUCT_TYPE_OPTIONS.map((o) => ({ id: o.value, label: TYPE_TAB_LABELS[o.value] ?? o.label })),
 ] as const;
 
 type TypeTab = (typeof TYPE_TABS)[number]['id'];
@@ -61,6 +68,7 @@ export default function InventoryCatalogClient({
   categories,
   branches,
 }: InventoryCatalogClientProps) {
+  const { formatCurrency } = useCurrency();
   const [typeTab, setTypeTab] = useState<TypeTab>('all');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const router = useRouter();
@@ -137,9 +145,9 @@ export default function InventoryCatalogClient({
                     )}
                   </td>
                   <td className="px-6 py-4 space-y-0.5 text-on-surface-variant/80 font-medium">
-                    <div>Sell: ${Number(prod.selling_price).toFixed(2)}</div>
+                    <div>Sell: {formatCurrency(Number(prod.selling_price))}</div>
                     <div className="text-[10px] text-on-surface-variant/50">
-                      Buy: ${Number(prod.purchase_price).toFixed(2)}
+                      Buy: {formatCurrency(Number(prod.purchase_price))}
                     </div>
                   </td>
                   <td className="px-6 py-4">

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import AppointmentsListClient from '@/components/dashboard/AppointmentsListClient';
 import AppointmentsPageHeader from '@/components/dashboard/AppointmentsPageHeader';
 import { Suspense } from 'react';
+import DateRangeQuickFilter from '@/components/dashboard/DateRangeQuickFilter';
 
 export const metadata = {
   title: 'Appointments Scheduler',
@@ -129,12 +130,18 @@ export default async function AppointmentsPage() {
         />
       </Suspense>
 
+      <Suspense fallback={null}>
+        <DateRangeQuickFilter showWeek={false} />
+      </Suspense>
+
       {/* APPOINTMENTS LIST */}
-      <AppointmentsListClient 
+      <Suspense fallback={null}>
+        <AppointmentsListClient 
         initialAppointments={appointments || []} 
         doctors={doctors}
         userRole={session.role}
       />
+      </Suspense>
 
     </div>
   );

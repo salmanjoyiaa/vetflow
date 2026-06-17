@@ -8,6 +8,12 @@ import {
 } from '@/lib/auth/context';
 import { writeAuditLog } from '@/lib/services/audit';
 import { LabOrderSchema, LabResultSchema } from '@/lib/validations/schemas';
+import { ZodError } from 'zod';
+
+function formatZodError(err: ZodError): string {
+  const first = err.issues[0];
+  return first?.message || 'Invalid lab order input.';
+}
 
 /**
  * Creates a lab order against a visit. Scoped to the caller's organization and
@@ -20,7 +26,13 @@ export async function createLabOrderAction(payload: unknown) {
     assertOrganization(ctx);
     assertCapability(ctx, 'clinical_queue');
 
-    const parsed = LabOrderSchema.parse(payload);
+    let parsed;
+    try {
+      parsed = LabOrderSchema.parse(payload);
+    } catch (err) {
+      if (err instanceof ZodError) throw new Error(formatZodError(err));
+      throw err;
+    }
     const supabase = await createClient();
 
     // Resolve and authorize the visit within the caller's organization.

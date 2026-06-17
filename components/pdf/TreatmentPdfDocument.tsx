@@ -78,6 +78,14 @@ export interface TreatmentPdfProps {
   weightKg?: number | null;
   footerText?: string;
   accentColor?: string;
+  prescriptionItems?: Array<{
+    medicine_name: string;
+    dosage: string;
+    frequency: string;
+    duration: string;
+    quantity_requested: number;
+    instructions?: string | null;
+  }>;
 }
 
 export default function TreatmentPdfDocument(props: TreatmentPdfProps) {
@@ -113,7 +121,7 @@ export default function TreatmentPdfDocument(props: TreatmentPdfProps) {
             <Text style={styles.metaValue}>{props.customerName}</Text>
           </View>
           <View style={styles.metaBlock}>
-            <Text style={styles.metaLabel}>Attending vet</Text>
+            <Text style={styles.metaLabel}>Attending Doctor</Text>
             <Text style={styles.metaValue}>{props.doctorName}</Text>
           </View>
           <View style={styles.metaBlock}>
@@ -191,6 +199,20 @@ export default function TreatmentPdfDocument(props: TreatmentPdfProps) {
             <Text style={styles.body}>{props.followUp}</Text>
           </View>
         )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>List Prescribed Medicines</Text>
+          {(props.prescriptionItems?.length ?? 0) > 0 ? (
+            props.prescriptionItems!.map((item, idx) => (
+              <Text key={idx} style={styles.body}>
+                • {item.medicine_name} — {item.dosage}, {item.frequency}, {item.duration}
+                {item.quantity_requested ? ` (Qty: ${item.quantity_requested})` : ''}
+              </Text>
+            ))
+          ) : (
+            <Text style={styles.body}>No prescribed medicines recorded.</Text>
+          )}
+        </View>
 
         <Text style={styles.footer}>
           {props.footerText || `Thank you for your visit. — ${props.clinicName}`}

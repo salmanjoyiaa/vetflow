@@ -10,6 +10,7 @@ interface ChartDataPoint {
 interface ReportsChartsWrapperProps {
   salesData: ChartDataPoint[];
   paymentData: ChartDataPoint[];
+  currency: string;
 }
 
 const ReportsChartsClient = dynamic(
@@ -25,4 +26,3 @@ const ReportsChartsClient = dynamic(
 export default function ReportsChartsWrapper(props: ReportsChartsWrapperProps) {
   return <ReportsChartsClient {...props} />;
 }
-

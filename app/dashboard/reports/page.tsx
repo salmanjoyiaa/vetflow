@@ -8,6 +8,7 @@ import { guardFeature } from '@/lib/auth/page-guards';
 import { createClient } from '@/lib/supabase/server';
 import ReportsChartsWrapper from '@/components/dashboard/ReportsChartsWrapper';
 import PageHeader from '@/components/ui/premium/PageHeader';
+import { formatMoney } from '@/lib/utils/currency';
 import { TrendingUp, DollarSign, Activity, Calendar, AlertCircle } from 'lucide-react';
 
 export const metadata = {
@@ -167,6 +168,8 @@ export default async function ReportsPage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6);
 
+  const currency = ctx.currency;
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -182,7 +185,9 @@ export default async function ReportsPage() {
           </span>
           <div className="flex items-baseline gap-1 mt-1">
             <DollarSign className="w-4 h-4 text-primary" />
-            <span className="text-xl font-black text-on-surface">${totalSales.toFixed(2)}</span>
+            <span className="text-xl font-black text-on-surface">
+              {formatMoney(totalSales, currency)}
+            </span>
           </div>
         </div>
 
@@ -193,7 +198,7 @@ export default async function ReportsPage() {
           <div className="flex items-baseline gap-1 mt-1">
             <AlertCircle className="w-4 h-4 text-amber-500" />
             <span className="text-xl font-black text-on-surface">
-              ${outstandingTotal.toFixed(2)}
+              {formatMoney(outstandingTotal, currency)}
             </span>
           </div>
         </div>
@@ -224,7 +229,11 @@ export default async function ReportsPage() {
         </div>
       </div>
 
-      <ReportsChartsWrapper salesData={monthlySalesData} paymentData={paymentChartData} />
+      <ReportsChartsWrapper
+        salesData={monthlySalesData}
+        paymentData={paymentChartData}
+        currency={currency}
+      />
 
       <div className="grid md:grid-cols-2 gap-6">
         <div className="glass-panel rounded-2xl border border-outline-variant/40 p-6">
@@ -236,7 +245,7 @@ export default async function ReportsPage() {
               {salesByDoctor.map(([name, amount]) => (
                 <li key={name} className="flex justify-between">
                   <span className="text-on-surface-variant">{name}</span>
-                  <span className="font-bold text-on-surface">${amount.toFixed(2)}</span>
+                  <span className="font-bold text-on-surface">{formatMoney(amount, currency)}</span>
                 </li>
               ))}
             </ul>
@@ -254,7 +263,9 @@ export default async function ReportsPage() {
               {topItems.map(([name, amount]) => (
                 <li key={name} className="flex justify-between gap-4">
                   <span className="text-on-surface-variant truncate">{name}</span>
-                  <span className="font-bold text-on-surface shrink-0">${amount.toFixed(2)}</span>
+                  <span className="font-bold text-on-surface shrink-0">
+                    {formatMoney(amount, currency)}
+                  </span>
                 </li>
               ))}
             </ul>
